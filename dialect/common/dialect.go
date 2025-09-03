@@ -2,8 +2,6 @@ package common
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 
 	"github.com/vn-go/dx/migrate/common"
 	//"github.com/vn-go/xdb/migrate"
@@ -17,56 +15,6 @@ type DialectDelegateFunction struct {
 	FuncName         string
 	Args             []string
 	HandledByDialect bool // ✅ Indicates if this function is allowed to be delegated to the dialect
-}
-type DIALECT_DB_ERROR_TYPE = int
-
-const (
-	DIALECT_DB_ERROR_TYPE_UNKNOWN DIALECT_DB_ERROR_TYPE = iota
-	DIALECT_DB_ERROR_TYPE_DUPLICATE
-	DIALECT_DB_ERROR_TYPE_REFERENCES // ✅ refrences_violation
-	DIALECT_DB_ERROR_TYPE_REQUIRED
-)
-
-func ErrorMessage(t DIALECT_DB_ERROR_TYPE) string {
-	switch t {
-	case DIALECT_DB_ERROR_TYPE_UNKNOWN:
-		return "unknown"
-	case DIALECT_DB_ERROR_TYPE_DUPLICATE:
-		return "duplicate"
-	case DIALECT_DB_ERROR_TYPE_REFERENCES:
-		return "references"
-	case DIALECT_DB_ERROR_TYPE_REQUIRED:
-		return "required"
-	default:
-		return "unknown"
-	}
-}
-func (e DialectError) Error() string {
-	return fmt.Sprintf("code=%s, %s: %s cols %v tables %v, entity fields %v", e.Code, ErrorMessage(e.ErrorType), e.ErrorMessage, strings.Join(e.DbCols, ","), e.Table, strings.Join(e.Fields, ","))
-}
-func (e DialectError) Unwrap() error {
-	return e.Err
-}
-
-type DialectError struct {
-	Err            error
-	ErrorType      DIALECT_DB_ERROR_TYPE
-	Code           string
-	ErrorMessage   string
-	DbCols         []string
-	Fields         []string
-	Table          string
-	StructName     string
-	RefTable       string   //<-- table cause error
-	RefStructName  string   //<-- Struct cause error
-	RefCols        []string //<-- Columns in database cause error
-	RefFields      []string //<-- Fields in struct cause error
-	ConstraintName string   //<-- Constraint name cause error
-}
-
-func (e *DialectError) Reload() {
-	e.Code = "ERR" + fmt.Sprintf("%04d", e.ErrorType)
-	e.ErrorMessage = ErrorMessage(e.ErrorType)
 }
 
 type Dialect interface {
