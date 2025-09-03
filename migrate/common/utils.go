@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	pluralizeLib "github.com/gertd/go-pluralize"
+	"github.com/vn-go/dx/internal"
 )
 
 var pluralize = pluralizeLib.NewClient()
@@ -30,25 +31,25 @@ example:
 type Entity struct {
 	EntityType               reflect.Type
 	tableName                string
-	Cols                     []ColumnDef          //<-- list of all columns
-	mapCols                  map[string]ColumnDef //<-- used for faster access to column by name
-	PrimaryConstraints       map[string][]ColumnDef
-	uniqueConstraints        map[string][]ColumnDef
-	indexConstraints         map[string][]ColumnDef
-	buildUniqueConstraints   map[string][]ColumnDef
+	Cols                     []internal.ColumnDef          //<-- list of all columns
+	mapCols                  map[string]internal.ColumnDef //<-- used for faster access to column by name
+	PrimaryConstraints       map[string][]internal.ColumnDef
+	uniqueConstraints        map[string][]internal.ColumnDef
+	indexConstraints         map[string][]internal.ColumnDef
+	buildUniqueConstraints   map[string][]internal.ColumnDef
 	cacheGetAutoValueColumns sync.Map
 	DbTableName              string
 }
 type initGetAutoValueColumns struct {
 	once sync.Once
-	val  []ColumnDef
+	val  []internal.ColumnDef
 }
 
-func (e *Entity) GetAutoValueColumns() []ColumnDef {
+func (e *Entity) GetAutoValueColumns() []internal.ColumnDef {
 	actual, _ := e.cacheGetAutoValueColumns.LoadOrStore(e.EntityType, &initGetAutoValueColumns{})
 	init := actual.(*initGetAutoValueColumns)
 	init.once.Do(func() {
-		init.val = []ColumnDef{}
+		init.val = []internal.ColumnDef{}
 		for _, col := range e.Cols {
 			if col.IsAuto {
 				init.val = append(init.val, col)
@@ -60,7 +61,7 @@ func (e *Entity) GetAutoValueColumns() []ColumnDef {
 func (e *Entity) GetType() reflect.Type {
 	return e.EntityType
 }
-func (e *Entity) GetColumns() []ColumnDef {
+func (e *Entity) GetColumns() []internal.ColumnDef {
 	return e.Cols
 }
 func (e *Entity) TableName() string {
@@ -74,9 +75,9 @@ func (e *Entity) GetFieldByColumnName(colName string) string {
 	return ""
 }
 
-func (e *Entity) GetIndexConstraints() map[string][]ColumnDef {
+func (e *Entity) GetIndexConstraints() map[string][]internal.ColumnDef {
 	if e.indexConstraints == nil || len(e.indexConstraints) == 0 {
-		e.indexConstraints = map[string][]ColumnDef{}
+		e.indexConstraints = map[string][]internal.ColumnDef{}
 		for _, col := range e.Cols {
 			if col.IndexName != "" {
 				e.indexConstraints[col.IndexName] = append(e.indexConstraints[col.IndexName], col)
@@ -85,9 +86,9 @@ func (e *Entity) GetIndexConstraints() map[string][]ColumnDef {
 	}
 	return e.indexConstraints
 }
-func (e *Entity) GetUniqueConstraints() map[string][]ColumnDef {
+func (e *Entity) GetUniqueConstraints() map[string][]internal.ColumnDef {
 	if len(e.uniqueConstraints) == 0 {
-		e.uniqueConstraints = map[string][]ColumnDef{}
+		e.uniqueConstraints = map[string][]internal.ColumnDef{}
 		for _, col := range e.Cols {
 			if col.UniqueName != "" {
 				e.uniqueConstraints[col.UniqueName] = append(e.uniqueConstraints[col.UniqueName], col)
@@ -99,12 +100,12 @@ func (e *Entity) GetUniqueConstraints() map[string][]ColumnDef {
 
 type initGetBuildUniqueConstraints struct {
 	once sync.Once
-	val  map[string][]ColumnDef
+	val  map[string][]internal.ColumnDef
 }
 
 var cacheGetBuildUniqueConstraints = sync.Map{}
 
-func (e *Entity) GetBuildUniqueConstraints() map[string][]ColumnDef {
+func (e *Entity) GetBuildUniqueConstraints() map[string][]internal.ColumnDef {
 	actual, _ := cacheGetBuildUniqueConstraints.LoadOrStore(e.EntityType, &initGetBuildUniqueConstraints{})
 	init := actual.(*initGetBuildUniqueConstraints)
 	init.once.Do(func() {
@@ -112,9 +113,9 @@ func (e *Entity) GetBuildUniqueConstraints() map[string][]ColumnDef {
 	})
 	return init.val
 }
-func (e *Entity) getBuildUniqueConstraints() map[string][]ColumnDef {
+func (e *Entity) getBuildUniqueConstraints() map[string][]internal.ColumnDef {
 	if len(e.buildUniqueConstraints) == 0 {
-		e.buildUniqueConstraints = map[string][]ColumnDef{}
+		e.buildUniqueConstraints = map[string][]internal.ColumnDef{}
 		for _, constraint := range e.GetUniqueConstraints() {
 			tableName := e.tableName
 
@@ -127,99 +128,6 @@ func (e *Entity) getBuildUniqueConstraints() map[string][]ColumnDef {
 		}
 	}
 	return e.buildUniqueConstraints
-}
-
-type ColumnDef struct {
-	/*
-		Name of the column in the database.
-		If `db:"column:user_name"` is provided, this value will be "user_name".
-		Otherwise, default to SnakeCase of field name.
-	*/
-	Name string
-
-	/*
-		SQL data type in target RDBMS. Derived from `type:"..."` tag or Go type mapping.
-		Example: "varchar(255)", "int", "jsonb", etc.
-	*/
-	Type string
-
-	/*
-		Whether the column allows NULL values.
-		Automatically derived from Go pointer type: e.g., *string → Nullable=true.
-	*/
-	Nullable bool
-
-	/*
-		If tag looks like:
-			`db:"pk"` or `db:"primary"` → PKName = Name
-			`db:"pk(my_pk_name)"` → PKName = "my_pk_name"
-	*/
-	PKName string
-
-	/*
-		Whether this column is auto-increment.
-		Derived from tag `db:"auto"`
-	*/
-	IsAuto bool
-
-	/*
-		Default value for the column. Derived from tag `db:"default(...)"`
-		Example: `default(now)` → Default = "now"
-	*/
-	Default string
-
-	/*
-		If tag looks like:
-			`db:"unique"` → UniqueName = Name
-			`db:"unique(email_uk)"` → UniqueName = "email_uk"
-	*/
-	UniqueName string
-
-	/*
-		If tag looks like:
-			`db:"index"` → IndexName = Name
-			`db:"index(email_idx)"` → IndexName = "email_idx"
-	*/
-	IndexName string
-
-	/*
-		Length of the column. Used in varchar(n), nvarchar(n), etc.
-		Example: type:"string(100)" → Length = 100
-	*/
-	Length *int
-
-	/*
-		Precision and Scale. Used for types like decimal(p,s).
-		Example: type:"decimal(10,2)" → Precision=10, Scale=2
-	*/
-	Precision *int
-	Scale     *int
-
-	/*
-		Whether this column should be treated as a JSON/document field.
-		Derived from type like "json", "jsonb", or Go struct tag/type analysis.
-	*/
-	IsJSON bool
-
-	/*
-		Optional comment or description of the column.
-		Derived from: db:"comment(This is the user email)"
-	*/
-	Comment string
-
-	/*
-		Original Go field reference for further metadata.
-	*/
-	Field reflect.StructField
-
-	/*
-		Optional: the referenced table and column if this is a foreign key.
-		Derived from: db:"foreign(users.id)" → RefTable = "users", RefColumn = "id"
-	*/
-	IsForeignKey bool
-	RefTable     string
-	RefColumn    string
-	IndexOfField []int
 }
 
 type utils struct {
@@ -238,7 +146,7 @@ look at the example below:
 		Name:     name of the field, // the other info is default
 	}
 */
-func (u *utils) ParseTagFromStruct(field reflect.StructField, parentIndexOfField []int) ColumnDef {
+func (u *utils) ParseTagFromStruct(field reflect.StructField, parentIndexOfField []int) internal.ColumnDef {
 	/*
 		Parses struct tag into a ColumnDef following "db" tag convention.
 		Supports alternative fallback to "gorm" for compatibility.
@@ -261,7 +169,7 @@ func (u *utils) ParseTagFromStruct(field reflect.StructField, parentIndexOfField
 		tagStr = field.Tag.Get("gorm") // fallback
 	}
 
-	col := ColumnDef{
+	col := internal.ColumnDef{
 		Name:         u.SnakeCase(field.Name),
 		Field:        field,
 		Nullable:     field.Type.Kind() == reflect.Ptr,
@@ -395,13 +303,13 @@ Example:
 		ID int `db:"pk"`
 	}
 */
-func (u *utils) ParseStruct(t reflect.Type, parentIndexOfField []int) ([]ColumnDef, error) {
+func (u *utils) ParseStruct(t reflect.Type, parentIndexOfField []int) ([]internal.ColumnDef, error) {
 
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 
-	var cols []ColumnDef
+	var cols []internal.ColumnDef
 	for i := 0; i < t.NumField(); i++ {
 
 		f := t.Field(i)
@@ -427,10 +335,10 @@ func (u *utils) ParseStruct(t reflect.Type, parentIndexOfField []int) ([]ColumnD
 
 /*
 this function will return a map of primary key columns with their names
-@return map[string][]ColumnDef //<-- map[Primary key constraint name][]ColumnDef
+@return map[string][]internal.ColumnDef //<-- map[Primary key constraint name][]internal.ColumnDef
 */
-func (u *utils) GetPrimaryKey(e *Entity) map[string][]ColumnDef {
-	m := make(map[string][]ColumnDef)
+func (u *utils) GetPrimaryKey(e *Entity) map[string][]internal.ColumnDef {
+	m := make(map[string][]internal.ColumnDef)
 	for _, col := range e.Cols {
 		if col.PKName != "" {
 			m[col.PKName] = append(m[col.PKName], col)
@@ -441,10 +349,10 @@ func (u *utils) GetPrimaryKey(e *Entity) map[string][]ColumnDef {
 
 /*
 this function will return a map of unique key columns with their names
-@return map[string][]ColumnDef //<-- map[Unique constraint name][]ColumnDef
+@return map[string][]internal.ColumnDef //<-- map[Unique constraint name][]internal.ColumnDef
 */
-func (u *utils) GetUnique(e *Entity) map[string][]ColumnDef {
-	m := make(map[string][]ColumnDef)
+func (u *utils) GetUnique(e *Entity) map[string][]internal.ColumnDef {
+	m := make(map[string][]internal.ColumnDef)
 	for _, col := range e.Cols {
 		if col.UniqueName != "" {
 			m[col.UniqueName] = append(m[col.UniqueName], col)
@@ -455,10 +363,10 @@ func (u *utils) GetUnique(e *Entity) map[string][]ColumnDef {
 
 /*
 this function will return a map of index columns with their names
-@return map[string][]ColumnDef //<-- map[Index constraint name][]ColumnDef
+@return map[string][]internal.ColumnDef //<-- map[Index constraint name][]internal.ColumnDef
 */
-func (u *utils) GetIndex(e *Entity) map[string][]ColumnDef {
-	m := make(map[string][]ColumnDef)
+func (u *utils) GetIndex(e *Entity) map[string][]internal.ColumnDef {
+	m := make(map[string][]internal.ColumnDef)
 	for _, col := range e.Cols {
 		if col.IndexName != "" {
 			m[col.IndexName] = append(m[col.IndexName], col)

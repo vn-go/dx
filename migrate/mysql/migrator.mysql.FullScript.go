@@ -12,8 +12,8 @@ type mysqlGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *MigratorMySql) GetFullScript() ([]string, error) {
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+func (m *MigratorMySql) GetFullScript(dbName, DbType string) ([]string, error) {
+	key := fmt.Sprintf("%s_%s", dbName, DbType)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &mysqlGetFullScriptInit{})
 	init := actual.(*mysqlGetFullScriptInit)
 	var err error

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -8,14 +9,13 @@ import (
 
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
 )
 
 type MigratorMySql struct {
 	Loader             common.IMigratorLoader
 	cacheGetFullScript sync.Map
 
-	Db *tenantDB.TenantDB
+	Db *sql.DB
 }
 
 func (m *MigratorMySql) GetLoader() common.IMigratorLoader {
@@ -40,16 +40,16 @@ type mysqlInitDoMigrates struct {
 
 var cacheMysqlDoMigrates sync.Map
 
-func (m *MigratorMySql) DoMigrates() error {
+func (m *MigratorMySql) DoMigrates(dbName, DbType string) error {
 
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+	key := fmt.Sprintf("%s_%s", dbName, DbType)
 	actual, _ := cacheMysqlDoMigrates.LoadOrStore(key, &mysqlInitDoMigrates{})
 
 	mi := actual.(*mysqlInitDoMigrates)
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript()
+		scripts, err := m.GetFullScript(dbName, DbType)
 		if err != nil {
 			return
 		}

@@ -1,10 +1,10 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 /*
@@ -12,7 +12,7 @@ import (
 
 	 #colum info struct
 
-		type common.ColumnInfo struct {
+		type internal.ColumnInfo struct {
 
 			Name string //Db field name
 
@@ -22,9 +22,9 @@ import (
 
 			Length int
 		}
-		tenantDB.TenantDB is sql.DB
+		sql.DB is sql.DB
 */
-func (m *MigratorLoaderPostgres) LoadAllTable(db *tenantDB.TenantDB) (map[string]map[string]common.ColumnInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllTable(db *sql.DB) (map[string]map[string]internal.ColumnInfo, error) {
 	query := `
 		SELECT 
 			table_name, 
@@ -46,7 +46,7 @@ func (m *MigratorLoaderPostgres) LoadAllTable(db *tenantDB.TenantDB) (map[string
 	}
 	defer rows.Close()
 
-	result := make(map[string]map[string]common.ColumnInfo)
+	result := make(map[string]map[string]internal.ColumnInfo)
 
 	for rows.Next() {
 		var (
@@ -62,10 +62,10 @@ func (m *MigratorLoaderPostgres) LoadAllTable(db *tenantDB.TenantDB) (map[string
 		}
 
 		if _, ok := result[tableName]; !ok {
-			result[tableName] = make(map[string]common.ColumnInfo)
+			result[tableName] = make(map[string]internal.ColumnInfo)
 		}
 
-		result[tableName][columnName] = common.ColumnInfo{
+		result[tableName][columnName] = internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable == "YES",

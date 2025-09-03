@@ -4,8 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 // LoadAllUniIndex retrieves all unique indexes (excluding primary keys) from the MySQL database
@@ -15,9 +14,9 @@ import (
 //   - db: A pointer to a TenantDB instance for executing database queries.
 //
 // Returns:
-//   - A map[string]common.ColumnsInfo containing unique index details, where the key is the index name.
+//   - A map[string]internal.ColumnsInfo containing unique index details, where the key is the index name.
 //   - An error if the query or row scanning fails.
-func (m *MigratorLoaderMysql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllUniIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	// SQL query to fetch unique index information from INFORMATION_SCHEMA.
 	// Joins STATISTICS and COLUMNS tables to get index name, table name, column name,
 	// data type, nullability, and character length for unique indexes (NON_UNIQUE = 0)
@@ -51,8 +50,8 @@ func (m *MigratorLoaderMysql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string
 	// Ensure rows are closed after use to prevent resource leaks.
 	defer rows.Close()
 
-	// Initialize a map to store the results, with index names as keys and common.ColumnsInfo as values.
-	result := make(map[string]common.ColumnsInfo)
+	// Initialize a map to store the results, with index names as keys and internal.ColumnsInfo as values.
+	result := make(map[string]internal.ColumnsInfo)
 
 	// Iterate over each row returned by the query.
 	for rows.Next() {
@@ -65,8 +64,8 @@ func (m *MigratorLoaderMysql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		// Create a common.ColumnInfo struct with column details.
-		col := common.ColumnInfo{
+		// Create a internal.ColumnInfo struct with column details.
+		col := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable == "YES",
@@ -79,13 +78,13 @@ func (m *MigratorLoaderMysql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string
 
 		// Check if the index already exists in the result map.
 		if _, exists := result[indexName]; !exists {
-			// If it doesn't exist, initialize a new common.ColumnsInfo entry with the table name and column.
-			result[indexName] = common.ColumnsInfo{
+			// If it doesn't exist, initialize a new internal.ColumnsInfo entry with the table name and column.
+			result[indexName] = internal.ColumnsInfo{
 				TableName: tableName,
-				Columns:   []common.ColumnInfo{col},
+				Columns:   []internal.ColumnInfo{col},
 			}
 		} else {
-			// If it exists, append the new column to the existing common.ColumnsInfo's Columns slice.
+			// If it exists, append the new column to the existing internal.ColumnsInfo's Columns slice.
 			cols := result[indexName].Columns
 			cols = append(cols, col)
 

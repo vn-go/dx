@@ -12,8 +12,8 @@ type postgresGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *MigratorPostgres) GetFullScript() ([]string, error) {
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+func (m *MigratorPostgres) GetFullScript(dbName, dbType string) ([]string, error) {
+	key := fmt.Sprintf("%s_%s", dbName, dbType)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &postgresGetFullScriptInit{})
 	init := actual.(*postgresGetFullScriptInit)
 	var err error

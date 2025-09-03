@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vn-go/dx/dialect/common"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 	"github.com/vn-go/dx/tenantDB"
 	//  "github.com/vn-go/dx/sqlparser"
@@ -35,7 +35,7 @@ type exprCompileContext struct {
 	alias            map[string]string
 	joinAlias        map[string]string
 	aliasToDbTable   map[string]string
-	dialect          common.Dialect
+	dialect          internal.Dialect
 	purpose          build_purpose
 	stackAliasFields stack[string]
 	stackAliasTables stack[string]

@@ -1,4 +1,4 @@
-package query
+package tenantDB
 
 import (
 	"fmt"
@@ -9,10 +9,9 @@ import (
 	"github.com/vn-go/dx/dialect/factory"
 	_ "github.com/vn-go/dx/dialect/mysql"
 	"github.com/vn-go/dx/expr"
-	"github.com/vn-go/dx/tenantDB"
 )
 
-func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filter string) (string, error) {
+func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *TenantDB, filter string) (string, error) {
 	dialect := factory.DialectFactory.Create(db.GetDriverName())
 
 	repoType, err := inserterObj.getEntityInfo(typ)
@@ -31,21 +30,21 @@ func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filt
 	for i, col := range columns {
 		fieldsSelect[i] = repoType.tableName + "." + col.Field.Name + " AS " + col.Field.Name
 	}
-	compiler.context.purpose = BUILD_SELECT
-	err = compiler.buildSelectField(strings.Join(fieldsSelect, ", "))
+	compiler.Context.Purpose = expr.BUILD_SELECT
+	err = compiler.BuildSelectField(strings.Join(fieldsSelect, ", "))
 	if err != nil {
 		return "", err
 	}
-	strField := compiler.content
+	strField := compiler.Content
 
 	sql := fmt.Sprintf("SELECT %s FROM %s", strField, tableName)
 	if filter != "" {
-		compiler.context.purpose = build_purpose_where
-		err = compiler.buildWhere(filter)
+		compiler.Context.Purpose = expr.BUILD_WHERE //build_purpose_where
+		err = compiler.BuildWhere(filter)
 		if err != nil {
 			return "", err
 		}
-		sql += " WHERE " + compiler.content
+		sql += " WHERE " + compiler.Content
 	}
 	sql = dialect.MakeSelectTop(sql, 1)
 	return sql, nil
@@ -59,7 +58,7 @@ type initBuildBasicSqlFirstItem struct {
 
 var cacheBuildBasicSqlFirstItem sync.Map
 
-func buildBasicSqlFirstItem(typ reflect.Type, db *tenantDB.TenantDB, filter string) (string, error) {
+func BuildBasicSqlFirstItem(typ reflect.Type, db *TenantDB, filter string) (string, error) {
 	key := db.GetDriverName() + "://" + db.GetDBName() + "/" + typ.String() + "/" + filter
 	actual, _ := cacheBuildBasicSqlFirstItem.LoadOrStore(key, &initBuildBasicSqlFirstItem{})
 	initBuild := actual.(*initBuildBasicSqlFirstItem)

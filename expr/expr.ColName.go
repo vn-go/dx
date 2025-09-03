@@ -16,7 +16,7 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	tableName := expr.Qualifier.Name.String()
 	fieldName := expr.Name.String()
 	aliasFieldName := ""
-	if context.purpose == BUILD_SELECT {
+	if context.Purpose == BUILD_SELECT {
 		aliasFieldName = expr.Name.String()
 	}
 	if context.schema == nil {
@@ -38,7 +38,7 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 		if aliasTable, ok := context.alias[tableName]; ok {
 			tableName = aliasTable
 		} else {
-			if context.purpose == BUILD_JOIN {
+			if context.Purpose == BUILD_JOIN {
 				/*
 					if purpose is join, the compiling process need
 					extract tables if they were found when compiling the query
@@ -55,7 +55,7 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 			}
 		}
 
-	} else if context.purpose == BUILD_OFFSET {
+	} else if context.Purpose == BUILD_OFFSET {
 		/*
 			if found in database calculate alias field name
 			tableName from database schema
@@ -71,7 +71,7 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 		}
 
 	}
-	if context.purpose == BUILD_SELECT {
+	if context.Purpose == BUILD_SELECT {
 		/*
 			if purpose is select, then return tablename.fieldname as aliasfieldname
 			Heed: quote all the things
@@ -101,11 +101,11 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	// fieldName := expr.Name.String()
 	// var fullName string
 	// if aliasField, ok := context.stackAliasFields.Pop(); ok {
-	// 	if context.purpose == BUILD_SELECT {
+	// 	if context.Purpose == BUILD_SELECT {
 	// 		fullName = context.dialect.Quote(tableName, fieldName) + " AS " + context.dialect.Quote(aliasField)
 	// 	}
 	// } else {
-	// 	if context.purpose == BUILD_SELECT {
+	// 	if context.Purpose == BUILD_SELECT {
 	// 		fullName = context.dialect.Quote(context.alias[tableName], utils.ToSnakeCase(fieldName)) + " AS " + context.dialect.Quote(expr.Name.String())
 	// 	} else {
 	// 		fullName = context.dialect.Quote(context.alias[tableName], utils.ToSnakeCase(fieldName))
@@ -113,10 +113,10 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 
 	// }
 	// return fullName, nil
-	// if context.purpose == BUILD_SELECT {
+	// if context.Purpose == BUILD_SELECT {
 	// 	return fullName + " AS " + context.dialect.Quote(expr.Name.String()), nil
 
-	// } else if context.purpose == BUILD_SELECT {
+	// } else if context.Purpose == BUILD_SELECT {
 	// 	return fullName, nil
 	// } else {
 	// 	return fullName, nil
@@ -134,13 +134,13 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	// 		context.alias[tableName] = "T" + strconv.Itoa(len(context.tables))
 	// 	}
 	// }
-	// if context.purpose == BUILD_FUNC || context.purpose == BUILD_JOIN {
+	// if context.Purpose == BUILD_FUNC || context.Purpose == BUILD_JOIN {
 	// 	compileTableName := context.pluralTableName(tableName)
 	// 	compileFieldName := utils.ToSnakeCase(expr.Name.String())
 
 	// 	return context.dialect.Quote(compileTableName, compileFieldName), nil
 	// }
-	// if context.purpose == BUILD_SELECT {
+	// if context.Purpose == BUILD_SELECT {
 	// 	if aliasField, ok := context.stackAliasFields.Pop(); ok {
 
 	// 		compileFieldName := utils.ToSnakeCase(expr.Name.String())

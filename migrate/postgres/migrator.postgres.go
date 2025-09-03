@@ -1,20 +1,20 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
 )
 
 type MigratorPostgres struct {
 	Loader             common.IMigratorLoader
 	cacheGetFullScript sync.Map
 
-	Db *tenantDB.TenantDB
+	Db *sql.DB
 }
 
 func (m *MigratorPostgres) GetLoader() common.IMigratorLoader {
@@ -38,15 +38,15 @@ type postgresInitDoMigrates struct {
 
 var cacheDoMigrates sync.Map
 
-func (m *MigratorPostgres) DoMigrates() error {
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+func (m *MigratorPostgres) DoMigrates(dbName, dbType string) error {
+	key := fmt.Sprintf("%s_%s", dbName, dbType)
 	actual, _ := cacheDoMigrates.LoadOrStore(key, &postgresInitDoMigrates{})
 
 	mi := actual.(*postgresInitDoMigrates)
 	var err error
 	mi.once.Do(func() {
 		var scripts []string
-		scripts, err = m.GetFullScript()
+		scripts, err = m.GetFullScript(dbName, dbType)
 		if err != nil {
 			return
 		}

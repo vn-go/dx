@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/vn-go/dx/migrate/common"
+	"github.com/vn-go/dx/internal"
 )
 
-func (m *MigratorPostgres) createCheckLenConstraint(tableName string, col common.ColumnDef) string {
+func (m *MigratorPostgres) createCheckLenConstraint(tableName string, col internal.ColumnDef) string {
 	if col.Field.Type == reflect.TypeFor[string]() || col.Field.Type == reflect.TypeFor[*string]() {
 		checkSyntax := fmt.Sprintf("CHECK (char_length(%s) <= %d)", m.Quote(col.Name), *col.Length)
 

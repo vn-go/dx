@@ -6,16 +6,16 @@ import (
 
 func (compiler *exprReceiver) BinaryExpr(context *exprCompileContext, expr *sqlparser.BinaryExpr) (string, error) {
 	fieldAlias := ""
-	if context.purpose == BUILD_SELECT {
+	if context.Purpose == BUILD_SELECT {
 		if _fieldAlias, ok := context.stackAliasFields.Pop(); ok {
 			fieldAlias = _fieldAlias
 		}
 	}
-	backupPurpose := context.purpose
-	context.purpose = BUILD_FUNC
+	backupPurpose := context.Purpose
+	context.Purpose = BUILD_FUNC
 
 	defer func() {
-		context.purpose = backupPurpose
+		context.Purpose = backupPurpose
 	}()
 	left, err := compiler.compile(context, expr.Left)
 	if err != nil {

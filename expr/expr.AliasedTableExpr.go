@@ -3,7 +3,7 @@ package expr
 import "github.com/vn-go/dx/sqlparser"
 
 func (compiler *exprReceiver) AliasedTableExpr(context *exprCompileContext, expr *sqlparser.AliasedTableExpr) (string, error) {
-	if context.purpose == BUILD_JOIN {
+	if context.Purpose == BUILD_JOIN {
 		if expr.As.IsEmpty() {
 			return compiler.compile(context, expr.Expr)
 		}
@@ -24,7 +24,7 @@ func (compiler *exprReceiver) AliasedTableExpr(context *exprCompileContext, expr
 	// if tableName == "" {
 	// 	return compiler.compile(context, expr.Expr)
 	// } else {
-	// 	if context.purpose == BUILD_JOIN {
+	// 	if context.Purpose == BUILD_JOIN {
 	// 		context.stackAliasTables.Push(tableName)
 	// 		ret, err := compiler.compile(context, expr.Expr)
 	// 		if err != nil {

@@ -1,27 +1,27 @@
 package postgres
 
 import (
+	"database/sql"
 	"sync"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 type MigratorLoaderPostgres struct {
 	cacheLoadFullSchema sync.Map
 }
 
-func (m *MigratorLoaderPostgres) GetDbName(db *tenantDB.TenantDB) string {
+func (m *MigratorLoaderPostgres) GetDbName(db *sql.DB) string {
 	return db.GetDBName()
 }
 
 type initPostgresLoadFullSchema struct {
 	once sync.Once
-	val  *common.DbSchema
+	val  *internal.DbSchema
 	err  error
 }
 
-func (m *MigratorLoaderPostgres) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbSchema, error) {
+func (m *MigratorLoaderPostgres) LoadFullSchema(db *sql.DB) (*internal.DbSchema, error) {
 	cacheKey := db.GetDBName()
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initPostgresLoadFullSchema{})
 	init := actual.(*initPostgresLoadFullSchema)
@@ -30,7 +30,7 @@ func (m *MigratorLoaderPostgres) LoadFullSchema(db *tenantDB.TenantDB) (*common.
 	})
 	return init.val, init.err
 }
-func (m *MigratorLoaderPostgres) loadFullSchema(db *tenantDB.TenantDB) (*common.DbSchema, error) {
+func (m *MigratorLoaderPostgres) loadFullSchema(db *sql.DB) (*internal.DbSchema, error) {
 
 	tables, err := m.LoadAllTable(db)
 	if err != nil {
@@ -50,7 +50,7 @@ func (m *MigratorLoaderPostgres) loadFullSchema(db *tenantDB.TenantDB) (*common.
 	}
 
 	dbName := m.GetDbName(db)
-	schema := &common.DbSchema{
+	schema := &internal.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
@@ -61,7 +61,7 @@ func (m *MigratorLoaderPostgres) loadFullSchema(db *tenantDB.TenantDB) (*common.
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]common.DbForeignKeyInfo{}
+	schema.ForeignKeys = map[string]internal.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
 		schema.ForeignKeys[fk.ConstraintName] = fk
 	}

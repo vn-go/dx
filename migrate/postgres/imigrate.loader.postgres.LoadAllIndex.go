@@ -1,22 +1,22 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 /*
 this function will all  index  in Pg database and return a map of table name and column info
-return map[<index name>]common.ColumnsInfo, error
-struct common.ColumnsInfo  below:
+return map[<index name>]internal.ColumnsInfo, error
+struct internal.ColumnsInfo  below:
 
-	type common.ColumnsInfo struct {
+	type internal.ColumnsInfo struct {
 		TableName string
-		Columns   []common.ColumnInfo
+		Columns   []internal.ColumnInfo
 	}
-	type common.ColumnInfo struct {
+	type internal.ColumnInfo struct {
 
 			Name string //Db field name
 
@@ -26,10 +26,10 @@ struct common.ColumnsInfo  below:
 
 			Length int
 		}
-		tenantDB.TenantDB is sql.DB
+		sql.DB is sql.DB
 */
 
-func (m *MigratorLoaderPostgres) LoadAllIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 		SELECT
 			i.relname AS index_name,
@@ -62,7 +62,7 @@ func (m *MigratorLoaderPostgres) LoadAllIndex(db *tenantDB.TenantDB) (map[string
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 
 	for rows.Next() {
 		var (
@@ -78,7 +78,7 @@ func (m *MigratorLoaderPostgres) LoadAllIndex(db *tenantDB.TenantDB) (map[string
 			return nil, fmt.Errorf("row scan failed: %w", err)
 		}
 
-		column := common.ColumnInfo{
+		column := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable,
@@ -87,9 +87,9 @@ func (m *MigratorLoaderPostgres) LoadAllIndex(db *tenantDB.TenantDB) (map[string
 
 		entry, exists := result[indexName]
 		if !exists {
-			entry = common.ColumnsInfo{
+			entry = internal.ColumnsInfo{
 				TableName: tableName,
-				Columns:   []common.ColumnInfo{},
+				Columns:   []internal.ColumnInfo{},
 			}
 		}
 		entry.Columns = append(entry.Columns, column)

@@ -227,9 +227,7 @@ func (db *TenantDB) Find(entity interface{}, filter string, args ...interface{})
 
 }
 
-type onBuildSQLFirstItem func(typ reflect.Type, db *TenantDB, filter string) (string, error)
-
-var OnBuildSQLFirstItem onBuildSQLFirstItem
+//ype onBuildSQLFirstItem func(typ reflect.Type, db *TenantDB, filter string) (string, error)
 
 /*
 Get first item by filter
@@ -321,7 +319,7 @@ func (db *TenantDB) FirstWithContextAndFilter(context context.Context, entity in
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	sql, err := OnBuildSQLFirstItem(typ, db, filter)
+	sql, err := query.BuildBasicSqlFirstItem(typ, db, filter)
 	if err != nil {
 		return err
 	}

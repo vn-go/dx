@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 
@@ -19,7 +20,7 @@ type initNewMigrator struct {
 	val  common.IMigrator
 }
 
-func NewMigrator(db *tenantDB.TenantDB) (common.IMigrator, error) {
+func NewMigrator(db *sql.DB) (common.IMigrator, error) {
 	err := db.Detect()
 	if err != nil {
 		return nil, err

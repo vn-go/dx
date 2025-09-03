@@ -7,8 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vn-go/dx/dialect/common"
+	"github.com/vn-go/dx/dialect/mssql"
 	mysqlDialect "github.com/vn-go/dx/dialect/mysql"
+	"github.com/vn-go/dx/dialect/postgres"
+	"github.com/vn-go/dx/internal"
 )
 
 type dialectFactoryReceiver struct {
@@ -81,23 +83,23 @@ func (u *dialectFactoryReceiver) DetectDatabaseType(db *sql.DB) (DB_TYPE, string
 
 type dialectCreateInit struct {
 	once sync.Once
-	val  common.Dialect
+	val  internal.Dialect
 }
 
-func (d *dialectFactoryReceiver) create(driverName string) common.Dialect {
-	var ret common.Dialect
+func (d *dialectFactoryReceiver) create(driverName string) internal.Dialect {
+	var ret internal.Dialect
 	switch driverName {
 	case "mysql":
 		ret = &mysqlDialect.MysqlDialect{}
 	case "postgres":
 
-		ret = &postgresDialect{}
+		ret = &postgres.PostgresDialect{}
 
 	case "mssql":
 
-		ret = &mssqlDialect{}
+		ret = &mssql.MssqlDialect{}
 	case "sqlserver":
-		ret = &mssqlDialect{}
+		ret = &mssql.MssqlDialect{}
 	default:
 		panic(fmt.Errorf("unsupported driver: %s", driverName))
 	}
@@ -105,7 +107,7 @@ func (d *dialectFactoryReceiver) create(driverName string) common.Dialect {
 	return ret
 }
 
-func (d *dialectFactoryReceiver) Create(driverName string) common.Dialect {
+func (d *dialectFactoryReceiver) Create(driverName string) internal.Dialect {
 
 	actual, _ := d.cacheCreate.LoadOrStore(driverName, &dialectCreateInit{})
 	init := actual.(*dialectCreateInit)

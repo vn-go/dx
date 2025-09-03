@@ -4,17 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 /*
-This function load all table information from the mysql database and return a map[string]map[string]common.ColumnInfo
-return map[<table name>]<column name>: common.ColumnInfo (table name and column name are name of table and column in mysql)
+This function load all table information from the mysql database and return a map[string]map[string]internal.ColumnInfo
+return map[<table name>]<column name>: internal.ColumnInfo (table name and column name are name of table and column in mysql)
 
-common.ColumnInfo is struct
+internal.ColumnInfo is struct
 
-		type common.ColumnInfo struct {
+		type internal.ColumnInfo struct {
 
 		Name string //Db field name
 
@@ -27,7 +26,7 @@ common.ColumnInfo is struct
 
 @db is a pointer to the TenantDB object tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderMysql) LoadAllTable(db *tenantDB.TenantDB) (map[string]map[string]common.ColumnInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllTable(db *sql.DB) (map[string]map[string]internal.ColumnInfo, error) {
 	query := `
 		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH
 		FROM INFORMATION_SCHEMA.COLUMNS
@@ -40,7 +39,7 @@ func (m *MigratorLoaderMysql) LoadAllTable(db *tenantDB.TenantDB) (map[string]ma
 	}
 	defer rows.Close()
 
-	result := make(map[string]map[string]common.ColumnInfo)
+	result := make(map[string]map[string]internal.ColumnInfo)
 
 	for rows.Next() {
 		var tableName, columnName, dataType, isNullable string
@@ -52,10 +51,10 @@ func (m *MigratorLoaderMysql) LoadAllTable(db *tenantDB.TenantDB) (map[string]ma
 		}
 
 		if _, exists := result[tableName]; !exists {
-			result[tableName] = make(map[string]common.ColumnInfo)
+			result[tableName] = make(map[string]internal.ColumnInfo)
 		}
 
-		colInfo := common.ColumnInfo{
+		colInfo := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable == "YES",

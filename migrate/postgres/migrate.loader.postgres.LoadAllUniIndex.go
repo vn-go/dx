@@ -1,22 +1,22 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 /*
 this function will all Unique index  in Pg database and return a map of table name and column info
-return map[<Unique index name>]common.ColumnsInfo, error
-struct common.ColumnsInfo  below:
+return map[<Unique index name>]internal.ColumnsInfo, error
+struct internal.ColumnsInfo  below:
 
-	type common.ColumnsInfo struct {
+	type internal.ColumnsInfo struct {
 		TableName string
-		Columns   []common.ColumnInfo
+		Columns   []internal.ColumnInfo
 	}
-	type common.ColumnInfo struct {
+	type internal.ColumnInfo struct {
 
 			Name string //Db field name
 
@@ -26,9 +26,9 @@ struct common.ColumnsInfo  below:
 
 			Length int
 		}
-		tenantDB.TenantDB is sql.DB
+		sql.DB is sql.DB
 */
-func (m *MigratorLoaderPostgres) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllUniIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 		SELECT
 			i.relname AS index_name,
@@ -61,7 +61,7 @@ func (m *MigratorLoaderPostgres) LoadAllUniIndex(db *tenantDB.TenantDB) (map[str
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 
 	for rows.Next() {
 		var (
@@ -77,7 +77,7 @@ func (m *MigratorLoaderPostgres) LoadAllUniIndex(db *tenantDB.TenantDB) (map[str
 			return nil, fmt.Errorf("row scan failed: %w", err)
 		}
 
-		column := common.ColumnInfo{
+		column := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable,
@@ -86,9 +86,9 @@ func (m *MigratorLoaderPostgres) LoadAllUniIndex(db *tenantDB.TenantDB) (map[str
 
 		entry, exists := result[indexName]
 		if !exists {
-			entry = common.ColumnsInfo{
+			entry = internal.ColumnsInfo{
 				TableName: tableName,
-				Columns:   []common.ColumnInfo{},
+				Columns:   []internal.ColumnInfo{},
 			}
 		}
 		entry.Columns = append(entry.Columns, column)

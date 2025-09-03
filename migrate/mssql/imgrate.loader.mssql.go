@@ -1,17 +1,17 @@
 package mssql
 
 import (
+	"database/sql"
 	"sync"
 
-	common "github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 type MigratorLoaderMssql struct {
 	cacheLoadFullSchema sync.Map
 }
 
-func (m *MigratorLoaderMssql) GetDbName(db *tenantDB.TenantDB) string {
+func (m *MigratorLoaderMssql) GetDbName(db *sql.DB) string {
 	var dbName string
 	err := db.QueryRow("SELECT DB_NAME()").Scan(&dbName)
 	if err != nil {
@@ -20,7 +20,7 @@ func (m *MigratorLoaderMssql) GetDbName(db *tenantDB.TenantDB) string {
 	return dbName
 }
 
-func (m *MigratorLoaderMssql) LoadAllTable(db *tenantDB.TenantDB) (map[string]map[string]common.ColumnInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllTable(db *sql.DB) (map[string]map[string]internal.ColumnInfo, error) {
 	query := `
 	SELECT
 		t.name AS TableName,
@@ -38,7 +38,7 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *tenantDB.TenantDB) (map[string]ma
 	}
 	defer rows.Close()
 
-	tables := make(map[string]map[string]common.ColumnInfo)
+	tables := make(map[string]map[string]internal.ColumnInfo)
 	for rows.Next() {
 		var table, column, dbType string
 		var nullable bool
@@ -47,9 +47,9 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *tenantDB.TenantDB) (map[string]ma
 			return nil, err
 		}
 		if _, ok := tables[table]; !ok {
-			tables[table] = make(map[string]common.ColumnInfo)
+			tables[table] = make(map[string]internal.ColumnInfo)
 		}
-		tables[table][column] = common.ColumnInfo{
+		tables[table][column] = internal.ColumnInfo{
 			Name:     column,
 			DbType:   dbType,
 			Nullable: nullable,
@@ -59,7 +59,7 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *tenantDB.TenantDB) (map[string]ma
 	return tables, nil
 }
 
-func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 	SELECT
 		KCU.table_name,
@@ -76,7 +76,7 @@ func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[stri
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 	for rows.Next() {
 		var table, column, constraint string
 		if err := rows.Scan(&table, &column, &constraint); err != nil {
@@ -84,13 +84,13 @@ func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[stri
 		}
 		info := result[constraint]
 		info.TableName = table
-		info.Columns = append(info.Columns, common.ColumnInfo{Name: column})
+		info.Columns = append(info.Columns, internal.ColumnInfo{Name: column})
 		result[constraint] = info
 	}
 	return result, nil
 }
 
-func (m *MigratorLoaderMssql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllUniIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 	SELECT
 		t.name AS TableName,
@@ -108,7 +108,7 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 	for rows.Next() {
 		var table, index, column string
 		if err := rows.Scan(&table, &index, &column); err != nil {
@@ -116,13 +116,13 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *tenantDB.TenantDB) (map[string
 		}
 		info := result[index]
 		info.TableName = table
-		info.Columns = append(info.Columns, common.ColumnInfo{Name: column})
+		info.Columns = append(info.Columns, internal.ColumnInfo{Name: column})
 		result[index] = info
 	}
 	return result, nil
 }
 
-func (m *MigratorLoaderMssql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 	SELECT
 		t.name AS TableName,
@@ -140,7 +140,7 @@ func (m *MigratorLoaderMssql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]co
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 	for rows.Next() {
 		var table, index, column string
 		if err := rows.Scan(&table, &index, &column); err != nil {
@@ -148,16 +148,16 @@ func (m *MigratorLoaderMssql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]co
 		}
 		info := result[index]
 		info.TableName = table
-		info.Columns = append(info.Columns, common.ColumnInfo{Name: column})
+		info.Columns = append(info.Columns, internal.ColumnInfo{Name: column})
 		result[index] = info
 	}
 	return result, nil
 }
 
-func (m *MigratorLoaderMssql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbSchema, error) {
-	cacheKey := db.GetDBName()
+func (m *MigratorLoaderMssql) LoadFullSchema(db *sql.DB, dbName string) (*internal.DbSchema, error) {
+	cacheKey := dbName
 	if val, ok := m.cacheLoadFullSchema.Load(cacheKey); ok {
-		return val.(*common.DbSchema), nil
+		return val.(*internal.DbSchema), nil
 	}
 	tables, err := m.LoadAllTable(db)
 	if err != nil {
@@ -167,8 +167,7 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	uks, _ := m.LoadAllUniIndex(db)
 	idxs, _ := m.LoadAllIndex(db)
 
-	dbName := m.GetDbName(db)
-	schema := &common.DbSchema{
+	schema := &internal.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
@@ -179,7 +178,7 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]common.DbForeignKeyInfo{}
+	schema.ForeignKeys = map[string]internal.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
 		schema.ForeignKeys[fk.ConstraintName] = fk
 	}
@@ -193,7 +192,7 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	m.cacheLoadFullSchema.Store(cacheKey, schema)
 	return schema, nil
 }
-func (m *MigratorLoaderMssql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderMssql) LoadForeignKey(db *sql.DB) ([]internal.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			fk.name AS constraint_name,
@@ -226,7 +225,7 @@ func (m *MigratorLoaderMssql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 		ColumnOrder    int
 	}
 
-	fkMap := map[string]*common.DbForeignKeyInfo{}
+	fkMap := map[string]*internal.DbForeignKeyInfo{}
 
 	for rows.Next() {
 		var r rawRow
@@ -242,7 +241,7 @@ func (m *MigratorLoaderMssql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 		}
 
 		if _, exists := fkMap[r.ConstraintName]; !exists {
-			fkMap[r.ConstraintName] = &common.DbForeignKeyInfo{
+			fkMap[r.ConstraintName] = &internal.DbForeignKeyInfo{
 				ConstraintName: r.ConstraintName,
 				Table:          r.TableName,
 				RefTable:       r.RefTableName,
@@ -254,7 +253,7 @@ func (m *MigratorLoaderMssql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 	}
 
 	// Convert map to slice
-	result := make([]common.DbForeignKeyInfo, 0, len(fkMap))
+	result := make([]internal.DbForeignKeyInfo, 0, len(fkMap))
 	for _, fk := range fkMap {
 		result = append(result, *fk)
 	}

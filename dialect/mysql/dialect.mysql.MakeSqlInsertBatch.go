@@ -1,7 +1,7 @@
-package dx
+package mysql
 
-import "github.com/vn-go/dx/migrate/common"
+import "github.com/vn-go/dx/internal"
 
-func (d *MysqlDialect) MakeSqlInsertBatch(tableName string, columns []common.ColumnDef, data interface{}) (string, []interface{}) {
+func (d *MysqlDialect) MakeSqlInsertBatch(tableName string, columns []internal.ColumnDef, data interface{}) (string, []interface{}) {
 	panic("not implemented")
 }

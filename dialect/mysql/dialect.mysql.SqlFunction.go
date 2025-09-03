@@ -1,12 +1,12 @@
-package dx
+package mysql
 
 import (
 	"strings"
 
-	"github.com/vn-go/dx/dialect/common"
+	"github.com/vn-go/dx/internal"
 )
 
-func (d *MysqlDialect) SqlFunction(delegator *common.DialectDelegateFunction) (string, error) {
+func (d *MysqlDialect) SqlFunction(delegator *internal.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
 	switch fnName {
 	case "now":

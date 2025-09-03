@@ -1,4 +1,4 @@
-package dx
+package mysql
 
 import (
 	"strings"

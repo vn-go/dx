@@ -1,13 +1,13 @@
-package dx
+package mysql
 
 import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/vn-go/dx/migrate/common"
+	"github.com/vn-go/dx/internal"
 )
 
-func (d *MysqlDialect) ParseError(dbSchame *common.DbSchema, err error) error {
+func (d *MysqlDialect) ParseError(dbSchame *internal.DbSchema, err error) error {
 	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 		if mysqlErr.Number == 1048 { //1452
 			return d.ParseError1048(mysqlErr)

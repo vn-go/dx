@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
-func (m *MigratorLoaderMysql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 		SELECT
 			s.INDEX_NAME,
@@ -34,7 +33,7 @@ func (m *MigratorLoaderMysql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]co
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 
 	for rows.Next() {
 		var indexName, tableName, columnName, dataType, isNullable string
@@ -44,7 +43,7 @@ func (m *MigratorLoaderMysql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]co
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		col := common.ColumnInfo{
+		col := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable == "YES",
@@ -55,9 +54,9 @@ func (m *MigratorLoaderMysql) LoadAllIndex(db *tenantDB.TenantDB) (map[string]co
 		}
 
 		if _, exists := result[indexName]; !exists {
-			result[indexName] = common.ColumnsInfo{
+			result[indexName] = internal.ColumnsInfo{
 				TableName: tableName,
-				Columns:   []common.ColumnInfo{col},
+				Columns:   []internal.ColumnInfo{col},
 			}
 		} else {
 			cols := result[indexName].Columns

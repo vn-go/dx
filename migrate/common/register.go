@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+
+	"github.com/vn-go/dx/internal"
 )
 
 type modelRegistryInfo struct {
@@ -16,16 +18,16 @@ type modelRegister struct {
 	cacheGetModelByType sync.Map
 }
 
-func (info *modelRegistryInfo) GetColumns() []ColumnDef {
+func (info *modelRegistryInfo) GetColumns() []internal.ColumnDef {
 	return info.Entity.Cols
 }
-func (info *modelRegistryInfo) GetPrimaryConstraints() map[string][]ColumnDef {
+func (info *modelRegistryInfo) GetPrimaryConstraints() map[string][]internal.ColumnDef {
 	return info.Entity.PrimaryConstraints
 }
-func (info *modelRegistryInfo) GetUniqueConstraints() map[string][]ColumnDef {
+func (info *modelRegistryInfo) GetUniqueConstraints() map[string][]internal.ColumnDef {
 	return info.Entity.uniqueConstraints
 }
-func (info *modelRegistryInfo) GetIndexConstraints() map[string][]ColumnDef {
+func (info *modelRegistryInfo) GetIndexConstraints() map[string][]internal.ColumnDef {
 	return info.Entity.indexConstraints
 }
 
@@ -89,8 +91,8 @@ func (reg *modelRegister) RegisterType(typ reflect.Type) {
 	}
 
 	entity.PrimaryConstraints = utilsInstance.GetPrimaryKey(&entity)
-	entity.uniqueConstraints = make(map[string][]ColumnDef)
-	entity.indexConstraints = make(map[string][]ColumnDef)
+	entity.uniqueConstraints = make(map[string][]internal.ColumnDef)
+	entity.indexConstraints = make(map[string][]internal.ColumnDef)
 
 	cacheItem := modelRegistryInfo{
 		TableName: tableName,
@@ -173,7 +175,7 @@ type initFindUKConstraint struct {
 }
 type UKConstraintResult struct {
 	TableName string
-	Columns   []ColumnDef
+	Columns   []internal.ColumnDef
 	DbCols    []string
 	Fields    []string
 	//Columns   []string

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vn-go/dx/dialect/common"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migrate"
@@ -38,8 +37,8 @@ type exprCompileContext struct {
 	alias            map[string]string
 	joinAlias        map[string]string
 	aliasToDbTable   map[string]string
-	dialect          common.Dialect
-	purpose          build_purpose
+	dialect          internal.Dialect
+	Purpose          build_purpose
 	stackAliasFields stack[string]
 	stackAliasTables stack[string]
 	paramIndex       int
@@ -70,8 +69,8 @@ type exprCompiler struct {
 	Content string
 }
 
-func (e *exprCompiler) buildSortField(selector string) error {
-	e.Context.purpose = BUILD_ORDER
+func (e *exprCompiler) BuildSortField(selector string) error {
+	e.Context.Purpose = BUILD_ORDER
 	selector = internal.Utils.EXPR.QuoteExpression(selector)
 	sqlTest := "select tmp order by " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -90,8 +89,8 @@ func (e *exprCompiler) buildSortField(selector string) error {
 
 	return nil
 }
-func (e *exprCompiler) buildSelectField(selector string) error {
-	e.Context.purpose = BUILD_SELECT
+func (e *exprCompiler) BuildSelectField(selector string) error {
+	e.Context.Purpose = BUILD_SELECT
 	selector = internal.Utils.EXPR.QuoteExpression(selector)
 	sqlTest := "select " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -123,7 +122,7 @@ func (e *exprCompiler) buildSelectField(selector string) error {
 
 	return nil
 }
-func (e *exprCompiler) buildSetter(stterExpr string) error {
+func (e *exprCompiler) BuildSetter(stterExpr string) error {
 	stterExpr = internal.Utils.EXPR.QuoteExpression(stterExpr)
 
 	sqlTest := "update test set " + stterExpr
@@ -146,7 +145,7 @@ func (e *exprCompiler) buildSetter(stterExpr string) error {
 
 	return nil
 }
-func (e *exprCompiler) build(joinText string) error {
+func (e *exprCompiler) Build(joinText string) error {
 	joinText = internal.Utils.EXPR.QuoteExpression(joinText)
 
 	sqlTest := "select * from " + joinText
@@ -168,9 +167,9 @@ func (e *exprCompiler) build(joinText string) error {
 	return nil
 
 }
-func (e *exprCompiler) buildWhere(where string) error {
+func (e *exprCompiler) BuildWhere(where string) error {
 	where = internal.Utils.EXPR.QuoteExpression(where)
-	e.Context.purpose = BUILD_WHERE
+	e.Context.Purpose = BUILD_WHERE
 
 	sqlTest := "select * from tmp where" + where
 	stm, err := sqlparser.Parse(sqlTest)
@@ -198,7 +197,7 @@ type initNewExprCompiler struct {
 }
 type cacheNewExprCompilerItem struct {
 	schema  map[string]bool
-	dialect common.Dialect
+	dialect internal.Dialect
 }
 
 var exprCompilerCache sync.Map
@@ -248,7 +247,7 @@ func NewExprCompiler(db *tenantDB.TenantDB) (*exprCompiler, error) {
 			alias:            make(map[string]string),
 			aliasToDbTable:   make(map[string]string),
 			dialect:          init.val.dialect,
-			purpose:          BUILD_SELECT,
+			Purpose:          BUILD_SELECT,
 			stackAliasFields: stack[string]{},
 			stackAliasTables: stack[string]{},
 		},
@@ -260,8 +259,8 @@ func CompileJoin(joinText string, db *tenantDB.TenantDB) (*exprCompiler, error) 
 	if err != nil {
 		return nil, err
 	}
-	compiler.Context.purpose = BUILD_JOIN
-	err = compiler.build(joinText)
+	compiler.Context.Purpose = BUILD_JOIN
+	err = compiler.Build(joinText)
 	if err != nil {
 		return nil, err
 	}

@@ -1,26 +1,27 @@
 package migrate
 
 import (
+	"database/sql"
 	"fmt"
 
+	"github.com/vn-go/dx/internal"
 	common "github.com/vn-go/dx/migrate/common"
 	"github.com/vn-go/dx/migrate/mssql"
 	"github.com/vn-go/dx/migrate/mysql"
 	"github.com/vn-go/dx/migrate/postgres"
-	"github.com/vn-go/dx/tenantDB"
 )
 
-func MigratorLoader(db *tenantDB.TenantDB) (common.IMigratorLoader, error) {
+func MigratorLoader(db *sql.DB) (common.IMigratorLoader, error) {
 	err := db.Detect()
 	if err != nil {
 		return nil, err
 	}
 	switch db.GetDbType() {
-	case tenantDB.DB_DRIVER_MSSQL:
+	case internal.DB_DRIVER_MSSQL:
 		return &mssql.MigratorLoaderMssql{}, nil
-	case tenantDB.DB_DRIVER_Postgres:
+	case internal.DB_DRIVER_Postgres:
 		return &postgres.MigratorLoaderPostgres{}, nil
-	case tenantDB.DB_DRIVER_MySQL:
+	case internal.DB_DRIVER_MySQL:
 		return &mysql.MigratorLoaderMysql{}, nil
 
 	default:

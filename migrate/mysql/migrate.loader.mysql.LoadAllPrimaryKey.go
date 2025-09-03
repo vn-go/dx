@@ -4,20 +4,19 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 /*
 this function will all primary key in MySql database and return a map of table name and column info
-return map[<Primary key constraint name>]common.ColumnsInfo, error
-struct common.ColumnsInfo  below:
+return map[<Primary key constraint name>]internal.ColumnsInfo, error
+struct internal.ColumnsInfo  below:
 
-	type common.ColumnsInfo struct {
+	type internal.ColumnsInfo struct {
 		TableName string
-		Columns   []common.ColumnInfo
+		Columns   []internal.ColumnInfo
 	}
-	type common.ColumnInfo struct {
+	type internal.ColumnInfo struct {
 
 			Name string //Db field name
 
@@ -29,7 +28,7 @@ struct common.ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[string]common.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *sql.DB) (map[string]internal.ColumnsInfo, error) {
 	query := `
 		SELECT
 			kcu.CONSTRAINT_NAME,
@@ -61,7 +60,7 @@ func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[stri
 	}
 	defer rows.Close()
 
-	result := make(map[string]common.ColumnsInfo)
+	result := make(map[string]internal.ColumnsInfo)
 
 	for rows.Next() {
 		var constraintName, tableName, columnName, dataType, isNullable string
@@ -71,7 +70,7 @@ func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[stri
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		col := common.ColumnInfo{
+		col := internal.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
 			Nullable: isNullable == "YES",
@@ -82,9 +81,9 @@ func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[stri
 		}
 		fakeConstraintName := fmt.Sprintf("%s_%s", constraintName, tableName)
 		if _, exists := result[fakeConstraintName]; !exists {
-			result[fakeConstraintName] = common.ColumnsInfo{
+			result[fakeConstraintName] = internal.ColumnsInfo{
 				TableName: tableName,
-				Columns:   []common.ColumnInfo{col},
+				Columns:   []internal.ColumnInfo{col},
 			}
 		} else {
 			cols := result[fakeConstraintName].Columns

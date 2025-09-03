@@ -12,8 +12,8 @@ type mssqlGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *MigratorMssql) GetFullScript() ([]string, error) {
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+func (m *MigratorMssql) GetFullScript(dbName, dbType string) ([]string, error) {
+	key := fmt.Sprintf("%s_%s", dbName, dbType)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &mssqlGetFullScriptInit{})
 	init := actual.(*mssqlGetFullScriptInit)
 	var err error

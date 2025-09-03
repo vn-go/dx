@@ -17,7 +17,7 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 		context.alias = map[string]string{}
 	}
 
-	if context.purpose == BUILD_JOIN {
+	if context.Purpose == BUILD_JOIN {
 		if aliasTableName, ok := context.stackAliasTables.Pop(); ok {
 			if _, ok := context.alias[aliasTableName]; !ok {
 				context.tables = append(context.tables, aliasTableName)

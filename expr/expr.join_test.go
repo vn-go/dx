@@ -17,10 +17,10 @@ func TestEormJoin(t *testing.T) {
 				"User": true,
 			},
 			dialect: factory.DialectFactory.Create("mssql"),
-			purpose: BUILD_JOIN,
+			Purpose: BUILD_JOIN,
 		},
 	}
-	err := ej.build("Departments INNER JOIN User ON User.Code = Departments.Code INNER JOIN Check ON Check.Name = 'John'")
+	err := ej.Build("Departments INNER JOIN User ON User.Code = Departments.Code INNER JOIN Check ON Check.Name = 'John'")
 	assert.NoError(t, err)
 	assert.Equal(t, "[departments] AS [T1] INNER JOIN [User] AS [T2] ON [T2].[Code] = [T1].[code] INNER JOIN [checks] AS [T3] ON [T3].[name] = N'John'", ej.Content)
 
@@ -36,10 +36,10 @@ func BenchmarkEormJoin(b *testing.B) {
 					"User": true,
 				},
 				dialect: factory.DialectFactory.Create("mssql"),
-				purpose: BUILD_JOIN,
+				Purpose: BUILD_JOIN,
 			},
 		}
-		err := ej.build("Departments INNER JOIN User ON User.Code = Departments.Code INNER JOIN Check ON Check.Name = 'John'")
+		err := ej.Build("Departments INNER JOIN User ON User.Code = Departments.Code INNER JOIN Check ON Check.Name = 'John'")
 		if err != nil {
 			b.Fail()
 		}

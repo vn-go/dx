@@ -1,4 +1,4 @@
-package mysql
+package postgres
 
 import (
 	"reflect"
@@ -8,15 +8,16 @@ import (
 	"github.com/vn-go/dx/internal"
 )
 
-type makeMySqlSqlInsertInit struct {
+type makePostgresSqlInsertInit struct {
 	once sync.Once
 	val  string
 }
 
-func (d *MysqlDialect) MakeSqlInsert(tableName string, columns []internal.ColumnDef, value interface{}) (string, []interface{}) {
+// MakeSqlInsert(tableName string, columns []internal.ColumnDef, data interface{}) (string, []any)
+func (d *PostgresDialect) MakeSqlInsert(tableName string, columns []internal.ColumnDef, value interface{}) (string, []interface{}) {
 	key := d.Name() + "://" + tableName
-	actual, _ := d.cacheMakeSqlInsert.LoadOrStore(key, &makeMySqlSqlInsertInit{})
-	init := actual.(*makeMySqlSqlInsertInit)
+	actual, _ := d.cacheMakeSqlInsert.LoadOrStore(key, &makePostgresSqlInsertInit{})
+	init := actual.(*makePostgresSqlInsertInit)
 	init.once.Do(func() {
 		init.val = d.makeSqlInsert(tableName, columns)
 	})
@@ -41,20 +42,26 @@ func (d *MysqlDialect) MakeSqlInsert(tableName string, columns []internal.Column
 	return init.val, args
 
 }
-func (d *MysqlDialect) makeSqlInsert(tableName string, columns []internal.ColumnDef) string {
+func (d *PostgresDialect) makeSqlInsert(tableName string, columns []internal.ColumnDef) string {
+
 	sql := "INSERT INTO " + d.Quote(tableName) + " ("
 	strFields := []string{}
 	strValues := []string{}
-
+	i := 1
+	RETURNING_ID := ""
 	for _, col := range columns {
 		if col.IsAuto {
-			// MySQL: bỏ qua trường tự tăng, nhưng không dùng OUTPUT như SQL Server
+			RETURNING_ID = " RETURNING " + d.Quote(col.Name)
 			continue
 		}
 		strFields = append(strFields, d.Quote(col.Name))
-		strValues = append(strValues, "?")
+		strValues = append(strValues, d.ToParam(i))
+		i++
 	}
 
 	sql += strings.Join(strFields, ", ") + ") VALUES (" + strings.Join(strValues, ", ") + ")"
+	if RETURNING_ID != "" {
+		sql += RETURNING_ID
+	}
 	return sql
 }

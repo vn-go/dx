@@ -1,68 +1,15 @@
 package common
 
-import "github.com/vn-go/dx/tenantDB"
+import (
+	"database/sql"
 
-type ColumnInfo struct {
-	/*
-		Db field name
-	*/
-	Name string
-	/*
-		Go field name
-	*/
-	DbType string
-	/*
-		Is allow null?
-	*/
-	Nullable bool
-	/*
-		Length is the length of the column
-	*/
-	Length int
-}
-type ColumnsInfo struct {
-	TableName string
-	Columns   []ColumnInfo
-}
+	"github.com/vn-go/dx/internal"
+)
 
-/*
-This struct is used to store the foreign key information from the database .
-*/
-type DbForeignKeyInfo struct {
-	/**/
-	ConstraintName string
-	Table          string
-	Columns        []string
-	RefTable       string
-	RefColumns     []string
-}
-type DbSchema struct {
-	/*
-		Database name
-	*/
-	DbName string
-	/*
-		map[<table name>]map[<column name>]bool
-	*/
-	Tables map[string]map[string]bool
-	/*
-		map[<primary key constraint name>]ColumnsInfo
-	*/
-	PrimaryKeys map[string]ColumnsInfo
-	/*
-		map[<Unique Keys constraint name>]ColumnsInfo
-	*/
-	UniqueKeys map[string]ColumnsInfo
-	/*
-		map[<Index name>]ColumnsInfo
-	*/
-	Indexes     map[string]ColumnsInfo
-	ForeignKeys map[string]DbForeignKeyInfo
-}
 type IMigratorLoader interface {
-	GetDbName(db *tenantDB.TenantDB) string
-	LoadAllTable(db *tenantDB.TenantDB) (map[string]map[string]ColumnInfo, error)
-	LoadAllPrimaryKey(db *tenantDB.TenantDB) (map[string]ColumnsInfo, error)
+	GetDbName(db *sql.DB) string
+	LoadAllTable(db *sql.DB) (map[string]map[string]internal.ColumnInfo, error)
+	LoadAllPrimaryKey(db *sql.DB) (map[string]internal.ColumnsInfo, error)
 	/*
 		Heed: for SQL Server, we need to use the following query to get the unique keys:
 			SELECT
@@ -72,11 +19,11 @@ type IMigratorLoader interface {
 			JOIN sys.tables t ON i.object_id = t.object_id
 			WHERE i.type_desc = 'NONCLUSTERED' and is_unique_constraint=1
 	*/
-	LoadAllUniIndex(db *tenantDB.TenantDB) (map[string]ColumnsInfo, error)
+	LoadAllUniIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error)
 	/*
 
 	 */
-	LoadAllIndex(db *tenantDB.TenantDB) (map[string]ColumnsInfo, error)
-	LoadFullSchema(db *tenantDB.TenantDB) (*DbSchema, error)
-	LoadForeignKey(db *tenantDB.TenantDB) ([]DbForeignKeyInfo, error)
+	LoadAllIndex(db *sql.DB) (map[string]internal.ColumnsInfo, error)
+	LoadFullSchema(db *sql.DB) (*internal.DbSchema, error)
+	LoadForeignKey(db *sql.DB) ([]internal.DbForeignKeyInfo, error)
 }

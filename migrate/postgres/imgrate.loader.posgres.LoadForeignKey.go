@@ -1,13 +1,13 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
-func (m *MigratorLoaderPostgres) LoadForeignKey(db *tenantDB.TenantDB) ([]common.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderPostgres) LoadForeignKey(db *sql.DB) ([]internal.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			tc.constraint_name,
@@ -38,7 +38,7 @@ func (m *MigratorLoaderPostgres) LoadForeignKey(db *tenantDB.TenantDB) ([]common
 	}
 	defer rows.Close()
 
-	fkMap := make(map[string]*common.DbForeignKeyInfo)
+	fkMap := make(map[string]*internal.DbForeignKeyInfo)
 
 	for rows.Next() {
 		var (
@@ -54,7 +54,7 @@ func (m *MigratorLoaderPostgres) LoadForeignKey(db *tenantDB.TenantDB) ([]common
 		}
 
 		if _, exists := fkMap[constraintName]; !exists {
-			fkMap[constraintName] = &common.DbForeignKeyInfo{
+			fkMap[constraintName] = &internal.DbForeignKeyInfo{
 				ConstraintName: constraintName,
 				Table:          tableName,
 				RefTable:       refTable,
@@ -69,7 +69,7 @@ func (m *MigratorLoaderPostgres) LoadForeignKey(db *tenantDB.TenantDB) ([]common
 	}
 
 	// Flatten map to slice
-	result := make([]common.DbForeignKeyInfo, 0, len(fkMap))
+	result := make([]internal.DbForeignKeyInfo, 0, len(fkMap))
 	for _, fk := range fkMap {
 		result = append(result, *fk)
 	}

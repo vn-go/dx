@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/internal"
 	common "github.com/vn-go/dx/migrate/common"
 )
 
@@ -20,7 +21,7 @@ func (m *MigratorMssql) GetSqlAddForeignKey() ([]string, error) {
 			formCols := "[" + strings.Join(info.FromCols, "],[") + "]"
 			toCols := "[" + strings.Join(info.ToCols, "],[") + "]"
 			script := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", m.Quote(info.FromTable), m.Quote(fk), formCols, m.Quote(info.ToTable), toCols)
-			schema.ForeignKeys[fk] = common.DbForeignKeyInfo{
+			schema.ForeignKeys[fk] = internal.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.ToTable,
 				Columns:        info.FromCols,

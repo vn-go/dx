@@ -1,20 +1,20 @@
 package mssql
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 
 	common "github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
 )
 
 type MigratorMssql struct {
 	Loader             common.IMigratorLoader
 	cacheGetFullScript sync.Map
 
-	Db *tenantDB.TenantDB
+	Db *sql.DB
 }
 
 func (m *MigratorMssql) Quote(names ...string) string {
@@ -65,16 +65,16 @@ type mssqlInitDoMigrates struct {
 
 var cacheDoMigrates sync.Map
 
-func (m *MigratorMssql) DoMigrates() error {
+func (m *MigratorMssql) DoMigrates(dbName, dbType string) error {
 
-	key := fmt.Sprintf("%s_%s", m.Db.GetDBName(), m.Db.GetDbType())
+	key := fmt.Sprintf("%s_%s", dbName, dbType)
 	actual, _ := cacheDoMigrates.LoadOrStore(key, &mssqlInitDoMigrates{})
 
 	mi := actual.(*mssqlInitDoMigrates)
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript()
+		scripts, err := m.GetFullScript(dbName, dbType)
 		if err != nil {
 			return
 		}

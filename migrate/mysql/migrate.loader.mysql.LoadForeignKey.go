@@ -1,13 +1,13 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
-func (m *MigratorLoaderMysql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderMysql) LoadForeignKey(db *sql.DB) ([]internal.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			rc.CONSTRAINT_NAME,
@@ -39,7 +39,7 @@ func (m *MigratorLoaderMysql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 		Table string
 		Name  string
 	}
-	temp := make(map[key]*common.DbForeignKeyInfo)
+	temp := make(map[key]*internal.DbForeignKeyInfo)
 
 	for rows.Next() {
 		var constraintName, tableName, columnName, refTable, refColumn, onUpdate, onDelete string
@@ -51,7 +51,7 @@ func (m *MigratorLoaderMysql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 
 		k := key{Table: tableName, Name: constraintName}
 		if _, exists := temp[k]; !exists {
-			temp[k] = &common.DbForeignKeyInfo{
+			temp[k] = &internal.DbForeignKeyInfo{
 				ConstraintName: constraintName,
 				Table:          tableName,
 				RefTable:       refTable,
@@ -69,7 +69,7 @@ func (m *MigratorLoaderMysql) LoadForeignKey(db *tenantDB.TenantDB) ([]common.Db
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	result := make([]common.DbForeignKeyInfo, 0, len(temp))
+	result := make([]internal.DbForeignKeyInfo, 0, len(temp))
 	for _, v := range temp {
 		result = append(result, *v)
 	}

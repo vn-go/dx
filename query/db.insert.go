@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	dialectCommon "github.com/vn-go/dx/dialect/common"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
+	"github.com/vn-go/dx/internal"
 	migrator "github.com/vn-go/dx/migrate"
 	"github.com/vn-go/dx/migrate/common"
 	"github.com/vn-go/dx/tenantDB"
@@ -149,11 +149,11 @@ func (r *inserter) InsertWithTx(tx *tenantDB.TenantTx, data interface{}) error {
 	}
 	sqlResult, err := sqlStmt.Exec(args...)
 	if err != nil {
-		m, err1 := migrator.NewMigrator(tx.Db)
+		m, err1 := migrator.NewMigrator(tx.Db.DB)
 		if err1 != nil {
 			return err
 		}
-		shema, err1 := m.GetLoader().LoadFullSchema(tx.Db)
+		shema, err1 := m.GetLoader().LoadFullSchema(tx.Db.DB)
 		if err1 != nil {
 			return err
 		}
@@ -239,11 +239,11 @@ func (r *inserter) Insert(db *tenantDB.TenantDB, data interface{}) error {
 	}
 
 	if err != nil {
-		m, err1 := migrator.NewMigrator(db)
+		m, err1 := migrator.NewMigrator(db.DB)
 		if err1 != nil {
 			return err
 		}
-		schema, err1 := m.GetLoader().LoadFullSchema(db)
+		schema, err1 := m.GetLoader().LoadFullSchema(db.DB)
 		if err1 != nil {
 			return err
 		}
@@ -254,7 +254,7 @@ func (r *inserter) Insert(db *tenantDB.TenantDB, data interface{}) error {
 	return nil
 }
 
-func (r *inserter) ParserDbError(schema *common.DbSchema, dialect dialectCommon.Dialect, err error, repoType *entityInfo) error {
+func (r *inserter) ParserDbError(schema *internal.DbSchema, dialect internal.Dialect, err error, repoType *entityInfo) error {
 
 	errParse := dialect.ParseError(schema, err)
 	if derr, ok := errParse.(*errors.DbError); ok {
@@ -302,7 +302,7 @@ func Insert(db *tenantDB.TenantDB, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	m, err := migrator.NewMigrator(db)
+	m, err := migrator.NewMigrator(db.DB)
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func InsertWithTx(tx *tenantDB.TenantTx, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	m, err := migrator.NewMigrator(tx.Db)
+	m, err := migrator.NewMigrator(tx.Db.DB)
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ type encoderFunc func(v reflect.Value, args *[]interface{})
 
 var encoderCache sync.Map // map[reflect.Type]func(reflect.Value, *[]interface{})
 
-func getEncoder(t reflect.Type, cols []common.ColumnDef) func(reflect.Value, *[]interface{}) {
+func getEncoder(t reflect.Type, cols []internal.ColumnDef) func(reflect.Value, *[]interface{}) {
 	if fn, ok := encoderCache.Load(t); ok {
 		return fn.(func(reflect.Value, *[]interface{})) // ✅ đúng cách
 	}
@@ -449,7 +449,7 @@ func InsertBatch[T any](db *tenantDB.TenantDB, data []T) (int64, error) {
 
 	const batchSize = 200
 
-	m, err := migrator.NewMigrator(db)
+	m, err := migrator.NewMigrator(db.DB)
 	if err != nil {
 		return 0, err
 	}
@@ -465,7 +465,7 @@ func InsertBatch[T any](db *tenantDB.TenantDB, data []T) (int64, error) {
 	tableName := dialect.Quote(repoType.tableName)
 
 	columns := []string{}
-	colDefs := []common.ColumnDef{}
+	colDefs := []internal.ColumnDef{}
 	for _, col := range repoType.entity.GetColumns() {
 		if !col.IsAuto {
 			columns = append(columns, dialect.Quote(col.Name))
@@ -504,7 +504,7 @@ func InsertBatch[T any](db *tenantDB.TenantDB, data []T) (int64, error) {
 		sql := sb.String()
 		sqlResult, err := db.Exec(sql, args...)
 		if err != nil {
-			shema, err1 := m.GetLoader().LoadFullSchema(db)
+			shema, err1 := m.GetLoader().LoadFullSchema(db.DB)
 			if err1 != nil {
 				return totalRows, err
 			}

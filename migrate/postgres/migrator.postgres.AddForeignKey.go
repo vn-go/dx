@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migrate/common"
 )
 
@@ -46,7 +47,7 @@ func (m *MigratorPostgres) GetSqlAddForeignKey() ([]string, error) {
 			ret = append(ret, script)
 
 			// Cập nhật lại schema cache
-			schema.ForeignKeys[fk] = common.DbForeignKeyInfo{
+			schema.ForeignKeys[fk] = internal.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.FromTable,
 				Columns:        info.FromCols,

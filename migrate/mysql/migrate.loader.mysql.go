@@ -1,18 +1,18 @@
 package mysql
 
 import (
+	"database/sql"
 	"sync"
 
-	"github.com/vn-go/dx/migrate/common"
-	"github.com/vn-go/dx/tenantDB"
+	"github.com/vn-go/dx/internal"
 )
 
 type MigratorLoaderMysql struct {
 	cacheLoadFullSchema sync.Map
 }
 
-func (m *MigratorLoaderMysql) GetDbName(db *tenantDB.TenantDB) string {
-	return db.GetDBName()
+func (m *MigratorLoaderMysql) GetDbName(db *sql.DB) string {
+	return m.GetDbName(db)
 }
 
 /*
@@ -22,11 +22,11 @@ regardless of the Go Routines
 type initMySqlLoadFullSchema struct {
 	once   sync.Once
 	err    error
-	schema *common.DbSchema
+	schema *internal.DbSchema
 }
 
-func (m *MigratorLoaderMysql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbSchema, error) {
-	cacheKey := db.GetDBName()
+func (m *MigratorLoaderMysql) LoadFullSchema(db *sql.DB) (*internal.DbSchema, error) {
+	cacheKey := m.GetDbName(db)
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initMySqlLoadFullSchema{})
 	initSchema := actual.(*initMySqlLoadFullSchema)
 	initSchema.once.Do(func() {
@@ -34,7 +34,7 @@ func (m *MigratorLoaderMysql) LoadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	})
 	return initSchema.schema, initSchema.err
 }
-func (m *MigratorLoaderMysql) loadFullSchema(db *tenantDB.TenantDB) (*common.DbSchema, error) {
+func (m *MigratorLoaderMysql) loadFullSchema(db *sql.DB) (*internal.DbSchema, error) {
 
 	tables, err := m.LoadAllTable(db)
 	if err != nil {
@@ -45,7 +45,7 @@ func (m *MigratorLoaderMysql) loadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	idxs, _ := m.LoadAllIndex(db)
 
 	dbName := m.GetDbName(db)
-	schema := &common.DbSchema{
+	schema := &internal.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
@@ -56,7 +56,7 @@ func (m *MigratorLoaderMysql) loadFullSchema(db *tenantDB.TenantDB) (*common.DbS
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]common.DbForeignKeyInfo{}
+	schema.ForeignKeys = map[string]internal.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
 		schema.ForeignKeys[fk.ConstraintName] = fk
 	}
