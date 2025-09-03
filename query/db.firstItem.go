@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/vn-go/dx/dialect/factory"
 	_ "github.com/vn-go/dx/dialect/mysql"
+	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/tenantDB"
 )
 
@@ -18,7 +20,7 @@ func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filt
 		return "", err
 	}
 	tableName := repoType.tableName
-	compiler, err := CompileJoin(tableName, db)
+	compiler, err := expr.CompileJoin(tableName, db)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +31,7 @@ func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filt
 	for i, col := range columns {
 		fieldsSelect[i] = repoType.tableName + "." + col.Field.Name + " AS " + col.Field.Name
 	}
-	compiler.context.purpose = build_purpose_select
+	compiler.context.purpose = BUILD_SELECT
 	err = compiler.buildSelectField(strings.Join(fieldsSelect, ", "))
 	if err != nil {
 		return "", err
@@ -48,6 +50,15 @@ func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filt
 	sql = dialect.MakeSelectTop(sql, 1)
 	return sql, nil
 }
+
+type initBuildBasicSqlFirstItem struct {
+	once sync.Once
+	val  string
+	err  error
+}
+
+var cacheBuildBasicSqlFirstItem sync.Map
+
 func buildBasicSqlFirstItem(typ reflect.Type, db *tenantDB.TenantDB, filter string) (string, error) {
 	key := db.GetDriverName() + "://" + db.GetDBName() + "/" + typ.String() + "/" + filter
 	actual, _ := cacheBuildBasicSqlFirstItem.LoadOrStore(key, &initBuildBasicSqlFirstItem{})

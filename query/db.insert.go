@@ -13,7 +13,6 @@ import (
 	migrator "github.com/vn-go/dx/migrate"
 	"github.com/vn-go/dx/migrate/common"
 	"github.com/vn-go/dx/tenantDB"
-	"github.com/vn-go/xdb/migrate"
 )
 
 type entityInfo struct {
@@ -35,7 +34,7 @@ func (r inserter) getEntityInfo(typ reflect.Type) (*entityInfo, error) {
 	entity := model.GetEntity()
 	return &entityInfo{
 		tableName: tableName,
-		entity:    &entity,
+		entity:    entity,
 	}, nil
 }
 
@@ -171,7 +170,7 @@ func (r *inserter) InsertWithTx(tx *tenantDB.TenantTx, data interface{}) error {
 				}
 			}
 			if errParse.ConstraintName != "" && errParse.ErrorType == errors.ERR_REFERENCES {
-				fk := migrate.ForeignKeyRegistry.FindByConstraintName(errParse.ConstraintName)
+				fk := common.ForeignKeyRegistry.FindByConstraintName(errParse.ConstraintName)
 				if fk != nil {
 
 					errParse.Table = fk.ToTable
@@ -240,7 +239,7 @@ func (r *inserter) Insert(db *tenantDB.TenantDB, data interface{}) error {
 	}
 
 	if err != nil {
-		m, err1 := migrate.NewMigrator(db)
+		m, err1 := migrator.NewMigrator(db)
 		if err1 != nil {
 			return err
 		}
@@ -255,12 +254,12 @@ func (r *inserter) Insert(db *tenantDB.TenantDB, data interface{}) error {
 	return nil
 }
 
-func (r *inserter) ParserDbError(schema *migrate.DbSchema, dialect dialectCommon.Dialect, err error, repoType *entityInfo) error {
+func (r *inserter) ParserDbError(schema *common.DbSchema, dialect dialectCommon.Dialect, err error, repoType *entityInfo) error {
 
 	errParse := dialect.ParseError(schema, err)
 	if derr, ok := errParse.(*errors.DbError); ok {
 		if derr.ConstraintName != "" {
-			if uk := migrate.FindUKConstraint(derr.ConstraintName); uk != nil {
+			if uk := common.FindUKConstraint(derr.ConstraintName); uk != nil {
 				derr.Table = repoType.tableName
 				derr.StructName = repoType.entity.GetType().String()
 				derr.Fields = uk.Fields
@@ -303,7 +302,7 @@ func Insert(db *tenantDB.TenantDB, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	m, err := migrate.NewMigrator(db)
+	m, err := migrator.NewMigrator(db)
 	if err != nil {
 		return err
 	}
@@ -319,7 +318,7 @@ func InsertWithTx(tx *tenantDB.TenantTx, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	m, err := migrate.NewMigrator(tx.Db)
+	m, err := migrator.NewMigrator(tx.Db)
 	if err != nil {
 		return err
 	}
@@ -421,7 +420,7 @@ type encoderFunc func(v reflect.Value, args *[]interface{})
 
 var encoderCache sync.Map // map[reflect.Type]func(reflect.Value, *[]interface{})
 
-func getEncoder(t reflect.Type, cols []migrate.ColumnDef) func(reflect.Value, *[]interface{}) {
+func getEncoder(t reflect.Type, cols []common.ColumnDef) func(reflect.Value, *[]interface{}) {
 	if fn, ok := encoderCache.Load(t); ok {
 		return fn.(func(reflect.Value, *[]interface{})) // ✅ đúng cách
 	}
@@ -450,7 +449,7 @@ func InsertBatch[T any](db *tenantDB.TenantDB, data []T) (int64, error) {
 
 	const batchSize = 200
 
-	m, err := migrate.NewMigrator(db)
+	m, err := migrator.NewMigrator(db)
 	if err != nil {
 		return 0, err
 	}
@@ -466,7 +465,7 @@ func InsertBatch[T any](db *tenantDB.TenantDB, data []T) (int64, error) {
 	tableName := dialect.Quote(repoType.tableName)
 
 	columns := []string{}
-	colDefs := []migrate.ColumnDef{}
+	colDefs := []common.ColumnDef{}
 	for _, col := range repoType.entity.GetColumns() {
 		if !col.IsAuto {
 			columns = append(columns, dialect.Quote(col.Name))
