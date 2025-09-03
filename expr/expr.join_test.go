@@ -10,7 +10,7 @@ import (
 func TestEormJoin(t *testing.T) {
 	ej := &exprCompiler{
 
-		context: &exprCompileContext{
+		Context: &exprCompileContext{
 			tables: []string{},
 			alias:  map[string]string{},
 			schema: &map[string]bool{
@@ -29,7 +29,7 @@ func BenchmarkEormJoin(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ej := &exprCompiler{
 
-			context: &exprCompileContext{
+			Context: &exprCompileContext{
 				tables: []string{},
 				alias:  map[string]string{},
 				schema: &map[string]bool{

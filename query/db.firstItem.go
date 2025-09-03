@@ -24,7 +24,7 @@ func buildBasicSqlFirstItemNoCache(typ reflect.Type, db *tenantDB.TenantDB, filt
 	if err != nil {
 		return "", err
 	}
-	tableName = compiler.content
+	tableName = compiler.Content
 	columns := repoType.entity.GetColumns()
 
 	fieldsSelect := make([]string, len(columns))

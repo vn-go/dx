@@ -66,12 +66,12 @@ func (e *exprCompileContext) pluralTableName(tableName string) string {
 }
 
 type exprCompiler struct {
-	context *exprCompileContext
+	Context *exprCompileContext
 	Content string
 }
 
 func (e *exprCompiler) buildSortField(selector string) error {
-	e.context.purpose = BUILD_ORDER
+	e.Context.purpose = BUILD_ORDER
 	selector = internal.Utils.EXPR.QuoteExpression(selector)
 	sqlTest := "select tmp order by " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -80,7 +80,7 @@ func (e *exprCompiler) buildSortField(selector string) error {
 	}
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
 
-		ret, err := exprs.compile(e.context, sqlSelect.OrderBy)
+		ret, err := exprs.compile(e.Context, sqlSelect.OrderBy)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func (e *exprCompiler) buildSortField(selector string) error {
 	return nil
 }
 func (e *exprCompiler) buildSelectField(selector string) error {
-	e.context.purpose = BUILD_SELECT
+	e.Context.purpose = BUILD_SELECT
 	selector = internal.Utils.EXPR.QuoteExpression(selector)
 	sqlTest := "select " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -103,10 +103,10 @@ func (e *exprCompiler) buildSelectField(selector string) error {
 		for i, expr := range sqlSelect.SelectExprs {
 			if sqlExpr, ok := expr.(*sqlparser.AliasedExpr); ok {
 				if !sqlExpr.As.IsEmpty() {
-					e.context.stackAliasFields.Push(sqlExpr.As.String())
+					e.Context.stackAliasFields.Push(sqlExpr.As.String())
 				}
 				if sqlExpr.Expr != nil {
-					strResult, err := exprs.compile(e.context, sqlExpr.Expr)
+					strResult, err := exprs.compile(e.Context, sqlExpr.Expr)
 
 					if err != nil {
 						return err
@@ -134,7 +134,7 @@ func (e *exprCompiler) buildSetter(stterExpr string) error {
 	if sqlUpdate, ok := stm.(*sqlparser.Update); ok {
 		strResults := []string{}
 		for _, expr := range sqlUpdate.Exprs {
-			strResult, err := exprs.compile(e.context, expr)
+			strResult, err := exprs.compile(e.Context, expr)
 			if err != nil {
 				return err
 			}
@@ -157,7 +157,7 @@ func (e *exprCompiler) build(joinText string) error {
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
 
 		for _, expr := range sqlSelect.From {
-			strResult, err := exprs.compile(e.context, expr)
+			strResult, err := exprs.compile(e.Context, expr)
 			if err != nil {
 				return err
 			}
@@ -170,7 +170,7 @@ func (e *exprCompiler) build(joinText string) error {
 }
 func (e *exprCompiler) buildWhere(where string) error {
 	where = internal.Utils.EXPR.QuoteExpression(where)
-	e.context.purpose = BUILD_WHERE
+	e.Context.purpose = BUILD_WHERE
 
 	sqlTest := "select * from tmp where" + where
 	stm, err := sqlparser.Parse(sqlTest)
@@ -178,9 +178,9 @@ func (e *exprCompiler) buildWhere(where string) error {
 		return err
 	}
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
-		strResult, err := exprs.compile(e.context, sqlSelect.Where.Expr)
+		strResult, err := exprs.compile(e.Context, sqlSelect.Where.Expr)
 		// for _, expr := range sqlSelect.From {
-		// 	strResult, err := exprs.compile(e.context, expr)
+		// 	strResult, err := exprs.compile(e.Context., expr)
 		if err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func NewExprCompiler(db *tenantDB.TenantDB) (*exprCompiler, error) {
 	}
 
 	ret := &exprCompiler{
-		context: &exprCompileContext{
+		Context: &exprCompileContext{
 			tables:           make([]string, 0),
 			schema:           &init.val.schema,
 			alias:            make(map[string]string),
@@ -260,7 +260,7 @@ func CompileJoin(joinText string, db *tenantDB.TenantDB) (*exprCompiler, error) 
 	if err != nil {
 		return nil, err
 	}
-	compiler.context.purpose = BUILD_JOIN
+	compiler.Context.purpose = BUILD_JOIN
 	err = compiler.build(joinText)
 	if err != nil {
 		return nil, err
