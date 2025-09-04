@@ -1,0 +1,128 @@
+package db
+
+import (
+	"database/sql"
+	"strings"
+	"sync"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+	_ "github.com/microsoft/go-mssqldb"
+)
+
+type DB_DRIVER_TYPE string
+
+const (
+	DB_DRIVER_Postgres  DB_DRIVER_TYPE = "postgres"
+	DB_DRIVER_MySQL     DB_DRIVER_TYPE = "mysql"
+	DB_DRIVER_MariaDB   DB_DRIVER_TYPE = "mariadb"
+	DB_DRIVER_MSSQL     DB_DRIVER_TYPE = "sqlserver"
+	DB_DRIVER_SQLite    DB_DRIVER_TYPE = "sqlite"
+	DB_DRIVER_Oracle    DB_DRIVER_TYPE = "oracle"
+	DB_DRIVER_TiDB      DB_DRIVER_TYPE = "tidb"
+	DB_DRIVER_Cockroach DB_DRIVER_TYPE = "cockroach"
+	DB_DRIVER_Greenplum DB_DRIVER_TYPE = "greenplum"
+	DB_DRIVER_Unknown   DB_DRIVER_TYPE = "unknown"
+)
+
+type Info struct {
+	DbName string
+
+	DriverName string
+	DbType     DB_DRIVER_TYPE
+
+	Version string
+	Dsn     string
+}
+type DB struct {
+	*sql.DB
+	*Info
+}
+type initEncryptDsn struct {
+	val  string
+	once sync.Once
+}
+
+var cachEncryptDsn sync.Map
+
+func encryptDsn(dsn string) string {
+	actually, _ := cachEncryptDsn.LoadOrStore(dsn, &initEncryptDsn{})
+	item := actually.(*initEncryptDsn)
+	item.once.Do(func() {
+		var prefix string = ""
+		if strings.Contains(dsn, "://") {
+			prefix = strings.Split(dsn, "://")[0]
+			dsn = strings.Split(dsn, "://")[1]
+		}
+		dbPass := strings.Split(strings.Split(dsn, "@")[0], ":")[1]
+		item.val = strings.Replace(dsn, ":"+dbPass+"@", ":****@", 1)
+		if prefix != "" {
+			item.val = prefix + "://" + item.val
+		}
+	})
+
+	return item.val
+}
+
+func extractDsn(driverName, dsn string) string {
+	if driverName == "mysql" { // fix mysql dsn do not have multiStatements=true
+		if !strings.Contains(dsn, "?") {
+			dsn += "?multiStatements=true&parseTime=true"
+		} else {
+			if !strings.Contains(dsn, "multiStatements=true") {
+				dsn += "&multiStatements=true"
+			}
+			if !strings.Contains(dsn, "parseTime=true") {
+				dsn += "&parseTime=true"
+			}
+		}
+	}
+
+	return dsn
+
+}
+
+var cacheDsn map[string]string
+
+type initSaveDns struct {
+	once sync.Once
+}
+
+var cacheSaveDns sync.Map
+
+func saveDns(dnsEncrypt, dns string) {
+	actually, _ := cacheSaveDns.LoadOrStore(dnsEncrypt, &initSaveDns{})
+	item := actually.(*initSaveDns)
+	item.once.Do(func() {
+		cacheDsn[dnsEncrypt] = dns
+	})
+
+}
+func Open(driverName, dsn string) (*DB, error) {
+	dsn = extractDsn(driverName, dsn)
+	dsnEncypt := encryptDsn(dsn)
+	ret := &DB{
+		Info: &Info{
+			DriverName: driverName,
+			Dsn:        dsnEncypt,
+		},
+	}
+	DB, err := sql.Open(driverName, dsn)
+	if err != nil {
+		return nil, err
+	}
+	ret.DB = DB
+	err = detect(ret.Info, ret.DB)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+func (db *DB) getDsn() string {
+	if ret, ok := cacheDsn[db.Info.Dsn]; ok {
+		return ret
+	}
+	return ""
+}
