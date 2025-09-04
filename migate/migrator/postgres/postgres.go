@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/db"
+	loaderPostgres "github.com/vn-go/dx/migate/loader/postgres"
 	"github.com/vn-go/dx/migate/loader/types"
+	migartorType "github.com/vn-go/dx/migate/migrator/types"
 )
 
 type MigratorPostgres struct {
@@ -16,6 +18,13 @@ type MigratorPostgres struct {
 	db *db.DB
 }
 
+func NewMigrator(db *db.DB) migartorType.IMigrator {
+
+	return &MigratorPostgres{
+		db:     db,
+		loader: loaderPostgres.NewPosgresSchemaLoader(db),
+	}
+}
 func (m *MigratorPostgres) GetLoader() types.IMigratorLoader {
 	return m.loader
 }
@@ -29,7 +38,7 @@ type postgresInitDoMigrates struct {
 
 var cacheMigratorPostgresMigratorPostgres sync.Map
 
-func (m *MigratorPostgres) MigratorPostgres() error {
+func (m *MigratorPostgres) DoMigrates() error {
 	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
 	actual, _ := cacheMigratorPostgresMigratorPostgres.LoadOrStore(key, &postgresInitDoMigrates{})
 

@@ -34,13 +34,13 @@ func (m *MigratorPostgres) GetSqlAddUniqueIndex(typ reflect.Type) (string, error
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 
-		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.TableName, strings.Join(colNameInConstraint, "_"))
+		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa có trong schema
 		if _, ok := schema.UniqueKeys[constraintName]; !ok {
 			sql := fmt.Sprintf(
 				`ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)`,
-				m.Quote(entityItem.TableName),
+				m.Quote(entityItem.Entity.TableName),
 				m.Quote(constraintName),
 				strings.Join(colNames, ", "),
 			)

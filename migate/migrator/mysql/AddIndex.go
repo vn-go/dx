@@ -37,14 +37,14 @@ func (m *MigratorMySql) GetSqlAddIndex(typ reflect.Type) (string, error) {
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 
-		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.TableName, strings.Join(colNameInConstraint, "_"))
+		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa tồn tại index này trong schema
 		if _, ok := schema.Indexes[constraintName]; !ok {
 			stmt := fmt.Sprintf(
 				"CREATE INDEX %s ON %s (%s)",
 				m.Quote(constraintName),
-				m.Quote(entityItem.TableName),
+				m.Quote(entityItem.Entity.TableName),
 				strings.Join(colNames, ", "),
 			)
 			scripts = append(scripts, stmt)

@@ -36,7 +36,7 @@ func (m *MigratorPostgres) GetSqlAddIndex(typ reflect.Type) (string, error) {
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 
-		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.TableName, strings.Join(colNameInConstraint, "_"))
+		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu index chưa tồn tại trong schema
 		if _, ok := schema.Indexes[constraintName]; !ok {
@@ -44,7 +44,7 @@ func (m *MigratorPostgres) GetSqlAddIndex(typ reflect.Type) (string, error) {
 			sql := fmt.Sprintf(
 				"CREATE INDEX %s ON %s (%s)",
 				m.Quote(constraintName),
-				m.Quote(entityItem.TableName),
+				m.Quote(entityItem.Entity.TableName),
 				strings.Join(colNames, ", "),
 			)
 			scripts = append(scripts, sql)

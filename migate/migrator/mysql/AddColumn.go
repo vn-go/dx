@@ -29,7 +29,7 @@ func (m *MigratorMySql) GetSqlAddColumn(typ reflect.Type) (string, error) {
 	}
 
 	scripts := []string{}
-	tableName := entityItem.TableName
+	tableName := entityItem.Entity.TableName
 
 	for _, col := range entityItem.Entity.Cols {
 		if _, ok := schema.Tables[tableName][col.Name]; !ok {

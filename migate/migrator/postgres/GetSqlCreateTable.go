@@ -40,7 +40,7 @@ func (m *MigratorPostgres) GetSqlCreateTable(typ reflect.Type) (string, error) {
 		return "", errors.NewModelError(typ)
 	}
 
-	tableName := entityItem.TableName
+	tableName := entityItem.Entity.TableName
 	if _, ok := schema.Tables[tableName]; ok {
 		return "", nil
 	}

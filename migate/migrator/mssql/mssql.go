@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/db"
+	loaderMysql "github.com/vn-go/dx/migate/loader/mysql"
 	"github.com/vn-go/dx/migate/loader/types"
+	migartorType "github.com/vn-go/dx/migate/migrator/types"
 )
 
 type migratorMssql struct {
@@ -17,11 +19,18 @@ type migratorMssql struct {
 	db *db.DB
 }
 
+func NewMigrator(db *db.DB) migartorType.IMigrator {
+
+	return &migratorMssql{
+		db:     db,
+		loader: loaderMysql.NewMysqlSchemaLoader(db),
+	}
+}
 func (m *migratorMssql) Quote(names ...string) string {
 	return "[" + strings.Join(names, "].[") + "]"
 }
 
-func (m *migratorMssql) GetSqlMigrate(entityType reflect.Type) ([]string, error) {
+func (m *migratorMssql) GetSqlMigrateDelete(entityType reflect.Type) ([]string, error) {
 	scripts := []string{}
 	scriptTable, err := m.GetSqlCreateTable(entityType)
 	if err != nil {
@@ -43,8 +52,8 @@ func (m *migratorMssql) GetSqlMigrate(entityType reflect.Type) ([]string, error)
 	return scripts, nil
 
 }
-func (m *migratorMssql) DoMigrate(entityType reflect.Type) error {
-	scripts, err := m.GetSqlMigrate(entityType)
+func (m *migratorMssql) DoMigrateDelete(entityType reflect.Type) error {
+	scripts, err := m.GetSqlMigrateDelete(entityType)
 	if err != nil {
 		return err
 	}

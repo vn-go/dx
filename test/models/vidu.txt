@@ -1,0 +1,176 @@
+package models
+
+import "github.com/vn-go/dx"
+
+type Attendance struct {
+	xdb.Model[Attendance] `db:"table:attendances"`
+	BaseModel
+	ID       int    `db:"pk;auto"`
+	UserID   int    `db:"idx:idx_att_user"`
+	Date     string `db:"type:date;idx:idx_att_date"`
+	CheckIn  string `db:"type:time"`
+	CheckOut string `db:"type:time"`
+}
+package models
+
+import "time"
+
+type BaseModel struct {
+	CreatedAt   *time.Time `db:"default:now;idx;default:now"`
+	UpdatedAt   *time.Time `db:"default:now;idx"`
+	Description *string    `db:"size:255"`
+}
+package models
+
+import (
+	"time"
+	"github.com/vn-go/dx"
+)
+
+type Contract struct {
+	xdb.Model[Contract]
+	BaseModel
+	ID        int `db:"pk;auto"`
+	UserID    int `db:"idx:idx_contract_user"`
+	StartDate time.Time
+	EndDate   time.Time
+	Type      string `db:"size:50"` // probation, permanent, seasonal...
+	Note      string `db:"size:255"`
+}
+package models
+
+import "github.com/vn-go/dx"
+
+type Department struct {
+	xdb.Model[Department]
+
+	ID       int    `db:"pk;auto"`
+	Name     string `db:"size:100;uk:uq_dept_name"`
+	Code     string `db:"size:20;uk:uq_dept_code"`
+	ParentID *int
+	BaseModel
+}
+
+func init() {
+	(&Department{}).AddForeignKey("ParentID", &Department{}, "ID", &xdb.CascadeOption{
+		OnDelete: false,
+		OnUpdate: false,
+	})
+
+}
+package models
+
+import (
+	"github.com/vn-go/dx"
+)
+
+type Employee struct {
+	xdb.Model[Employee]
+	ID           int    `json:"id" db:"pk;auto;"`
+	FirstName    string `json:"name" db:"size(50);idx"`
+	LastName     string `json:"lastName" db:"size(50);idx"`
+	DepartmentID int    `json:"departmentId" db:"fk(Department.ID)"`
+	PositionID   int    `json:"positionId" db:"fk(Position.ID)"`
+	UserID       int    `json:"userId" db:"fk(User.ID)"`
+	BaseModel
+}
+
+func init() {
+	xdb.ModelRegistry.Add(Employee{}, &Department{})
+	(&Employee{}).AddForeignKey(
+		"DepartmentID",
+		&Department{},
+		"ID", nil).AddForeignKey(
+		"PositionID",
+		&Position{},
+		"ID", nil).AddForeignKey(
+		"UserID",
+		&User{},
+		"ID", nil,
+	)
+
+}
+package models
+
+import (
+	"time"
+	"github.com/vn-go/dx"
+)
+
+type LeaveRequest struct {
+	xdb.Model[LeaveRequest]
+	BaseModel
+	ID         int `db:"pk;auto"`
+	EmployeeId int `db:"idx"`
+	StartDate  time.Time
+	EndDate    time.Time
+	Reason     string `db:"size:255"`
+	Status     string `db:"size:20"` // pending, approved, rejected
+}
+
+func init() {
+	xdb.ModelRegistry.Add(&LeaveRequest{})
+	(&LeaveRequest{}).AddForeignKey("EmployeeId", &Employee{}, "ID", nil)
+
+}
+package models
+
+import "github.com/vn-go/dx"
+
+func init() {
+	xdb.ModelRegistry.Add(
+		&Contract{},
+		&User{},
+
+		&Department{},
+		&Position{},
+		&Contract{},
+		&User{},
+	)
+}
+package models
+
+import "github.com/vn-go/dx"
+
+type Position struct {
+	xdb.Model[Position]
+	Code  string `db:"size:100;uk:uq_pos_code"`
+	Name  string `db:"size:100;uk:uq_pos_name"`
+	ID    int    `db:"pk;auto"`
+	Title string `db:"size:100;uk:uq_pos_title"`
+	Level int
+
+	BaseModel
+}
+package models
+
+import "github.com/vn-go/dx"
+
+type Salary struct {
+	xdb.Model[Salary]
+	BaseModel
+	ID        int     `db:"pk;auto"`
+	UserID    int     `db:"idx:idx_salary_user"`
+	Month     string  `db:"type:char(7);idx:idx_salary_month"` // e.g. 2024-07
+	Base      float64 `db:"type:decimal(15,2)"`
+	Bonus     float64 `db:"type:decimal(15,2)"`
+	Deduction float64 `db:"type:decimal(15,2)"`
+}
+package models
+
+import "github.com/vn-go/dx"
+
+type User struct {
+	xdb.Model[User]
+
+	ID     int     `db:"pk;auto"`
+	UserId *string `db:"size:36;unique"`
+
+	Email string `db:"uk:uq_email;size:150"`
+
+	Phone string `db:"size:20"`
+
+	Username     *string `db:"size:50;unique"`
+	HashPassword *string `db:"size:100"`
+	BaseModel
+}

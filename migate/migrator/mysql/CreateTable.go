@@ -31,7 +31,7 @@ func (m *MigratorMySql) GetSqlCreateTable(typ reflect.Type) (string, error) {
 		return "", errors.NewModelError(typ)
 	}
 
-	tableName := entityItem.TableName
+	tableName := entityItem.Entity.TableName
 	if _, ok := schema.Tables[tableName]; ok {
 		return "", nil // table already exists
 	}

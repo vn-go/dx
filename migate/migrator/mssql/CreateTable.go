@@ -41,7 +41,7 @@ func (m *migratorMssql) GetSqlCreateTable(typ reflect.Type) (string, error) {
 		return "", errors.NewModelError(typ)
 	}
 
-	tableName := entityItem.TableName
+	tableName := entityItem.Entity.TableName
 	if _, ok := schema.Tables[tableName]; ok {
 		/*
 			If the table already exists in the database, there is no need to create it .

@@ -33,7 +33,7 @@ func (m *MigratorPostgres) GetSqlAddColumn(typ reflect.Type) (string, error) {
 
 	for _, col := range entityItem.Entity.Cols {
 		// Column chưa tồn tại thì mới thêm
-		if _, ok := schema.Tables[entityItem.TableName][col.Name]; !ok {
+		if _, ok := schema.Tables[entityItem.Entity.TableName][col.Name]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -45,7 +45,7 @@ func (m *MigratorPostgres) GetSqlAddColumn(typ reflect.Type) (string, error) {
 			}
 
 			if col.Length != nil {
-				strCheck := m.createCheckLenConstraint(entityItem.TableName, col)
+				strCheck := m.createCheckLenConstraint(entityItem.Entity.TableName, col)
 				if strCheck != "" {
 					checkLengthScripts = append(checkLengthScripts, strCheck)
 				}
@@ -79,11 +79,11 @@ func (m *MigratorPostgres) GetSqlAddColumn(typ reflect.Type) (string, error) {
 				colDef += fmt.Sprintf(" DEFAULT %s", defaultVal)
 			}
 
-			script := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", m.Quote(entityItem.TableName), colDef)
+			script := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", m.Quote(entityItem.Entity.TableName), colDef)
 			scripts = append(scripts, script)
 
 			// Update schema cache
-			schema.Tables[entityItem.TableName][col.Name] = true
+			schema.Tables[entityItem.Entity.TableName][col.Name] = true
 		}
 	}
 

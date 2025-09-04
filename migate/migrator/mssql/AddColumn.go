@@ -30,7 +30,7 @@ func (m *migratorMssql) GetSqlAddColumn(typ reflect.Type) (string, error) {
 	}
 	scripts := []string{}
 	for _, col := range entityItem.Entity.Cols {
-		if _, ok := schema.Tables[entityItem.TableName][col.Name]; !ok {
+		if _, ok := schema.Tables[entityItem.Entity.TableName][col.Name]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -64,9 +64,9 @@ func (m *migratorMssql) GetSqlAddColumn(typ reflect.Type) (string, error) {
 				colDef += fmt.Sprintf(" DEFAULT %s", colDef)
 			}
 
-			scripts = append(scripts, fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.TableName), colDef))
+			scripts = append(scripts, fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), colDef))
 
-			schema.Tables[entityItem.TableName][col.Name] = true
+			schema.Tables[entityItem.Entity.TableName][col.Name] = true
 		}
 	}
 

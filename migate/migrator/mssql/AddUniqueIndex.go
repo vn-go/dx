@@ -34,10 +34,10 @@ func (m *migratorMssql) GetSqlAddUniqueIndex(typ reflect.Type) (string, error) {
 			colNames = append(colNames, m.Quote(col.Name))
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
-		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.TableName, strings.Join(colNameInConstraint, "___"))
+		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
 		if _, ok := schema.UniqueKeys[constraintName]; !ok {
 			constraint := fmt.Sprintf("CONSTRAINT %s UNIQUE (%s)", m.Quote(constraintName), strings.Join(colNames, ", "))
-			script := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.TableName), constraint)
+			script := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), constraint)
 			scripts = append(scripts, script)
 		}
 	}

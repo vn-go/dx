@@ -8,7 +8,6 @@ import (
 )
 
 type modelRegistryInfo struct {
-	TableName string
 	ModelType reflect.Type
 	Entity    *entity.Entity
 }

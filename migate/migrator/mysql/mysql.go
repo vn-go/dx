@@ -7,7 +7,9 @@ import (
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
+	loaderMssql "github.com/vn-go/dx/migate/loader/mssql"
 	"github.com/vn-go/dx/migate/loader/types"
+	migartorType "github.com/vn-go/dx/migate/migrator/types"
 )
 
 type MigratorMySql struct {
@@ -17,6 +19,13 @@ type MigratorMySql struct {
 	db *db.DB
 }
 
+func NewMigrator(db *db.DB) migartorType.IMigrator {
+
+	return &MigratorMySql{
+		db:     db,
+		loader: loaderMssql.NewMssqlSchemaLoader(db),
+	}
+}
 func (m *MigratorMySql) GetLoader() types.IMigratorLoader {
 	return m.loader
 }

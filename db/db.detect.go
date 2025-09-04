@@ -78,9 +78,9 @@ func detect(info *Info, db *sql.DB) error {
 
 var managerDb = map[string]string{}
 
-func SetManagerDb(driver string, dbName string) error {
+func SetManagerDb(driver string, dbName string) {
 	managerDb[driver] = dbName
-	return nil
+
 }
 func IsManagerDb(driver string, dbName string) bool {
 	if dbNameManager, ok := managerDb[driver]; ok && dbName == dbNameManager {

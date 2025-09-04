@@ -44,7 +44,7 @@ func (reg *modelRegister) RegisterType(typ reflect.Type) {
 		ent.IndexConstraints = make(map[string][]entity.ColumnDef)
 
 		cacheItem := modelRegistryInfo{
-			TableName: tableName,
+
 			ModelType: typ,
 			Entity:    &ent,
 		}
