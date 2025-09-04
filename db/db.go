@@ -2,6 +2,9 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -125,4 +128,25 @@ func (db *DB) getDsn() string {
 		return ret
 	}
 	return ""
+}
+func (db *DB) GetDbVersion() string {
+
+	if db.Info.DriverName == "postgres" {
+		re := regexp.MustCompile(`PostgreSQL\s+(\d+)`)
+		match := re.FindStringSubmatch(db.Info.Version)
+		if len(match) > 1 {
+			db.Info.Version = match[1]
+
+		}
+	}
+
+	return db.Info.Version
+}
+func (db *DB) GetMajorVersion() (int, error) {
+	ret, err := strconv.Atoi(db.GetDbVersion())
+	if err != nil {
+		return 0, fmt.Errorf("can not convert %s to int", db.GetDbVersion())
+	}
+	return ret, nil
+
 }

@@ -1,4 +1,4 @@
-package migrate
+package mysql
 
 import (
 	"sync"
