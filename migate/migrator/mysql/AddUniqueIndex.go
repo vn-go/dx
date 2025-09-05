@@ -29,15 +29,15 @@ func (m *MigratorMySql) GetSqlAddUniqueIndex(typ reflect.Type) (string, error) {
 
 	uk := entityItem.Entity.UniqueConstraints
 
-	for _, cols := range uk {
+	for constraintName, cols := range uk {
 		var colNames []string
 		var colNameInConstraint []string
-		for _, col := range cols {
+		for _, col := range cols.Cols {
 			colNames = append(colNames, m.Quote(col.Name))
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 
-		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
+		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
 
 		if _, ok := schema.UniqueKeys[constraintName]; !ok {
 			script := fmt.Sprintf(

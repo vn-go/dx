@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 
@@ -37,6 +36,8 @@ func (reg *modelRegister) getTableNameNoCache(typ reflect.Type) (string, error) 
 			return ret[0].String(), nil
 		}
 	}
-	return internal.Utils.Pluralize(internal.Utils.SnakeCase(typ.Name())), nil
-	return "", fmt.Errorf("model %s has no table tag", typ.String())
+	ret := internal.Utils.SnakeCase(typ.Name())
+	ret = internal.Utils.Pluralize(ret)
+	return ret, nil
+	//return "", fmt.Errorf("model %s has no table tag", typ.String())
 }

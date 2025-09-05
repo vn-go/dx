@@ -25,16 +25,16 @@ func (m *MigratorPostgres) GetSqlAddUniqueIndex(typ reflect.Type) (string, error
 	}
 
 	// Duyệt các unique constraint
-	for _, cols := range entityItem.Entity.UniqueConstraints {
+	for constraintName, cols := range entityItem.Entity.UniqueConstraints {
 		var colNames []string
 		var colNameInConstraint []string
 
-		for _, col := range cols {
+		for _, col := range cols.Cols {
 			colNames = append(colNames, m.Quote(col.Name))
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 
-		constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
+		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa có trong schema
 		if _, ok := schema.UniqueKeys[constraintName]; !ok {

@@ -15,7 +15,7 @@ type postgresDialect struct {
 
 func (d *postgresDialect) LikeValue(val string) string {
 
-	return replaceStarWithCache("postgres", val, '*', '%')
+	return types.ReplaceStarWithCache("postgres", val, '*', '%')
 }
 func (d *postgresDialect) Name() string {
 	return "postgres"
@@ -50,5 +50,6 @@ var postgresDialectInstance = &postgresDialect{
 }
 
 func NewPostgresDialect() types.Dialect {
+
 	return postgresDialectInstance
 }

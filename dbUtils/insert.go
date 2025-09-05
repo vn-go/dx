@@ -1,6 +1,7 @@
 package dbutils
 
 import (
+	"context"
 	"database/sql"
 	"reflect"
 
@@ -13,7 +14,7 @@ import (
 type inserter struct {
 }
 
-func (r *inserter) Insert(db *db.DB, data interface{}) error {
+func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context) error {
 	dialect := factory.DialectFactory.Create(db.Info.DriverName)
 	dataValue := reflect.ValueOf(data)
 	typ := reflect.TypeOf(data)
@@ -22,6 +23,9 @@ func (r *inserter) Insert(db *db.DB, data interface{}) error {
 		dataValue = dataValue.Elem()
 	}
 	modelInfo, err := model.ModelRegister.GetModelByType(typ)
+	if err != nil {
+		return err
+	}
 	sqlText, args := dialect.MakeSqlInsert(modelInfo.Entity.TableName, modelInfo.Entity.Cols, data)
 	sqlStmt, err := db.Prepare(sqlText)
 	if err != nil {

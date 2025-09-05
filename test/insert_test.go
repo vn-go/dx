@@ -18,3 +18,17 @@ func TestInsertUser(t *testing.T) {
 	err = db.Insert(user)
 	assert.NoError(t, err)
 }
+func BenchmarkInsertUser(t *testing.B) {
+	db, _ := dx.Open("mysql", mySqlDsn)
+	defer db.Close()
+	for i := 0; i < t.N; i++ {
+		user, _ := dx.NewDTO[models.User]()
+		user.Username = "admin"
+
+		//dx.SetManagerDb("mysql", "a001")
+
+		db.Insert(user)
+
+	}
+
+}

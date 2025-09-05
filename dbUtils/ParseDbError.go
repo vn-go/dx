@@ -5,7 +5,6 @@ import (
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/errors"
 	loaderTypes "github.com/vn-go/dx/migate/loader/types"
-	"github.com/vn-go/dx/model"
 )
 
 func (r *inserter) parseDbError(schema *loaderTypes.DbSchema, dialect types.Dialect, err error, repoType *entity.Entity) error {
@@ -14,7 +13,7 @@ func (r *inserter) parseDbError(schema *loaderTypes.DbSchema, dialect types.Dial
 	if derr, ok := errParse.(*errors.DbErr); ok {
 
 		if derr.ConstraintName != "" {
-			if uk := model.ModelRegister.FindUKConstraint(derr.ConstraintName); uk != nil {
+			if uk := types.FindUKConstraint(derr.ConstraintName); uk != nil {
 				derr.Table = repoType.TableName
 				derr.StructName = repoType.EntityType.String()
 				derr.Fields = uk.Fields
@@ -24,7 +23,10 @@ func (r *inserter) parseDbError(schema *loaderTypes.DbSchema, dialect types.Dial
 		}
 		derr.Table = repoType.TableName
 		derr.StructName = repoType.EntityType.String()
-		derr.Fields = []string{repoType.GetFieldByColumnName(derr.DbCols[0])}
+		if len(derr.DbCols) > 0 {
+			derr.Fields = []string{repoType.GetFieldByColumnName(derr.DbCols[0])}
+		}
+
 		return derr
 	}
 	return errParse

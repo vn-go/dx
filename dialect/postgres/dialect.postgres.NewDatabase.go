@@ -1,11 +1,13 @@
 package postgres
 
 import (
-	"database/sql"
 	"strings"
+
+	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/internal"
 )
 
-func (d *postgresDialect) NewDataBase(db *sql.DB, sampleDsn string, dbName string) (string, error) {
+func (d *postgresDialect) NewDataBase(db *db.DB, dbName string) (string, error) {
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)`
 	err := db.QueryRow(query, dbName).Scan(&exists)
@@ -18,7 +20,7 @@ func (d *postgresDialect) NewDataBase(db *sql.DB, sampleDsn string, dbName strin
 			return "", err
 		}
 	}
-	items := strings.Split(sampleDsn, "?")
+	items := strings.Split(internal.GetDsn(db.Dsn), "?")
 	if len(items) > 1 {
 		subItems := strings.Split(items[0], "/")
 		subItems[len(subItems)-1] = dbName // replace the last item with the new dbName

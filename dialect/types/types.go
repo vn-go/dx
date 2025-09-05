@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
 	migateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
 )
@@ -79,6 +80,6 @@ type Dialect interface {
 	ToParam(index int) string
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
-	NewDataBase(db *sql.DB, sampleDsn string, dbName string) (string, error)
+	NewDataBase(db *db.DB, dbName string) (string, error)
 	MakeSelectTop(sql string, top int) string
 }

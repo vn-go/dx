@@ -25,6 +25,10 @@ func (r *modelRegister) GetModelByType(typ reflect.Type) (*modelRegistryInfo, er
 	item := actually.(*initGetModelByType)
 	item.once.Do(func() {
 		if ret, ok := ModelRegister.cacheModelRegistry[typ]; ok {
+			ret.Entity.IndexConstraints = ret.Entity.GetIndex()
+			ret.Entity.PrimaryConstraints = ret.Entity.GetPrimaryKey()
+			ret.Entity.UniqueConstraints = ret.Entity.GetUnique()
+
 			item.val = ret
 		} else {
 			item.err = fmt.Errorf("%s was not register", typ.String())

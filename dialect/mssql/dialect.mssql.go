@@ -44,5 +44,6 @@ var mssqlDialectIntance = &mssqlDialect{
 }
 
 func NewMssqlDialect() types.Dialect {
+
 	return mssqlDialectIntance
 }

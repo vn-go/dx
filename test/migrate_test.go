@@ -13,6 +13,7 @@ var pgDsn = "postgres://postgres:123456@localhost:5432/a001?sslmode=disable"
 var mySqlDsn = "root:123456@tcp(127.0.0.1:3306)/a001"
 
 func TestMigrateMysql(t *testing.T) {
+
 	db, err := dx.Open("mysql", mySqlDsn)
 	dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)

@@ -17,10 +17,12 @@ func (e *Entity) GetPrimaryKey() map[string][]ColumnDef {
 	actually, _ := cacheGetPrimaryKey.LoadOrStore(e.EntityType, &initGetPrimaryKey{})
 	item := actually.(*initGetPrimaryKey)
 	item.once.Do(func() {
+
 		m := make(map[string][]ColumnDef)
 		for _, col := range e.Cols {
 			if col.PKName != "" {
 				m[col.PKName] = append(m[col.PKName], col)
+
 			}
 		}
 		item.val = m

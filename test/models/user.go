@@ -8,7 +8,7 @@ type User struct {
 
 	Phone *string `db:"size:20"`
 
-	Username     string  `db:"size:250;uk"`
+	Username     string  `db:"size:250;unique"`
 	HashPassword *string `db:"size:100"`
 	BaseModel
 }

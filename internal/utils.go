@@ -23,7 +23,7 @@ func (u *utilsTypes) Pluralize(txt string) string {
 	actually, _ := u.cachePlural.LoadOrStore(txt, &initPluralize{})
 	item := actually.(*initPluralize)
 	item.once.Do(func() {
-		item.val = strings.ToLower(txt)
+		item.val = pluralize.Plural(strings.ToLower(txt))
 
 	})
 	return item.val

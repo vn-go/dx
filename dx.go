@@ -5,6 +5,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
+	"github.com/vn-go/dx/migate/migrator"
 	"github.com/vn-go/dx/model"
 )
 
@@ -40,12 +41,23 @@ func AddForeignKey[T any](foreignKey string, FkEntity interface{}, keys string, 
 	return nil
 }
 func Open(driverName string, dsn string) (*DB, error) {
-	rdbret, err := db.Open(driverName, dsn)
+	retDb, err := db.Open(driverName, dsn)
+
 	if err != nil {
 		return nil, err
 	}
+	m, err := migrator.GetMigator(retDb)
+	if err != nil {
+		defer retDb.Close()
+		return nil, err
+	}
+	err = m.DoMigrates()
+	if err != nil {
+		defer retDb.Close()
+		return nil, err
+	}
 	return &DB{
-		DB: rdbret,
+		DB: retDb,
 	}, nil
 
 }
@@ -54,7 +66,26 @@ func SetManagerDb(driver, dbName string) {
 }
 func NewDTO[T any]() (*T, error) {
 	typ := reflect.TypeFor[T]()
-	val, err := dbutils.DbUtils.ModelFactory.CreateFromType(typ)
+	valOfModel := reflect.New(typ)
+	val, err := dbutils.DbUtils.ModelFactory.SetDefaultValue(valOfModel)
+	if err != nil {
+		return nil, err
+	}
+	return val.(*T), nil
+
+}
+func NewThenSetDefaultValues[T any](fn func() (*T, error)) (*T, error) {
+
+	retErr := reflect.ValueOf(fn).Call([]reflect.Value{})
+	if retErr[1].Interface() != nil {
+		return nil, retErr[0].Interface().(error)
+	}
+
+	val, err := dbutils.DbUtils.ModelFactory.SetDefaultValue(retErr[0])
+	if err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}

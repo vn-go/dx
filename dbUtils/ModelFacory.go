@@ -224,14 +224,13 @@ func (m *modelFacoryType) resolveDefautValue(modelType reflect.Type, defaultValu
 		}
 	}
 }
-func (m *modelFacoryType) CreateFromType(typ reflect.Type) (interface{}, error) {
+func (m *modelFacoryType) SetDefaultValue(valOfModel reflect.Value) (interface{}, error) {
 
-	// model := ModelRegistry.GetModelByType(typ)
-	// if model == nil {
+	typ := valOfModel.Type()
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
 
-	// 	return nil, NewModelError(typ)
-	// }
-	valOfModel := reflect.New(typ)
 	cols, err := m.getColsOfModelHasDefaultValue(typ)
 	if err != nil {
 		return nil, err

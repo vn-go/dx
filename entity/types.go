@@ -49,8 +49,8 @@ type ColumnDef struct {
 			`db:"unique"` → UniqueName = Name
 			`db:"unique(email_uk)"` → UniqueName = "email_uk"
 	*/
-	UniqueName string
-
+	UniqueName   string
+	DbUniqueName string
 	/*
 		If tag looks like:
 			`db:"index"` → IndexName = Name
@@ -97,15 +97,35 @@ type ColumnDef struct {
 	RefColumn    string
 	IndexOfField []int
 }
+type entityType struct {
+	TableName string
+	Cols      []ColumnDef
+}
+type EntityCacheType struct {
+	AllPrimaryConstraints map[string]entityType
+	AllUniqueConstraint   map[string]entityType
+}
+
+var EntityCache = &EntityCacheType{
+	AllPrimaryConstraints: map[string]entityType{},
+	AllUniqueConstraint:   map[string]entityType{},
+}
+
 type Entity struct {
-	EntityType               reflect.Type
-	TableName                string
-	Cols                     []ColumnDef          //<-- list of all columns
-	MapCols                  map[string]ColumnDef //<-- used for faster access to column by name
-	PrimaryConstraints       map[string][]ColumnDef
-	UniqueConstraints        map[string][]ColumnDef
-	IndexConstraints         map[string][]ColumnDef
-	BuildUniqueConstraints   map[string][]ColumnDef
+	EntityType         reflect.Type
+	TableName          string
+	Cols               []ColumnDef          //<-- list of all columns
+	MapCols            map[string]ColumnDef //<-- used for faster access to column by name
+	PrimaryConstraints map[string][]ColumnDef
+
+	UniqueConstraints map[string]entityType
+
+	IndexConstraints map[string][]ColumnDef
+	//BuildUniqueConstraints   map[string][]ColumnDef
 	cacheGetAutoValueColumns sync.Map
 	DbTableName              string
+}
+
+func NewUniqueConstraints() map[string]entityType {
+	return map[string]entityType{}
 }

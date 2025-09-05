@@ -11,6 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/microsoft/go-mssqldb"
+	"github.com/vn-go/dx/internal"
 )
 
 type DB_DRIVER_TYPE string
@@ -32,7 +33,7 @@ type Info struct {
 	DbName string
 
 	DriverName string
-	DbType     DB_DRIVER_TYPE
+	//DbType     DB_DRIVER_TYPE
 
 	Version string
 	Dsn     string
@@ -85,22 +86,6 @@ func extractDsn(driverName, dsn string) string {
 
 }
 
-var cacheDsn map[string]string
-
-type initSaveDns struct {
-	once sync.Once
-}
-
-var cacheSaveDns sync.Map
-
-func saveDns(dnsEncrypt, dns string) {
-	actually, _ := cacheSaveDns.LoadOrStore(dnsEncrypt, &initSaveDns{})
-	item := actually.(*initSaveDns)
-	item.once.Do(func() {
-		cacheDsn[dnsEncrypt] = dns
-	})
-
-}
 func Open(driverName, dsn string) (*DB, error) {
 	dsn = extractDsn(driverName, dsn)
 	dsnEncypt := encryptDsn(dsn)
@@ -116,6 +101,7 @@ func Open(driverName, dsn string) (*DB, error) {
 	}
 	ret.DB = DB
 	err = detect(ret.Info, ret.DB)
+	internal.SetDsn(dsnEncypt, dsn)
 
 	if err != nil {
 		return nil, err
@@ -123,12 +109,7 @@ func Open(driverName, dsn string) (*DB, error) {
 
 	return ret, nil
 }
-func (db *DB) getDsn() string {
-	if ret, ok := cacheDsn[db.Info.Dsn]; ok {
-		return ret
-	}
-	return ""
-}
+
 func (db *DB) GetDbVersion() string {
 
 	if db.Info.DriverName == "postgres" {

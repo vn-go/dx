@@ -33,14 +33,14 @@ func (reg *modelRegister) RegisterType(typ reflect.Type) {
 			panic(err)
 		}
 		ent := entity.Entity{
-			EntityType:  typ,
-			TableName:   tableName,
-			DbTableName: tableName,
-			Cols:        cols,
+			EntityType: typ,
+			TableName:  tableName,
+			//DbTableName: tableName,
+			Cols: cols,
 		}
 		ent.PrimaryConstraints = ent.GetPrimaryKey()
 
-		ent.UniqueConstraints = make(map[string][]entity.ColumnDef)
+		ent.UniqueConstraints = entity.NewUniqueConstraints()
 		ent.IndexConstraints = make(map[string][]entity.ColumnDef)
 
 		cacheItem := modelRegistryInfo{

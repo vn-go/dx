@@ -30,16 +30,16 @@ func detect(info *Info, db *sql.DB) error {
 		"greenplum": "SELECT version()",
 		"sqlserver": "SELECT @@VERSION",
 	}
-	dbTypeMap := map[string]DB_DRIVER_TYPE{
-		"postgres":  DB_DRIVER_Postgres,
-		"mysql":     DB_DRIVER_MySQL,
-		"sqlite":    DB_DRIVER_SQLite,
-		"tidb":      DB_DRIVER_TiDB,
-		"oracle":    DB_DRIVER_Oracle,
-		"cockroach": DB_DRIVER_Cockroach,
-		"greenplum": DB_DRIVER_Greenplum,
-		"sqlserver": DB_DRIVER_MSSQL,
-	}
+	// dbTypeMap := map[string]DB_DRIVER_TYPE{
+	// 	"postgres":  DB_DRIVER_Postgres,
+	// 	"mysql":     DB_DRIVER_MySQL,
+	// 	"sqlite":    DB_DRIVER_SQLite,
+	// 	"tidb":      DB_DRIVER_TiDB,
+	// 	"oracle":    DB_DRIVER_Oracle,
+	// 	"cockroach": DB_DRIVER_Cockroach,
+	// 	"greenplum": DB_DRIVER_Greenplum,
+	// 	"sqlserver": DB_DRIVER_MSSQL,
+	// }
 	err := db.Ping()
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func detect(info *Info, db *sql.DB) error {
 	}
 	info.DbName = dbName
 	info.Version = version
-	info.DbType = dbTypeMap[info.DriverName]
+	//info.DbType = dbTypeMap[info.DriverName]
 
 	return nil
 }
