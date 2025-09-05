@@ -17,7 +17,7 @@ func TestMigrateMysql(t *testing.T) {
 	dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, db)
-	sqls, err := dx.Migrator.GetSql(db)
+	sqls, err := dx.Migrator.GetSql(db.DB)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, sqls)
 }
@@ -26,7 +26,7 @@ func TestMigrateMssql(t *testing.T) {
 	dx.SetManagerDb("sqlserver", "a001")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, db)
-	sqls, err := dx.Migrator.GetSql(db)
+	sqls, err := dx.Migrator.GetSql(db.DB)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, sqls)
 }
@@ -35,7 +35,7 @@ func TestMigratePostgres(t *testing.T) {
 	dx.SetManagerDb("postgres", "a001")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, db)
-	sqls, err := dx.Migrator.GetSql(db)
+	sqls, err := dx.Migrator.GetSql(db.DB)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, sqls)
 }

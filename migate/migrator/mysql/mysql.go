@@ -7,7 +7,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
-	loaderMssql "github.com/vn-go/dx/migate/loader/mssql"
+	loaderMysql "github.com/vn-go/dx/migate/loader/mysql"
 	"github.com/vn-go/dx/migate/loader/types"
 	migartorType "github.com/vn-go/dx/migate/migrator/types"
 )
@@ -23,7 +23,7 @@ func NewMigrator(db *db.DB) migartorType.IMigrator {
 
 	return &MigratorMySql{
 		db:     db,
-		loader: loaderMssql.NewMssqlSchemaLoader(db),
+		loader: loaderMysql.NewMysqlMigratorLoader(db),
 	}
 }
 func (m *MigratorMySql) GetLoader() types.IMigratorLoader {
@@ -33,7 +33,7 @@ func (m *MigratorMySql) Quote(names ...string) string {
 	return "`" + strings.Join(names, "`.`") + "`"
 }
 
-type mssqlInitDoMigrates struct {
+type mysqlInitDoMigrates struct {
 	once sync.Once
 	err  error
 }
@@ -43,9 +43,9 @@ var cacheMigratorMySqlDoMigrates sync.Map
 func (m *MigratorMySql) DoMigrates() error {
 
 	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
-	actual, _ := cacheMigratorMySqlDoMigrates.LoadOrStore(key, &mssqlInitDoMigrates{})
+	actual, _ := cacheMigratorMySqlDoMigrates.LoadOrStore(key, &mysqlInitDoMigrates{})
 
-	mi := actual.(*mssqlInitDoMigrates)
+	mi := actual.(*mysqlInitDoMigrates)
 
 	mi.once.Do(func() {
 

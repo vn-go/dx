@@ -23,7 +23,7 @@ func NewMigrator(db *db.DB) migartorType.IMigrator {
 
 	return &migratorMssql{
 		db:     db,
-		loader: loaderMysql.NewMysqlSchemaLoader(db),
+		loader: loaderMysql.NewMysqlMigratorLoader(db),
 	}
 }
 func (m *migratorMssql) Quote(names ...string) string {

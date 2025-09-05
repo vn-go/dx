@@ -39,8 +39,15 @@ func AddForeignKey[T any](foreignKey string, FkEntity interface{}, keys string, 
 	}
 	return nil
 }
-func Open(driverName string, dsn string) (*db.DB, error) {
-	return db.Open(driverName, dsn)
+func Open(driverName string, dsn string) (*DB, error) {
+	rdbret, err := db.Open(driverName, dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &DB{
+		DB: rdbret,
+	}, nil
+
 }
 func SetManagerDb(driver, dbName string) {
 	db.SetManagerDb(driver, dbName)

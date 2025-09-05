@@ -6,7 +6,7 @@ import (
 	"github.com/vn-go/dx/migate/migrator"
 )
 
-func Insert(db *DB, data interface{}) error {
+func (db *DB) Insert(data interface{}) error {
 	err := internal.Helper.AddrssertSinglePointerToStruct(data)
 	if err != nil {
 		return err

@@ -72,7 +72,7 @@ func (m *MigratorLoaderMysql) loadFullSchema() (*types.DbSchema, error) {
 	return schema, nil
 }
 
-func NewMysqlSchemaLoader(db *db.DB) types.IMigratorLoader {
+func NewMysqlMigratorLoader(db *db.DB) types.IMigratorLoader {
 	return &MigratorLoaderMysql{
 		cacheLoadFullSchema: sync.Map{},
 		db:                  db,
