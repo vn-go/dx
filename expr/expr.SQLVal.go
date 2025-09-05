@@ -9,7 +9,7 @@ import (
 func (compiler *exprReceiver) SQLVal(context *exprCompileContext, expr *sqlparser.SQLVal) (string, error) {
 	switch expr.Type {
 	case sqlparser.StrVal:
-		return context.dialect.ToText(string(expr.Val)), nil
+		return context.Dialect.ToText(string(expr.Val)), nil
 	case sqlparser.IntVal:
 		return string(expr.Val), nil
 	case sqlparser.FloatVal:
@@ -24,7 +24,7 @@ func (compiler *exprReceiver) SQLVal(context *exprCompileContext, expr *sqlparse
 			defer func() {
 				context.paramIndex++
 			}()
-			return context.dialect.ToParam(context.paramIndex), nil
+			return context.Dialect.ToParam(context.paramIndex), nil
 		} else {
 			return string(expr.Val), nil
 		}

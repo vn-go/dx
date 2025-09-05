@@ -14,32 +14,32 @@ import (
 	// "github.com/vn-go/dx/sqlparser"
 )
 
-type build_purpose int
+type BUILD int
 
 const (
-	build_purpose_select build_purpose = iota
-	build_purpose_join
-	build_purpose_where
-	build_purpose_group
-	build_purpose_having
-	build_purpose_order
-	build_purpose_limit
-	build_purpose_offset
-	build_purpose_for_function
-	build_purpose_for_update
+	BUILD_SELECT BUILD = iota
+	BUILD_JOIN
+	BUILD_WHERE
+	BUILD_GROUP
+	BUILD_HAVING
+	BUILD_ORDER
+	BUILD_LIMIT
+	BUILD_OFFSET
+	BUILD_FUNC
+	BUILD_UPDATE
 )
 
 type exprCompileContext struct {
-	tables []string
+	Tables []string
 	/*
 		The purpose of this field is track table name is already in database
 	*/
 	schema           *map[string]bool
-	alias            map[string]string
+	Alias            map[string]string
 	joinAlias        map[string]string
 	aliasToDbTable   map[string]string
-	dialect          types.Dialect
-	purpose          build_purpose
+	Dialect          types.Dialect
+	Purpose          BUILD
 	stackAliasFields internal.Stack[string]
 	stackAliasTables internal.Stack[string]
 	paramIndex       int
@@ -50,14 +50,14 @@ func (e *exprCompileContext) pluralTableName(tableName string) string {
 		if _, ok := (*e.schema)[tableName]; ok {
 			return tableName
 		} else {
-			if _, ok := e.alias[tableName]; ok {
+			if _, ok := e.Alias[tableName]; ok {
 				return tableName
 			} else {
 				return internal.Utils.Pluralize(tableName)
 			}
 		}
 	} else {
-		if _, ok := e.alias[tableName]; ok {
+		if _, ok := e.Alias[tableName]; ok {
 			return tableName
 		} else {
 			return internal.Utils.Pluralize(tableName)
@@ -66,12 +66,12 @@ func (e *exprCompileContext) pluralTableName(tableName string) string {
 }
 
 type exprCompiler struct {
-	context *exprCompileContext
-	content string
+	Context *exprCompileContext
+	Content string
 }
 
-func (e *exprCompiler) buildSortField(selector string) error {
-	e.context.purpose = build_purpose_order
+func (e *exprCompiler) BuildSortField(selector string) error {
+	e.Context.Purpose = BUILD_ORDER
 	selector = internal.Helper.QuoteExpression(selector)
 	sqlTest := "select tmp order by " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -80,18 +80,18 @@ func (e *exprCompiler) buildSortField(selector string) error {
 	}
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
 
-		ret, err := exprs.compile(e.context, sqlSelect.OrderBy)
+		ret, err := exprs.compile(e.Context, sqlSelect.OrderBy)
 		if err != nil {
 			return err
 		}
-		e.content = ret
+		e.Content = ret
 
 	}
 
 	return nil
 }
-func (e *exprCompiler) buildSelectField(selector string) error {
-	e.context.purpose = build_purpose_select
+func (e *exprCompiler) BuildSelectField(selector string) error {
+	e.Context.Purpose = BUILD_SELECT
 	selector = internal.Helper.QuoteExpression(selector)
 	sqlTest := "select " + selector
 	stm, err := sqlparser.Parse(sqlTest)
@@ -103,10 +103,10 @@ func (e *exprCompiler) buildSelectField(selector string) error {
 		for i, expr := range sqlSelect.SelectExprs {
 			if sqlExpr, ok := expr.(*sqlparser.AliasedExpr); ok {
 				if !sqlExpr.As.IsEmpty() {
-					e.context.stackAliasFields.Push(sqlExpr.As.String())
+					e.Context.stackAliasFields.Push(sqlExpr.As.String())
 				}
 				if sqlExpr.Expr != nil {
-					strResult, err := exprs.compile(e.context, sqlExpr.Expr)
+					strResult, err := exprs.compile(e.Context, sqlExpr.Expr)
 
 					if err != nil {
 						return err
@@ -118,12 +118,12 @@ func (e *exprCompiler) buildSelectField(selector string) error {
 				panic(fmt.Errorf("unsupported select type is %T", expr))
 			}
 		}
-		e.content = strings.Join(selectors, ", ")
+		e.Content = strings.Join(selectors, ", ")
 	}
 
 	return nil
 }
-func (e *exprCompiler) buildSetter(stterExpr string) error {
+func (e *exprCompiler) BuildSetter(stterExpr string) error {
 	stterExpr = internal.Helper.QuoteExpression(stterExpr)
 
 	sqlTest := "update test set " + stterExpr
@@ -134,19 +134,19 @@ func (e *exprCompiler) buildSetter(stterExpr string) error {
 	if sqlUpdate, ok := stm.(*sqlparser.Update); ok {
 		strResults := []string{}
 		for _, expr := range sqlUpdate.Exprs {
-			strResult, err := exprs.compile(e.context, expr)
+			strResult, err := exprs.compile(e.Context, expr)
 			if err != nil {
 				return err
 			}
 			strResults = append(strResults, strResult)
 
 		}
-		e.content = strings.Join(strResults, ", ")
+		e.Content = strings.Join(strResults, ", ")
 	}
 
 	return nil
 }
-func (e *exprCompiler) build(joinText string) error {
+func (e *exprCompiler) Build(joinText string) error {
 	joinText = internal.Helper.QuoteExpression(joinText)
 
 	sqlTest := "select * from " + joinText
@@ -157,20 +157,20 @@ func (e *exprCompiler) build(joinText string) error {
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
 
 		for _, expr := range sqlSelect.From {
-			strResult, err := exprs.compile(e.context, expr)
+			strResult, err := exprs.compile(e.Context, expr)
 			if err != nil {
 				return err
 			}
-			e.content = strResult
+			e.Content = strResult
 		}
 	}
 
 	return nil
 
 }
-func (e *exprCompiler) buildWhere(where string) error {
+func (e *exprCompiler) BuildWhere(where string) error {
 	where = internal.Helper.QuoteExpression(where)
-	e.context.purpose = build_purpose_where
+	e.Context.Purpose = BUILD_WHERE
 
 	sqlTest := "select * from tmp where" + where
 	stm, err := sqlparser.Parse(sqlTest)
@@ -178,13 +178,13 @@ func (e *exprCompiler) buildWhere(where string) error {
 		return err
 	}
 	if sqlSelect, ok := stm.(*sqlparser.Select); ok {
-		strResult, err := exprs.compile(e.context, sqlSelect.Where.Expr)
+		strResult, err := exprs.compile(e.Context, sqlSelect.Where.Expr)
 		// for _, expr := range sqlSelect.From {
-		// 	strResult, err := exprs.compile(e.context, expr)
+		// 	strResult, err := exprs.compile(e.Context, expr)
 		if err != nil {
 			return err
 		}
-		e.content = strResult
+		e.Content = strResult
 	}
 
 	return nil
@@ -243,13 +243,13 @@ func NewExprCompiler(db *db.DB) (*exprCompiler, error) {
 	}
 
 	ret := &exprCompiler{
-		context: &exprCompileContext{
-			tables:           make([]string, 0),
+		Context: &exprCompileContext{
+			Tables:           make([]string, 0),
 			schema:           &init.val.schema,
-			alias:            make(map[string]string),
+			Alias:            make(map[string]string),
 			aliasToDbTable:   make(map[string]string),
-			dialect:          init.val.dialect,
-			purpose:          build_purpose_select,
+			Dialect:          init.val.dialect,
+			Purpose:          BUILD_SELECT,
 			stackAliasFields: internal.Stack[string]{},
 			stackAliasTables: internal.Stack[string]{},
 		},
@@ -261,8 +261,8 @@ func CompileJoin(joinText string, db *db.DB) (*exprCompiler, error) {
 	if err != nil {
 		return nil, err
 	}
-	compiler.context.purpose = build_purpose_join
-	err = compiler.build(joinText)
+	compiler.Context.Purpose = BUILD_JOIN
+	err = compiler.Build(joinText)
 	if err != nil {
 		return nil, err
 	}

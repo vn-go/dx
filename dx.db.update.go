@@ -35,3 +35,7 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 	return UpdateResult{RowsAffected: n, Sql: info.sql, Error: nil}
 
 }
+func (db *DB) Update(item interface{}) UpdateResult {
+
+	return db.UpdateWithContext(context.Background(), item)
+}

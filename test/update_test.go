@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +9,7 @@ import (
 	"github.com/vn-go/dx/test/models"
 )
 
-func TestInsertUser(t *testing.T) {
+func TestUpdatetUser(t *testing.T) {
 	user, err := dx.NewDTO[models.User]()
 	user.Username = "admin"
 	assert.NoError(t, err)
@@ -21,26 +20,13 @@ func TestInsertUser(t *testing.T) {
 	if dxError, ok := err.(*dxErr.DbErr); ok {
 		if dxError.ErrorType != dxErr.ERR_DUPLICATE {
 			t.Fail()
+		} else {
+			user.Username = "admin1"
+			res := db.Update(user)
+			assert.NoError(t, res.Error)
 		}
 	} else {
 		assert.NoError(t, err)
-	}
-
-}
-func BenchmarkInsertUser(t *testing.B) {
-	db, _ := dx.Open("mysql", mySqlDsn)
-	defer db.Close()
-	for i := 0; i < t.N; i++ {
-
-		for j := 0; j < 10000; j++ {
-			user, _ := dx.NewDTO[models.User]()
-			user.Username = fmt.Sprintf("user-ok-%d", j+i*10)
-			err := db.Insert(user)
-			assert.NoError(t, err)
-		}
-
-		//dx.SetManagerDb("mysql", "a001")
-
 	}
 
 }

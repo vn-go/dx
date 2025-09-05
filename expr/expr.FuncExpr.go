@@ -9,16 +9,16 @@ import (
 
 func (compiler *exprReceiver) FuncExpr(context *exprCompileContext, expr *sqlparser.FuncExpr) (string, error) {
 	strArgs := []string{}
-	backup_purpose := context.purpose
-	context.purpose = build_purpose_for_function
+	backup_purpose := context.Purpose
+	context.Purpose = BUILD_FUNC
 	defer func() {
-		context.purpose = backup_purpose
+		context.Purpose = backup_purpose
 	}()
 
 	for _, arg := range expr.Exprs {
 		argStr, err := compiler.compile(context, arg)
 		if err != nil {
-			context.purpose = backup_purpose
+			context.Purpose = backup_purpose
 			return "", err
 		}
 		strArgs = append(strArgs, argStr)
@@ -29,7 +29,7 @@ func (compiler *exprReceiver) FuncExpr(context *exprCompileContext, expr *sqlpar
 		HandledByDialect: false,
 	}
 
-	ret, err := context.dialect.SqlFunction(&dialectDelegateFunction)
+	ret, err := context.Dialect.SqlFunction(&dialectDelegateFunction)
 	if err != nil {
 
 		return "", err
@@ -41,7 +41,7 @@ func (compiler *exprReceiver) FuncExpr(context *exprCompileContext, expr *sqlpar
 
 	retTxt := dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")"
 	if aliasField, ok := context.stackAliasFields.Pop(); ok {
-		retTxt = retTxt + " AS " + context.dialect.Quote(aliasField)
+		retTxt = retTxt + " AS " + context.Dialect.Quote(aliasField)
 
 	}
 

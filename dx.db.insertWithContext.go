@@ -19,7 +19,3 @@ func (db *DB) InsertWithContext(ctx context.Context, data interface{}) error {
 
 	return dbutils.DbUtils.Insert.Insert(db.DB, data, ctx)
 }
-func (db *DB) Update(item interface{}) UpdateResult {
-	return db.UpdateWithContext(context.Background(), item)
-
-}

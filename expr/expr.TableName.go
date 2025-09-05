@@ -13,15 +13,15 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 	if context.schema == nil {
 		context.schema = &map[string]bool{}
 	}
-	if context.alias == nil {
-		context.alias = map[string]string{}
+	if context.Alias == nil {
+		context.Alias = map[string]string{}
 	}
 
-	if context.purpose == build_purpose_join {
+	if context.Purpose == BUILD_JOIN {
 		if aliasTableName, ok := context.stackAliasTables.Pop(); ok {
-			if _, ok := context.alias[aliasTableName]; !ok {
-				context.tables = append(context.tables, aliasTableName)
-				context.alias[aliasTableName] = aliasTableName
+			if _, ok := context.Alias[aliasTableName]; !ok {
+				context.Tables = append(context.Tables, aliasTableName)
+				context.Alias[aliasTableName] = aliasTableName
 				context.aliasToDbTable[aliasTableName] = tableName
 			}
 			compileTableName := tableName
@@ -35,7 +35,7 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 				}
 				context.aliasToDbTable[aliasTableName] = tableName
 			}
-			return context.dialect.Quote(compileTableName) + " AS " + context.dialect.Quote(aliasTableName), nil
+			return context.Dialect.Quote(compileTableName) + " AS " + context.Dialect.Quote(aliasTableName), nil
 		} else {
 
 			compileTableName := tableName
@@ -43,18 +43,18 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 				compileTableName = internal.Utils.Pluralize(tableName)
 
 			}
-			if _, ok := context.alias[tableName]; !ok {
-				context.tables = append(context.tables, tableName)
-				context.alias[tableName] = "T" + strconv.Itoa(len(context.tables))
+			if _, ok := context.Alias[tableName]; !ok {
+				context.Tables = append(context.Tables, tableName)
+				context.Alias[tableName] = "T" + strconv.Itoa(len(context.Tables))
 			}
-			return context.dialect.Quote(compileTableName) + " AS " + context.dialect.Quote(context.alias[tableName]), nil
+			return context.Dialect.Quote(compileTableName) + " AS " + context.Dialect.Quote(context.Alias[tableName]), nil
 		}
 	} else {
 		if _, ok := (*context.schema)[tableName]; ok {
-			return context.dialect.Quote(tableName), nil
+			return context.Dialect.Quote(tableName), nil
 		}
 		tableName = internal.Utils.Pluralize(tableName)
-		return context.dialect.Quote(tableName), nil
+		return context.Dialect.Quote(tableName), nil
 	}
 
 }
