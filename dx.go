@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/vn-go/dx/db"
+	dbutils "github.com/vn-go/dx/dbUtils"
 	"github.com/vn-go/dx/model"
 )
 
@@ -43,4 +44,13 @@ func Open(driverName string, dsn string) (*db.DB, error) {
 }
 func SetManagerDb(driver, dbName string) {
 	db.SetManagerDb(driver, dbName)
+}
+func NewDTO[T any]() (*T, error) {
+	typ := reflect.TypeFor[T]()
+	val, err := dbutils.DbUtils.ModelFactory.CreateFromType(typ)
+	if err != nil {
+		return nil, err
+	}
+	return val.(*T), nil
+
 }
