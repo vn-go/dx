@@ -65,7 +65,8 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 			}
 
 		}
-		sql = dialect.MakeSelectTop(sql, 1)
+		offset := uint64(1)
+		sql = dialect.LimitAndOffset(sql, nil, &offset, "")
 		return &basicSqlFirstItemNoFilterResult{
 			sql:           sql,
 			sqlCompiler:   compiler.Content,

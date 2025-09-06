@@ -48,7 +48,8 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 			}
 			sql += " WHERE " + compiler.Content
 		}
-		sql = dialect.MakeSelectTop(sql, 1)
+		var limitPtr *uint64 
+		sql = dialect.LimitAndOffset(sql, nil, limitPtr, "")
 		return sql, nil
 	})
 

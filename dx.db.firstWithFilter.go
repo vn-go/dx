@@ -22,7 +22,7 @@ func (db *DB) firstWithFilter(entity interface{}, filter string, args ...interfa
 	return db.ExecToItem(entity, sql, args...)
 
 }
-func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string, args ...interface{}) error {
+func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string, limit, offset *uint64, args ...interface{}) error {
 	typ := reflect.TypeOf(entity)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
@@ -35,6 +35,12 @@ func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string
 	//sql, err := db.buildBasicSqlFindItem(eleType, filter, order) //OnBuildSQLFirstItem(typ, db, filter)
 
 	key := db.DriverName + "://" + db.DbName + "/" + eleType.String() + "/buildBasicSqlFindItem/" + filter + "/" + orderStr
+	if limit != nil {
+		key += fmt.Sprintf("/%s", limit)
+	}
+	if offset != nil {
+		key += fmt.Sprintf("/%s", offset)
+	}
 	sql, err := internal.OnceCall(key, func() (string, error) {
 
 		repoType, err := model.ModelRegister.GetModelByType(eleType)
@@ -75,7 +81,10 @@ func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string
 			if err != nil {
 				return "", err
 			}
-			sql += " ORDER BY " + compiler.Content
+			sql = compiler.Context.Dialect.LimitAndOffset(sql, limit, offset, compiler.Content)
+			//sql += " ORDER BY " + compiler.Content
+		} else {
+			sql = compiler.Context.Dialect.LimitAndOffset(sql, limit, offset, "")
 		}
 
 		return sql, nil

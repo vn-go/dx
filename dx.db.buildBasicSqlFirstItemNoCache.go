@@ -45,6 +45,7 @@ func (db *DB) buildBasicSqlFirstItemNoCache(typ reflect.Type, filter string) (st
 		}
 		sql += " WHERE " + compiler.Content
 	}
-	sql = dialect.MakeSelectTop(sql, 1)
+	offset := uint64(1)
+	sql = dialect.LimitAndOffset(sql, nil, &offset, "")
 	return sql, nil
 }

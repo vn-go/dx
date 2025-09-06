@@ -18,6 +18,8 @@ type whereTypes struct {
 	whereExpr *whereTypesItem
 	lastWhere *whereTypesItem
 	orders    []string
+	limit     *uint64
+	offset    *uint64
 }
 type findResult struct {
 	RowsAffected uint64
@@ -117,6 +119,7 @@ func (w *whereTypes) Order(order string) *whereTypes {
 	w.orders = append(w.orders, strings.Split(order, ",")...)
 	return w
 }
+
 func (w *whereTypes) Find(item any) error {
 	if w.err != nil {
 		return w.err
@@ -126,5 +129,20 @@ func (w *whereTypes) Find(item any) error {
 	if len(w.orders) > 0 {
 		orderStr = strings.Join(w.orders, ",")
 	}
-	return w.db.findtWithFilter(item, whereStr, orderStr, ars...)
+	return w.db.findtWithFilter(item, whereStr, orderStr, w.limit, w.offset, ars...)
 }
+
+// for sql server
+//
+// SELECT * FROM [users] ORDER BY (SELECT NULL) OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+func (m *whereTypes) Limit(num uint64) *whereTypes {
+	m.limit = &num
+	return m
+}
+func (m *whereTypes) Offset(num uint64) *whereTypes {
+	m.offset = &num
+	return m
+}
+
+//db.Limit(pageSize).Offset(offset).Find(&users)
+//SELECT * FROM [users] ORDER BY (SELECT NULL) OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;

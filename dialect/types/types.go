@@ -81,5 +81,5 @@ type Dialect interface {
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
 	NewDataBase(db *db.DB, dbName string) (string, error)
-	MakeSelectTop(sql string, top int) string
+	LimitAndOffset(sql string, limit, offset *uint64, orderBy string) string
 }

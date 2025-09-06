@@ -19,7 +19,7 @@ func TestFindbyWhereMysql(t *testing.T) {
 	total := uint64(0)
 	err = db.Model(&models.User{}).Where("username!=?", 25).Count(&total)
 	assert.NoError(t, err)
-	err = db.Where("username!=?", "admin").Order("Id desc").Find(&user)
+	err = db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
 
 	assert.NoError(t, err)
 }
@@ -33,7 +33,7 @@ func BenchmarkFindbyWhereMysql(t *testing.B) {
 	user := []models.User{}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		db.Where("username!=?", "admin").Order("Id desc").Find(&user)
+		db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
 	}
 
 }

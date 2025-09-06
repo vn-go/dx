@@ -7,3 +7,15 @@ cpu: 12th Gen Intel(R) Core(TM) i7-12650H
 BenchmarkFindbyWhereMysql-16    	      66	  16548085 ns/op	13251486 B/op	  183717 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	1.260s
+
+
+//-----------------
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFindbyWhereMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFindbyWhereMysql-16    	    2710	    459640 ns/op	  197547 B/op	    1892 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.433s

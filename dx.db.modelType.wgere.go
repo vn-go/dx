@@ -15,6 +15,8 @@ type modelTypeWhere struct {
 	err       error
 	whereExpr *whereTypesItem
 	lastWhere *whereTypesItem
+	limit     *uint64
+	offset    *uint64
 }
 
 func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
@@ -86,6 +88,9 @@ func (w *modelTypeWhere) Or(args ...interface{}) *modelTypeWhere {
 	return w
 }
 func (w *modelTypeWhere) getFilter() (string, []any) {
+	if w.whereExpr == nil {
+		return "", nil
+	}
 	ret := w.whereExpr.filter
 	args := w.whereExpr.args
 	if w.whereExpr.next != nil {
@@ -136,3 +141,30 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 	}
 	return nil
 }
+func (m *modelTypeWhere) Limit(num uint64) *modelTypeWhere {
+	m.limit = &num
+	return m
+}
+func (m *modelTypeWhere) Offset(num uint64) *modelTypeWhere {
+	m.offset = &num
+	return m
+}
+func (m *modelType) Limit(num uint64) *modelTypeWhere {
+	ret := &modelTypeWhere{
+		modelType: m,
+		limit:     &num,
+	}
+	ret.lastWhere = ret.whereExpr
+	return ret
+}
+func (m *modelType) Offset(num uint64) *modelTypeWhere {
+	ret := &modelTypeWhere{
+		modelType: m,
+		offset:    &num,
+	}
+	ret.lastWhere = ret.whereExpr
+	return ret
+}
+
+//db.Limit(pageSize).Offset(offset).Find(&users)
+//SELECT * FROM [users] ORDER BY (SELECT NULL) OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
