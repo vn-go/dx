@@ -36,10 +36,10 @@ func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string
 
 	key := db.DriverName + "://" + db.DbName + "/" + eleType.String() + "/buildBasicSqlFindItem/" + filter + "/" + orderStr
 	if limit != nil {
-		key += fmt.Sprintf("/%s", limit)
+		key += fmt.Sprintf("/%d", *limit)
 	}
 	if offset != nil {
-		key += fmt.Sprintf("/%s", offset)
+		key += fmt.Sprintf("/%d", *offset)
 	}
 	sql, err := internal.OnceCall(key, func() (string, error) {
 
