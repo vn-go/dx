@@ -73,7 +73,7 @@ type exprCompiler struct {
 func (e *exprCompiler) BuildSortField(selector string) error {
 	e.Context.Purpose = BUILD_ORDER
 	selector = internal.Helper.QuoteExpression(selector)
-	sqlTest := "select tmp order by " + selector
+	sqlTest := "select *  from tmp order by " + selector
 	stm, err := sqlparser.Parse(sqlTest)
 	if err != nil {
 		return err

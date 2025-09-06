@@ -55,3 +55,29 @@ func BenchmarkFirstFilterMysql(t *testing.B) {
 	}
 
 }
+func TestFirstbyWhereMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+
+	user := &models.User{}
+	err = db.Where("username=?", "admin").First(user)
+
+	assert.NoError(t, err)
+}
+func BenchmarkFirstbyWhereMysql(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+
+	user := &models.User{}
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		db.Where("username=?", "admin").First(user)
+	}
+
+}

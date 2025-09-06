@@ -5,101 +5,13 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
-
-func (db *DB) SelectAll1(items any) error {
-	typ := reflect.TypeOf(items)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	if typ.Kind() != reflect.Slice {
-		return errors.NewSysError(fmt.Sprintf("%s is not slice", reflect.TypeOf(items).String()))
-	}
-	dialect := factory.DialectFactory.Create(db.Info.DriverName)
-	typ = typ.Elem()
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	model, err := model.ModelRegister.GetModelByType(typ)
-	if err != nil {
-		return err
-	}
-	fieldsSelect := make([]string, len(model.Entity.Cols))
-	for i, col := range model.Entity.Cols {
-		fieldsSelect[i] = dialect.Quote(col.Name) + " AS " + dialect.Quote(col.Field.Name)
-	}
-	sql := fmt.Sprintf("SELECT %s FROM %s", strings.Join(fieldsSelect, ", "), dialect.Quote(model.Entity.TableName))
-	rows, err := db.Query(sql)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	fieldIndexes := make([][]int, len(model.Entity.Cols)) // cache field index paths
-	fieldTypes := make([]reflect.Type, len(model.Entity.Cols))
-	for i, col := range model.Entity.Cols {
-		fieldIndexes[i] = col.IndexOfField
-		fieldTypes[i] = col.Field.Type
-	}
-
-	// 5. Buffer để scan dữ liệu từ DB
-	vals := make([]interface{}, len(model.Entity.Cols))
-	ptrs := make([]interface{}, len(model.Entity.Cols))
-	for i := range ptrs {
-		ptrs[i] = &vals[i]
-	}
-	valOfItems := reflect.ValueOf(items)
-	// valOfItemsEle := valOfItems.Elem()
-	for rows.Next() {
-		if err := rows.Scan(ptrs...); err != nil {
-			return err
-		}
-
-		// Tạo instance T
-		ptr := reflect.New(typ).Elem()
-
-		for i := range model.Entity.Cols {
-			raw := vals[i]
-			if raw == nil {
-				continue
-			}
-
-			val := reflect.ValueOf(raw)
-			if !val.IsValid() || (val.Kind() == reflect.Ptr && val.IsNil()) {
-				continue
-			}
-			if val.Kind() == reflect.Ptr {
-				val = val.Elem()
-				if !val.IsValid() {
-					continue
-				}
-			}
-
-			field := ptr.FieldByIndex(fieldIndexes[i])
-			if !field.CanSet() {
-				continue
-			}
-
-			if val.Type().AssignableTo(fieldTypes[i]) {
-				field.Set(val)
-			} else if val.Type().ConvertibleTo(fieldTypes[i]) {
-				field.Set(val.Convert(fieldTypes[i]))
-			}
-		}
-
-		//valOfItems = reflect.Append(valOfItems, ptr)
-		valOfItems.Set(reflect.Append(valOfItems, ptr))
-		//items = append(items, ptr.Addr().Interface())
-	}
-
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	return nil
-}
 
 func (db *DB) SelectAll(items any) error {
 	// items phải là pointer đến slice
@@ -274,6 +186,108 @@ func (db *DB) SelectAllWithContext(context context.Context, items any) error {
 
 		reflect.Append(valOfItems, ptr.Addr())
 		//items = append(items, ptr.Addr().Interface())
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+func (db *DB) fecthItems(items any, sql string, args ...any) error {
+	// items phải là pointer đến slice
+	typ := reflect.TypeOf(items)
+	if typ.Kind() != reflect.Ptr {
+		return errors.NewSysError(fmt.Sprintf("%s is not pointer to slice", typ.String()))
+	}
+	sliceVal := reflect.ValueOf(items).Elem()
+	if sliceVal.Kind() != reflect.Slice {
+		return errors.NewSysError(fmt.Sprintf("%s is not slice", typ.String()))
+	}
+
+	// lấy kiểu phần tử của slice
+	typElem := sliceVal.Type().Elem()
+	if typElem.Kind() == reflect.Ptr {
+		typElem = typElem.Elem()
+	}
+
+	rows, err := db.Query(sql, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+
+		return db.parseError(err)
+	}
+
+	vals := make([]interface{}, len(cols))
+	ptrs := make([]interface{}, len(cols))
+	for i := range ptrs {
+		ptrs[i] = &vals[i]
+	}
+	key := typElem.String() + "://" + sql + "://fecthItems"
+	fectInfo, err := internal.OnceCall(key, func() ([]struct {
+		fieldIndexes []int
+		fieldType    reflect.Type
+	}, error) {
+		ret := make([]struct {
+			fieldIndexes []int
+			fieldType    reflect.Type
+		}, len(cols))
+		for i, col := range cols {
+			if field, ok := typElem.FieldByNameFunc(func(s string) bool {
+				r := []rune(s)
+				return unicode.IsUpper(r[0]) && strings.EqualFold(s, col)
+			}); ok {
+				ret[i].fieldIndexes = field.Index
+				ret[i].fieldType = field.Type
+			}
+		}
+		return ret, nil
+	})
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		if err := rows.Scan(ptrs...); err != nil {
+			return err
+		}
+
+		// tạo instance struct
+		ptr := reflect.New(typElem).Elem()
+
+		for i := range cols {
+			raw := vals[i]
+			if raw == nil {
+				continue
+			}
+
+			val := reflect.ValueOf(raw)
+			if !val.IsValid() || (val.Kind() == reflect.Ptr && val.IsNil()) {
+				continue
+			}
+			if val.Kind() == reflect.Ptr {
+				val = val.Elem()
+				if !val.IsValid() {
+					continue
+				}
+			}
+
+			field := ptr.FieldByIndex(fectInfo[i].fieldIndexes)
+			if !field.CanSet() {
+				continue
+			}
+
+			if val.Type().AssignableTo(fectInfo[i].fieldType) {
+				field.Set(val)
+			} else if val.Type().ConvertibleTo(fectInfo[i].fieldType) {
+				field.Set(val.Convert(fectInfo[i].fieldType))
+			}
+		}
+
+		// append vào slice gốc
+		sliceVal.Set(reflect.Append(sliceVal, ptr))
 	}
 
 	if err := rows.Err(); err != nil {

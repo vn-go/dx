@@ -10,7 +10,12 @@ func (db *DB) Model(ent any) *modelType {
 	if typeEle.Kind() == reflect.Ptr {
 		typeEle = typeEle.Elem()
 	}
-
+	if typeEle.Kind() == reflect.Slice {
+		typeEle = typeEle.Elem()
+	}
+	if typeEle.Kind() == reflect.Ptr {
+		typeEle = typeEle.Elem()
+	}
 	return &modelType{
 		db:         db,
 		typ:        typ,

@@ -7,7 +7,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
-	migateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migate/loader/types"
 )
 
 // Certain functions are transformed during compilation based on the SQL dialect.
@@ -72,7 +72,7 @@ func (e *DialectError) Reload() {
 type Dialect interface {
 	LikeValue(val string) string
 
-	ParseError(dbSchame *migateLoaderTypes.DbSchema, err error) error
+	ParseError(dbSchema *types.DbSchema, err error) error
 	Name() string
 	Quote(str ...string) string
 	GetTableAndColumnsDictionary(db *sql.DB) (map[string]string, error)

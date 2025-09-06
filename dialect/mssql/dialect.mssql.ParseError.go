@@ -5,7 +5,7 @@ import (
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
-func (d *mssqlDialect) ParseError(dbSchame *types.DbSchema, err error) error {
+func (d *mssqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {
 	//go-mssqldb.Error
 	if mssqlErr, ok := err.(mssql.Error); ok {
 		return d.Error2627(mssqlErr)

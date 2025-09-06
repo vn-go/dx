@@ -7,7 +7,7 @@ import (
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
-func (d *mySqlDialect) ParseError(dbSchame *types.DbSchema, err error) error {
+func (d *mySqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {
 	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 		if mysqlErr.Number == 1048 { //1452
 			return d.ParseError1048(mysqlErr)
