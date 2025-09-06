@@ -14,15 +14,13 @@ import (
 type MigratorPostgres struct {
 	loader             types.IMigratorLoader
 	cacheGetFullScript sync.Map
-
-	db *db.DB
 }
 
-func NewMigrator(db *db.DB) migartorType.IMigrator {
+func NewMigrator() migartorType.IMigrator {
 
 	return &MigratorPostgres{
-		db:     db,
-		loader: loaderPostgres.NewPosgresSchemaLoader(db),
+
+		loader: loaderPostgres.NewPosgresSchemaLoader(),
 	}
 }
 func (m *MigratorPostgres) GetLoader() types.IMigratorLoader {
@@ -38,20 +36,20 @@ type postgresInitDoMigrates struct {
 
 var cacheMigratorPostgresMigratorPostgres sync.Map
 
-func (m *MigratorPostgres) DoMigrates() error {
-	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
+func (m *MigratorPostgres) DoMigrates(db *db.DB) error {
+	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheMigratorPostgresMigratorPostgres.LoadOrStore(key, &postgresInitDoMigrates{})
 
 	mi := actual.(*postgresInitDoMigrates)
 	var err error
 	mi.once.Do(func() {
 		var scripts []string
-		scripts, err = m.GetFullScript()
+		scripts, err = m.GetFullScript(db)
 		if err != nil {
 			return
 		}
 		for _, script := range scripts {
-			_, err = m.db.Exec(script)
+			_, err = db.Exec(script)
 			if err != nil {
 				err = fmt.Errorf("sql-error:\n%s\n%s", script, err.Error())
 				break

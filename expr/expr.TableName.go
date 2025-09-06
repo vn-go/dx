@@ -22,18 +22,18 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 			if _, ok := context.Alias[aliasTableName]; !ok {
 				context.Tables = append(context.Tables, aliasTableName)
 				context.Alias[aliasTableName] = aliasTableName
-				context.aliasToDbTable[aliasTableName] = tableName
+				context.AliasToDbTable[aliasTableName] = tableName
 			}
 			compileTableName := tableName
 			if _, ok := (*context.schema)[tableName]; !ok {
 				compileTableName = internal.Utils.Pluralize(tableName)
-				context.aliasToDbTable[aliasTableName] = tableName
+				context.AliasToDbTable[aliasTableName] = tableName
 
 			} else {
-				if context.aliasToDbTable == nil {
-					context.aliasToDbTable = map[string]string{}
+				if context.AliasToDbTable == nil {
+					context.AliasToDbTable = map[string]string{}
 				}
-				context.aliasToDbTable[aliasTableName] = tableName
+				context.AliasToDbTable[aliasTableName] = tableName
 			}
 			return context.Dialect.Quote(compileTableName) + " AS " + context.Dialect.Quote(aliasTableName), nil
 		} else {

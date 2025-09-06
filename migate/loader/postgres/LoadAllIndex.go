@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
@@ -28,7 +29,7 @@ struct ColumnsInfo  below:
 		tenantDB.TenantDB is sql.DB
 */
 
-func (m *MigratorLoaderPostgres) LoadAllIndex() (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			i.relname AS index_name,
@@ -55,7 +56,7 @@ func (m *MigratorLoaderPostgres) LoadAllIndex() (map[string]types.ColumnsInfo, e
 			i.relname, a.attnum;
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}

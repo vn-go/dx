@@ -15,15 +15,13 @@ import (
 type MigratorMySql struct {
 	loader             types.IMigratorLoader
 	cacheGetFullScript sync.Map
-
-	db *db.DB
 }
 
-func NewMigrator(db *db.DB) migartorType.IMigrator {
+func NewMigrator() migartorType.IMigrator {
 
 	return &MigratorMySql{
-		db:     db,
-		loader: loaderMysql.NewMysqlMigratorLoader(db),
+
+		loader: loaderMysql.NewMysqlMigratorLoader(),
 	}
 }
 func (m *MigratorMySql) GetLoader() types.IMigratorLoader {
@@ -40,21 +38,21 @@ type mysqlInitDoMigrates struct {
 
 var cacheMigratorMySqlDoMigrates sync.Map
 
-func (m *MigratorMySql) DoMigrates() error {
+func (m *MigratorMySql) DoMigrates(db *db.DB) error {
 
-	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
+	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheMigratorMySqlDoMigrates.LoadOrStore(key, &mysqlInitDoMigrates{})
 
 	mi := actual.(*mysqlInitDoMigrates)
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript()
+		scripts, err := m.GetFullScript(db)
 		if err != nil {
 			return
 		}
 		for _, script := range scripts {
-			_, err := m.db.Exec(script)
+			_, err := db.Exec(script)
 			if err != nil {
 				mi.err = errors.NewMigrationError(script, err)
 				break

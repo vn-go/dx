@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
@@ -28,7 +29,7 @@ struct ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderMysql) LoadAllPrimaryKey() (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			kcu.CONSTRAINT_NAME,
@@ -54,7 +55,7 @@ func (m *MigratorLoaderMysql) LoadAllPrimaryKey() (map[string]types.ColumnsInfo,
 			kcu.CONSTRAINT_NAME, kcu.ORDINAL_POSITION
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query primary keys: %w", err)
 	}

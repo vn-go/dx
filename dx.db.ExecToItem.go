@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	dbErrors "github.com/vn-go/dx/errors"
+	"github.com/vn-go/dx/internal"
 
 	"github.com/vn-go/dx/model"
 )
@@ -21,37 +22,24 @@ func (db *DB) ExecToItem(result interface{}, query string, args ...interface{}) 
 		return fmt.Errorf("result must be a pointer to struct")
 	}
 	typ = typ.Elem()
-	mapIndex := onTenantDbNeedGetMapIndex(typ)
-
-	return execToItemOptimized(context.Background(), db, result, &mapIndex, query, args...)
-}
-
-var onTenantDbNeedGetMapIndexCache sync.Map
-
-type initOnTenantDbNeedGetMapIndex struct {
-	once sync.Once
-	val  map[string][]int
-}
-
-func onTenantDbNeedGetMapIndex(typ reflect.Type) map[string][]int {
-	key := typ.String()
-	actual, _ := onTenantDbNeedGetMapIndexCache.LoadOrStore(key, &initOnTenantDbNeedGetMapIndex{})
-	initBuild := actual.(*initOnTenantDbNeedGetMapIndex)
-	initBuild.once.Do(func() {
-		initBuild.val = onTenantDbNeedGetMapIndexNoCache(typ)
+	key := typ.String() + "://" + reflect.TypeOf(db).String() + "/ExecToItem/" + query
+	ret, err := internal.OnceCall(key, func() (*map[string][]int, error) {
+		repoType, err := model.ModelRegister.GetModelByType(typ)
+		if err != nil {
+			return nil, err
+		}
+		ret := map[string][]int{}
+		for _, col := range repoType.Entity.Cols {
+			ret[col.Field.Name] = col.IndexOfField
+		}
+		return &ret, nil
 	})
-	return initBuild.val
-}
-func onTenantDbNeedGetMapIndexNoCache(typ reflect.Type) map[string][]int {
-	repoType, err := model.ModelRegister.GetModelByType(typ)
 	if err != nil {
-		return nil
+		return err
 	}
-	ret := map[string][]int{}
-	for _, col := range repoType.Entity.Cols {
-		ret[col.Field.Name] = col.IndexOfField
-	}
-	return ret
+	//mapIndex := onTenantDbNeedGetMapIndex(typ)
+
+	return db.execToItemOptimized(context.Background(), result, ret, query, args...)
 }
 
 var scanArgsPool = sync.Pool{
@@ -60,7 +48,7 @@ var scanArgsPool = sync.Pool{
 	},
 }
 
-func execToItemOptimized(context context.Context, db *DB, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
+func (db *DB) execToItemOptimized(context context.Context, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
 	ptrVal := reflect.ValueOf(result)
 	if ptrVal.Kind() != reflect.Ptr {
 		return fmt.Errorf("result must be a pointer to slice")
@@ -87,7 +75,7 @@ func execToItemOptimized(context context.Context, db *DB, result interface{}, ma
 		return err
 	}
 
-	encoder, err := getFieldEncoder(typ, cols, mapIndex)
+	fieldIndexes, err := db.getFieldEncoder(typ, cols, mapIndex)
 	if err != nil {
 		return err
 	}
@@ -98,7 +86,7 @@ func execToItemOptimized(context context.Context, db *DB, result interface{}, ma
 	for rows.Next() {
 
 		scanArgs := scanArgsPool.Get().([]interface{})[:0]
-		for _, idx := range encoder.fieldIndexes {
+		for _, idx := range fieldIndexes {
 			scanArgs = append(scanArgs, row.FieldByIndex(idx).Addr().Interface())
 		}
 
@@ -118,57 +106,35 @@ func execToItemOptimized(context context.Context, db *DB, result interface{}, ma
 	return nil
 }
 
-type fieldEncoder struct {
-	fieldIndexes [][]int
-}
-type initGetFieldEncoder struct {
-	once sync.Once
-	val  fieldEncoder
-	err  error
-}
-
-var encoderCache sync.Map
-
-func getFieldEncoder(typ reflect.Type, cols []string, mapIndex *map[string][]int) (*fieldEncoder, error) {
+func (db *DB) getFieldEncoder(typ reflect.Type, cols []string, mapIndex *map[string][]int) ([][]int, error) {
 	key := typ.String() + "://" + strings.Join(cols, ",")
-	actual, _ := encoderCache.LoadOrStore(key, &initGetFieldEncoder{})
-	init := actual.(*initGetFieldEncoder)
-	init.once.Do(func() {
-		val, err := getFieldEncoderNoCache(typ, cols, mapIndex)
-		init.val = *val
-		init.err = err
-	})
-	return &init.val, init.err
-
-}
-func getFieldEncoderNoCache(typ reflect.Type, cols []string, mapIndex *map[string][]int) (*fieldEncoder, error) {
-
-	fields := make([][]int, len(cols))
-	for i, col := range cols {
-		// Try exact match first
-		field, ok := typ.FieldByName(col)
-		if !ok {
-			// Try case-insensitive match
-			for j := 0; j < typ.NumField(); j++ {
-				if strings.EqualFold(typ.Field(j).Name, col) {
-					field = typ.Field(j)
-					ok = true
-					break
+	return internal.OnceCall(key, func() ([][]int, error) {
+		fields := make([][]int, len(cols))
+		for i, col := range cols {
+			// Try exact match first
+			field, ok := typ.FieldByName(col)
+			if !ok {
+				// Try case-insensitive match
+				for j := 0; j < typ.NumField(); j++ {
+					if strings.EqualFold(typ.Field(j).Name, col) {
+						field = typ.Field(j)
+						ok = true
+						break
+					}
 				}
 			}
-		}
-		if !ok {
-			return nil, fmt.Errorf("column %s not found in struct", col)
-		}
-		if mapIndex == nil {
-			fields[i] = field.Index
-		} else {
+			if !ok {
+				return nil, fmt.Errorf("column %s not found in struct", col)
+			}
+			if mapIndex == nil {
+				fields[i] = field.Index
+			} else {
 
-			fields[i] = (*mapIndex)[field.Name]
+				fields[i] = (*mapIndex)[field.Name]
+			}
 		}
-	}
 
-	encoder := &fieldEncoder{fieldIndexes: fields}
+		return fields, nil
+	})
 
-	return encoder, nil
 }

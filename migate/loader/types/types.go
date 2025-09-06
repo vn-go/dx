@@ -1,5 +1,7 @@
 package types
 
+import "github.com/vn-go/dx/db"
+
 type ColumnInfo struct {
 	/*
 		Db field name
@@ -58,9 +60,8 @@ type DbSchema struct {
 	ForeignKeys map[string]DbForeignKeyInfo
 }
 type IMigratorLoader interface {
-	GetDbName() string
-	LoadAllTable() (map[string]map[string]ColumnInfo, error)
-	LoadAllPrimaryKey() (map[string]ColumnsInfo, error)
+	LoadAllTable(db *db.DB) (map[string]map[string]ColumnInfo, error)
+	LoadAllPrimaryKey(db *db.DB) (map[string]ColumnsInfo, error)
 	/*
 		Heed: for SQL Server, we need to use the following query to get the unique keys:
 			SELECT
@@ -70,11 +71,11 @@ type IMigratorLoader interface {
 			JOIN sys.tables t ON i.object_id = t.object_id
 			WHERE i.type_desc = 'NONCLUSTERED' and is_unique_constraint=1
 	*/
-	LoadAllUniIndex() (map[string]ColumnsInfo, error)
+	LoadAllUniIndex(db *db.DB) (map[string]ColumnsInfo, error)
 	/*
 
 	 */
-	LoadAllIndex() (map[string]ColumnsInfo, error)
-	LoadFullSchema() (*DbSchema, error)
-	LoadForeignKey() ([]DbForeignKeyInfo, error)
+	LoadAllIndex(db *db.DB) (map[string]ColumnsInfo, error)
+	LoadFullSchema(db *db.DB) (*DbSchema, error)
+	LoadForeignKey(db *db.DB) ([]DbForeignKeyInfo, error)
 }

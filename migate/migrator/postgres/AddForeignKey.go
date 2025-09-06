@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 	miragteTypes "github.com/vn-go/dx/migate/migrator/types"
 )
 
-func (m *MigratorPostgres) GetSqlAddForeignKey() ([]string, error) {
+func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 	ret := []string{}
 
-	schema, err := m.loader.LoadFullSchema()
+	schema, err := m.loader.LoadFullSchema(db)
 	if err != nil {
 		return nil, err
 	}

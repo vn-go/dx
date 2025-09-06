@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
-func (m *MigratorLoaderMysql) LoadAllIndex() (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			s.INDEX_NAME,
@@ -27,7 +28,7 @@ func (m *MigratorLoaderMysql) LoadAllIndex() (map[string]types.ColumnsInfo, erro
 		ORDER BY s.INDEX_NAME, s.SEQ_IN_INDEX
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query indexes: %w", err)
 	}

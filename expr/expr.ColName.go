@@ -9,8 +9,8 @@ import (
 
 // ComparisonExpr
 func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColName) (string, error) {
-	if context.aliasToDbTable == nil {
-		context.aliasToDbTable = map[string]string{}
+	if context.AliasToDbTable == nil {
+		context.AliasToDbTable = map[string]string{}
 	}
 
 	tableName := expr.Qualifier.Name.String()
@@ -32,7 +32,7 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 			if not found in database calculate alias table name , field name and alias field name
 		*/
 
-		if _, ok := context.aliasToDbTable[tableName]; ok { //<-- if compiled before for join purpose has alias table name
+		if _, ok := context.AliasToDbTable[tableName]; ok { //<-- if compiled before for join purpose has alias table name
 			fieldName = internal.Utils.SnakeCase(fieldName) //<-- 100% sure that field name is in snake case
 		}
 		if aliasTable, ok := context.Alias[tableName]; ok {

@@ -5,16 +5,17 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
 	_ "github.com/vn-go/dx/model"
 )
 
-func (m *MigratorMySql) GetSqlAddIndex(typ reflect.Type) (string, error) {
+func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, error) {
 	scripts := []string{}
 
 	// Load schema hiện tại
-	schema, err := m.loader.LoadFullSchema()
+	schema, err := m.loader.LoadFullSchema(db)
 	if err != nil {
 		return "", err
 	}

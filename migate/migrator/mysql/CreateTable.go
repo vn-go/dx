@@ -5,12 +5,13 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorMySql) GetSqlCreateTable(typ reflect.Type) (string, error) {
+func (m *MigratorMySql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 	schemaLoader := m.GetLoader()
@@ -18,7 +19,7 @@ func (m *MigratorMySql) GetSqlCreateTable(typ reflect.Type) (string, error) {
 		return "", fmt.Errorf("schema loader is nil, please set it by call SetLoader() function in %s", reflect.TypeOf(m).Elem())
 	}
 
-	schema, err := schemaLoader.LoadFullSchema()
+	schema, err := schemaLoader.LoadFullSchema(db)
 	if err != nil {
 		return "", err
 	}

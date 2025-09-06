@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
@@ -15,15 +16,15 @@ type IMigrator interface {
 	GetSqlInstallDb() ([]string, error)
 	GetColumnDataTypeMapping() map[reflect.Type]string
 	GetGetDefaultValueByFromDbTag() map[string]string
-	GetSqlCreateTable(entityType reflect.Type) (string, error)
-	GetSqlAddColumn(entityType reflect.Type) (string, error)
-	GetSqlAddIndex(entityType reflect.Type) (string, error)
-	GetSqlAddUniqueIndex(entityType reflect.Type) (string, error)
+	GetSqlCreateTable(db *db.DB, entityType reflect.Type) (string, error)
+	GetSqlAddColumn(db *db.DB, entityType reflect.Type) (string, error)
+	GetSqlAddIndex(db *db.DB, entityType reflect.Type) (string, error)
+	GetSqlAddUniqueIndex(db *db.DB, entityType reflect.Type) (string, error)
 	//GetSqlMigrate(entityType reflect.Type) ([]string, error)
-	GetSqlAddForeignKey() ([]string, error)
-	GetFullScript() ([]string, error)
+	GetSqlAddForeignKey(db *db.DB) ([]string, error)
+	GetFullScript(db *db.DB) ([]string, error)
 	//DoMigrate(entityType reflect.Type) error
-	DoMigrates() error
+	DoMigrates(db *db.DB) error
 }
 
 type migratorInit struct {

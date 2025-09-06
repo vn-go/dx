@@ -25,6 +25,7 @@ func BenchmarkFirstMysql(t *testing.B) {
 	}
 	defer db.Close()
 	user := &models.User{}
+	db.First(user)
 	t.ReportAllocs()
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {

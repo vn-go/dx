@@ -1,0 +1,21 @@
+package dx
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/expr"
+	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/model"
+)
+
+func buildBasicSqlFirstItemNoFilterNoCache(typ reflect.Type, db *DB) (*struct {
+	sql           string
+	sqlCompiler   string
+	keyFieldIndex [][]int
+}, error) {
+	
+
+}

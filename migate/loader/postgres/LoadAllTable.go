@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
@@ -23,7 +24,7 @@ import (
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderPostgres) LoadAllTable() (map[string]map[string]types.ColumnInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllTable(db *db.DB) (map[string]map[string]types.ColumnInfo, error) {
 	query := `
 		SELECT 
 			table_name, 
@@ -39,7 +40,7 @@ func (m *MigratorLoaderPostgres) LoadAllTable() (map[string]map[string]types.Col
 			table_name, ordinal_position;
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}

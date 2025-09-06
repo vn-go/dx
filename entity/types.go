@@ -123,7 +123,7 @@ type Entity struct {
 	IndexConstraints map[string][]ColumnDef
 	//BuildUniqueConstraints   map[string][]ColumnDef
 	cacheGetAutoValueColumns sync.Map
-	DbTableName              string
+	//DbTableName              string
 }
 
 func NewUniqueConstraints() map[string]entityType {

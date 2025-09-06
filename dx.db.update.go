@@ -17,12 +17,13 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 		return UpdateResult{RowsAffected: 0, Sql: "", Error: err}
 	}
 	val := reflect.ValueOf(item).Elem()
-	args := make([]interface{}, 0)
-	for _, index := range info.fieldIndex {
-		args = append(args, val.FieldByIndex(index).Interface())
+	args := make([]interface{}, len(info.fieldIndex)+len(info.keyFieldIndex))
+	for i, index := range info.fieldIndex {
+		args[i] = val.FieldByIndex(index).Interface()
 	}
-	for _, index := range info.keyFieldIndex {
-		args = append(args, val.FieldByIndex(index).Interface())
+	numOfFieds := len(info.fieldIndex)
+	for i, index := range info.keyFieldIndex {
+		args[i+numOfFieds] = val.FieldByIndex(index).Interface()
 	}
 	r, err := db.ExecContext(context, info.sql, args...)
 	if err != nil {

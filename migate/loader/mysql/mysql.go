@@ -9,11 +9,6 @@ import (
 
 type MigratorLoaderMysql struct {
 	cacheLoadFullSchema sync.Map
-	db                  *db.DB
-}
-
-func (m *MigratorLoaderMysql) GetDbName() string {
-	return m.db.Info.DbName
 }
 
 /*
@@ -26,26 +21,26 @@ type initMySqlLoadFullSchema struct {
 	schema *types.DbSchema
 }
 
-func (m *MigratorLoaderMysql) LoadFullSchema() (*types.DbSchema, error) {
-	cacheKey := m.db.Info.DbName
+func (m *MigratorLoaderMysql) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
+	cacheKey := db.Info.DbName + "@" + db.DriverName
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initMySqlLoadFullSchema{})
 	initSchema := actual.(*initMySqlLoadFullSchema)
 	initSchema.once.Do(func() {
-		initSchema.schema, initSchema.err = m.loadFullSchema()
+		initSchema.schema, initSchema.err = m.loadFullSchema(db)
 	})
 	return initSchema.schema, initSchema.err
 }
-func (m *MigratorLoaderMysql) loadFullSchema() (*types.DbSchema, error) {
+func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
 
-	tables, err := m.LoadAllTable()
+	tables, err := m.LoadAllTable(db)
 	if err != nil {
 		return nil, err
 	}
-	pks, _ := m.LoadAllPrimaryKey()
-	uks, _ := m.LoadAllUniIndex()
-	idxs, _ := m.LoadAllIndex()
+	pks, _ := m.LoadAllPrimaryKey(db)
+	uks, _ := m.LoadAllUniIndex(db)
+	idxs, _ := m.LoadAllIndex(db)
 
-	dbName := m.GetDbName()
+	dbName := db.DbName
 	schema := &types.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
@@ -53,7 +48,7 @@ func (m *MigratorLoaderMysql) loadFullSchema() (*types.DbSchema, error) {
 		UniqueKeys:  uks,
 		Indexes:     idxs,
 	}
-	foreignKeys, err := m.LoadForeignKey()
+	foreignKeys, err := m.LoadForeignKey(db)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +67,11 @@ func (m *MigratorLoaderMysql) loadFullSchema() (*types.DbSchema, error) {
 	return schema, nil
 }
 
-func NewMysqlMigratorLoader(db *db.DB) types.IMigratorLoader {
-	return &MigratorLoaderMysql{
-		cacheLoadFullSchema: sync.Map{},
-		db:                  db,
-	}
+var migratorLoaderMysqlInstance = &MigratorLoaderMysql{
+	cacheLoadFullSchema: sync.Map{},
+}
+
+func NewMysqlMigratorLoader() types.IMigratorLoader {
+
+	return migratorLoaderMysqlInstance
 }

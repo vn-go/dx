@@ -3,10 +3,11 @@ package mysql
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
-func (m *MigratorLoaderMysql) LoadForeignKey() ([]types.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderMysql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			rc.CONSTRAINT_NAME,
@@ -28,7 +29,7 @@ func (m *MigratorLoaderMysql) LoadForeignKey() ([]types.DbForeignKeyInfo, error)
 			kcu.TABLE_NAME, rc.CONSTRAINT_NAME, kcu.ORDINAL_POSITION
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query foreign keys: %w", err)
 	}

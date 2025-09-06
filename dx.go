@@ -38,7 +38,7 @@ func AddForeignKey[T any](foreignKey string, FkEntity interface{}, keys string, 
 		})
 		return err
 	}
-	return nil
+
 }
 func Open(driverName string, dsn string) (*DB, error) {
 	retDb, err := db.Open(driverName, dsn)
@@ -51,7 +51,7 @@ func Open(driverName string, dsn string) (*DB, error) {
 		defer retDb.Close()
 		return nil, err
 	}
-	err = m.DoMigrates()
+	err = m.DoMigrates(retDb)
 	if err != nil {
 		defer retDb.Close()
 		return nil, err

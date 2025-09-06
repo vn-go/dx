@@ -5,16 +5,17 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorPostgres) GetSqlAddColumn(typ reflect.Type) (string, error) {
+func (m *MigratorPostgres) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 
 	// Load current schema
-	schema, err := m.loader.LoadFullSchema()
+	schema, err := m.loader.LoadFullSchema(db)
 	if err != nil {
 		return "", err
 	}

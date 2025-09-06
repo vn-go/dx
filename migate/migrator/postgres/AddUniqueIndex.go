@@ -5,15 +5,16 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorPostgres) GetSqlAddUniqueIndex(typ reflect.Type) (string, error) {
+func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
 	scripts := []string{}
 
 	// Load current schema
-	schema, err := m.loader.LoadFullSchema()
+	schema, err := m.loader.LoadFullSchema(db)
 	if err != nil {
 		return "", err
 	}

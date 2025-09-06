@@ -1,0 +1,41 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstMysql-16    	    8562	    148216 ns/op	    2974 B/op	      50 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	3.196s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstMysql-16    	    7308	    148793 ns/op	    3369 B/op	      51 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.796s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstMysql-16    	    6279	    185926 ns/op	    3267 B/op	      51 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.049s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstMysql-16    	    7990	    146610 ns/op	    3332 B/op	      51 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.287s

@@ -9,11 +9,6 @@ import (
 
 type MigratorLoaderPostgres struct {
 	cacheLoadFullSchema sync.Map
-	db                  *db.DB
-}
-
-func (m *MigratorLoaderPostgres) GetDbName() string {
-	return m.db.Info.DbName
 }
 
 type initPostgresLoadFullSchema struct {
@@ -22,35 +17,35 @@ type initPostgresLoadFullSchema struct {
 	err  error
 }
 
-func (m *MigratorLoaderPostgres) LoadFullSchema() (*types.DbSchema, error) {
-	cacheKey := m.GetDbName()
+func (m *MigratorLoaderPostgres) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
+	cacheKey := db.DbName + "@" + db.DriverName
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initPostgresLoadFullSchema{})
 	init := actual.(*initPostgresLoadFullSchema)
 	init.once.Do(func() {
-		init.val, init.err = m.loadFullSchema()
+		init.val, init.err = m.loadFullSchema(db)
 	})
 	return init.val, init.err
 }
-func (m *MigratorLoaderPostgres) loadFullSchema() (*types.DbSchema, error) {
+func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
 
-	tables, err := m.LoadAllTable()
+	tables, err := m.LoadAllTable(db)
 	if err != nil {
 		return nil, err
 	}
-	pks, err := m.LoadAllPrimaryKey()
+	pks, err := m.LoadAllPrimaryKey(db)
 	if err != nil {
 		return nil, err
 	}
-	uks, err := m.LoadAllUniIndex()
+	uks, err := m.LoadAllUniIndex(db)
 	if err != nil {
 		return nil, err
 	}
-	idxs, err := m.LoadAllIndex()
+	idxs, err := m.LoadAllIndex(db)
 	if err != nil {
 		return nil, err
 	}
 
-	dbName := m.GetDbName()
+	dbName := db.DbName
 	schema := &types.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
@@ -58,7 +53,7 @@ func (m *MigratorLoaderPostgres) loadFullSchema() (*types.DbSchema, error) {
 		UniqueKeys:  uks,
 		Indexes:     idxs,
 	}
-	foreignKeys, err := m.LoadForeignKey()
+	foreignKeys, err := m.LoadForeignKey(db)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +71,12 @@ func (m *MigratorLoaderPostgres) loadFullSchema() (*types.DbSchema, error) {
 
 	return schema, nil
 }
-func NewPosgresSchemaLoader(db *db.DB) types.IMigratorLoader {
 
-	return &MigratorLoaderPostgres{
-		cacheLoadFullSchema: sync.Map{},
-		db:                  db,
-	}
+var migratorLoaderPostgresInstance = &MigratorLoaderPostgres{
+	cacheLoadFullSchema: sync.Map{},
+}
+
+func NewPosgresSchemaLoader() types.IMigratorLoader {
+
+	return migratorLoaderPostgresInstance
 }
