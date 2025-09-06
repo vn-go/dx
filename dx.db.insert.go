@@ -13,14 +13,5 @@ func (db *DB) Insert(data interface{}) error {
 		return err
 	}
 
-	// m, err := migrator.GetMigator(db.DB)
-	// if err != nil {
-	// 	return err
-	// }
-	// err = m.DoMigrates()
-	// if err != nil {
-	// 	return err
-	// }
-
 	return dbutils.DbUtils.Insert.Insert(db.DB, data, context.Background())
 }

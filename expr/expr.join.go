@@ -37,7 +37,7 @@ type exprCompileContext struct {
 	schema           *map[string]bool
 	Alias            map[string]string
 	joinAlias        map[string]string
-	aliasToDbTable   map[string]string
+	AliasToDbTable   map[string]string
 	Dialect          types.Dialect
 	Purpose          BUILD
 	stackAliasFields internal.Stack[string]
@@ -217,13 +217,13 @@ func NewExprCompiler(db *db.DB) (*exprCompiler, error) {
 			return
 		}
 
-		err = m.DoMigrates() //<-- thuc hien migrate
+		err = m.DoMigrates(db) //<-- thuc hien migrate
 		if err != nil {
 			init.err = err //<-- loi bo bien dich khoi dong bi hong
 			return
 		}
-		loader := m.GetLoader()              //<-- khoi tao bo loader cua migrate
-		tables, err := loader.LoadAllTable() // <--- lay danh sach cac bang trong database va danh sach cac ban da duoc migrate
+		loader := m.GetLoader()                //<-- khoi tao bo loader cua migrate
+		tables, err := loader.LoadAllTable(db) // <--- lay danh sach cac bang trong database va danh sach cac ban da duoc migrate
 		if err != nil {
 			init.err = err
 			return
@@ -247,7 +247,7 @@ func NewExprCompiler(db *db.DB) (*exprCompiler, error) {
 			Tables:           make([]string, 0),
 			schema:           &init.val.schema,
 			Alias:            make(map[string]string),
-			aliasToDbTable:   make(map[string]string),
+			AliasToDbTable:   make(map[string]string),
 			Dialect:          init.val.dialect,
 			Purpose:          BUILD_SELECT,
 			stackAliasFields: internal.Stack[string]{},

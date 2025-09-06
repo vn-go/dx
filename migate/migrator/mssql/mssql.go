@@ -2,7 +2,6 @@ package mssql
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -15,56 +14,17 @@ import (
 type migratorMssql struct {
 	loader             types.IMigratorLoader
 	cacheGetFullScript sync.Map
-
-	db *db.DB
 }
 
-func NewMigrator(db *db.DB) migartorType.IMigrator {
+func NewMigrator() migartorType.IMigrator {
 
 	return &migratorMssql{
-		db:     db,
-		loader: loaderMysql.NewMysqlMigratorLoader(db),
+
+		loader: loaderMysql.NewMysqlMigratorLoader(),
 	}
 }
 func (m *migratorMssql) Quote(names ...string) string {
 	return "[" + strings.Join(names, "].[") + "]"
-}
-
-func (m *migratorMssql) GetSqlMigrateDelete(entityType reflect.Type) ([]string, error) {
-	scripts := []string{}
-	scriptTable, err := m.GetSqlCreateTable(entityType)
-	if err != nil {
-		return nil, err
-	}
-	if scriptTable == "" {
-		scriptAddColumn, err := m.GetSqlAddColumn(entityType)
-		if err != nil {
-			return nil, err
-		}
-		scripts = append(scripts, scriptTable, scriptAddColumn)
-	}
-
-	scriptAddUniqueIndex, err := m.GetSqlAddUniqueIndex(entityType)
-	if err != nil {
-		return nil, err
-	}
-	scripts = append(scripts, scriptTable, scriptAddUniqueIndex)
-	return scripts, nil
-
-}
-func (m *migratorMssql) DoMigrateDelete(entityType reflect.Type) error {
-	scripts, err := m.GetSqlMigrateDelete(entityType)
-	if err != nil {
-		return err
-	}
-	for _, script := range scripts {
-		_, err := m.db.Exec(script)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-
 }
 
 type mssqlInitDoMigrates struct {
@@ -74,21 +34,21 @@ type mssqlInitDoMigrates struct {
 
 var cacheDoMigrates sync.Map
 
-func (m *migratorMssql) DoMigrates() error {
+func (m *migratorMssql) DoMigrates(db *db.DB) error {
 
-	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
+	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheDoMigrates.LoadOrStore(key, &mssqlInitDoMigrates{})
 
 	mi := actual.(*mssqlInitDoMigrates)
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript()
+		scripts, err := m.GetFullScript(db)
 		if err != nil {
 			return
 		}
 		for _, script := range scripts {
-			_, err := m.db.Exec(script)
+			_, err := db.Exec(script)
 			if err != nil {
 				mi.err = err
 				break

@@ -3,10 +3,11 @@ package postgres
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
-func (m *MigratorLoaderPostgres) LoadForeignKey() ([]types.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderPostgres) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			tc.constraint_name,
@@ -31,7 +32,7 @@ func (m *MigratorLoaderPostgres) LoadForeignKey() ([]types.DbForeignKeyInfo, err
 			tc.constraint_name, kcu.ordinal_position;
 	`
 
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}

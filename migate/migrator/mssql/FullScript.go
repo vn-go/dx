@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/model"
 )
 
@@ -12,17 +13,17 @@ type mssqlGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *migratorMssql) GetFullScript() ([]string, error) {
-	key := fmt.Sprintf("%s_%s", m.db.DbName, m.db.DriverName)
+func (m *migratorMssql) GetFullScript(db *db.DB) ([]string, error) {
+	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &mssqlGetFullScriptInit{})
 	init := actual.(*mssqlGetFullScriptInit)
 	var err error
 	init.once.Do(func() {
-		init.ret, err = m.getFullScript()
+		init.ret, err = m.getFullScript(db)
 	})
 	return init.ret, err
 }
-func (m *migratorMssql) getFullScript() ([]string, error) {
+func (m *migratorMssql) getFullScript(db *db.DB) ([]string, error) {
 
 	sqlInstall, err := m.GetSqlInstallDb()
 	if err != nil {
@@ -30,7 +31,7 @@ func (m *migratorMssql) getFullScript() ([]string, error) {
 	}
 	scripts := sqlInstall
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlCreateTable(entity.Entity.EntityType)
+		script, err := m.GetSqlCreateTable(db, entity.Entity.EntityType)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +41,7 @@ func (m *migratorMssql) getFullScript() ([]string, error) {
 
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlAddColumn(entity.Entity.EntityType)
+		script, err := m.GetSqlAddColumn(db, entity.Entity.EntityType)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +51,7 @@ func (m *migratorMssql) getFullScript() ([]string, error) {
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
 		//m.GetSqlAddUniqueIndex()
-		script, err := m.GetSqlAddUniqueIndex(entity.Entity.EntityType)
+		script, err := m.GetSqlAddUniqueIndex(db, entity.Entity.EntityType)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +61,7 @@ func (m *migratorMssql) getFullScript() ([]string, error) {
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
 		//m.GetSqlAddUniqueIndex()
-		script, err := m.GetSqlAddIndex(entity.Entity.EntityType)
+		script, err := m.GetSqlAddIndex(db, entity.Entity.EntityType)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +69,7 @@ func (m *migratorMssql) getFullScript() ([]string, error) {
 			scripts = append(scripts, script)
 		}
 	}
-	scriptForeignKey, err := m.GetSqlAddForeignKey()
+	scriptForeignKey, err := m.GetSqlAddForeignKey(db)
 	if err != nil {
 		return nil, err
 	}

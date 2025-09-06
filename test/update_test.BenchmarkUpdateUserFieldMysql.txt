@@ -1,0 +1,29 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUpdateUserFieldMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUpdateUserFieldMysql-16    	    7401	    144422 ns/op	   42604 B/op	     140 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.123s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUpdateUserFieldMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUpdateUserFieldMysql-16    	    8284	    148562 ns/op	    1216 B/op	      34 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.288s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUpdateUserFieldMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUpdateUserFieldMysql-16    	   10000	    117937 ns/op	    1216 B/op	      34 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.308s

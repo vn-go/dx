@@ -12,8 +12,8 @@ var sqlServerDns = "sqlserver://sa:123456@localhost?database=a0001&fetchSize=100
 func TestMssql(t *testing.T) {
 	Db, err := db.Open("sqlserver", sqlServerDns)
 	assert.NoError(t, err)
-	m := NewMssqlSchemaLoader(Db)
-	schema, err := m.LoadFullSchema()
+	m := NewMssqlSchemaLoader()
+	schema, err := m.LoadFullSchema(Db)
 	assert.NoError(t, err)
 	assert.NotNil(t, schema)
 }

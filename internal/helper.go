@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 type helperType struct {
@@ -146,22 +147,63 @@ func (c *helperType) QuoteExpression(expr string) string {
 func (c *helperType) AddrssertSinglePointerToStruct(obj interface{}) error {
 	v := reflect.ValueOf(obj)
 	t := v.Type()
+	key := t.String() + "://helperType/AddrssertSinglePointerToStruct"
+	_, err := OnceCall(key, func() (int, error) {
+		depth := 0
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+			depth++
+			if depth > 1 {
+				break
+			}
+		}
 
-	depth := 0
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-		depth++
-	}
+		if depth != 1 {
+			return depth, fmt.Errorf("Insert: expected pointer to struct (*T), got %d-level pointer", depth)
+		}
 
-	if depth != 1 {
-		return fmt.Errorf("Insert: expected pointer to struct (*T), got %d-level pointer", depth)
-	}
+		if t.Kind() != reflect.Struct {
+			return depth, fmt.Errorf("Insert: expected pointer to struct, got pointer to %s", t.Kind())
+		}
+		return depth, nil
 
-	if t.Kind() != reflect.Struct {
-		return fmt.Errorf("Insert: expected pointer to struct, got pointer to %s", t.Kind())
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
+}
+
+type intHelperTypeFindField struct {
+	fieldIndex []int
+	fieldType  reflect.Type
+	found      bool
+	once       sync.Once
+}
+
+var cacheHelperTypeFindField sync.Map
+
+func (c *helperType) FindField(typ reflect.Type, fieldName string) ([]int, reflect.Type, bool) {
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	actually, _ := cacheHelperTypeFindField.LoadOrStore(typ.String()+"//"+strings.ToLower(fieldName), &intHelperTypeFindField{})
+	item := actually.(*intHelperTypeFindField)
+	item.once.Do(func() {
+		field, ok := typ.FieldByNameFunc(func(s string) bool {
+			return unicode.IsUpper([]rune(s)[0]) && strings.EqualFold(s, fieldName)
+		})
+		if ok {
+			item.fieldIndex = field.Index
+			item.found = ok
+			item.fieldType = field.Type
+			if item.fieldType.Kind() == reflect.Ptr {
+				item.fieldType = item.fieldType.Elem()
+			}
+		}
+	})
+	return item.fieldIndex, item.fieldType, item.found
 }
 
 var Helper = newHelper()

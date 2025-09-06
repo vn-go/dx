@@ -1,0 +1,93 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	     100	  11124894 ns/op	  132415 B/op	    3929 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.253s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	      97	  11662253 ns/op	  131991 B/op	    3929 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.244s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	      79	  13444841 ns/op	  131973 B/op	    3932 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.122s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	      98	  10482263 ns/op	  126958 B/op	    3891 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.079s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	   22243	     46965 ns/op	    2554 B/op	      50 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.707s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	    9273	    133556 ns/op	    1872 B/op	      19 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.240s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	    9698	    125038 ns/op	    1560 B/op	      17 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.220s
+
+-------
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	     100	  11124894 ns/op	  132415 B/op	    3929 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.253s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkInsertFailThenUpdateUserMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkInsertFailThenUpdateUserMysql-16    	    1010	   1184489 ns/op	    7289 B/op	     104 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.354s

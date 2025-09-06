@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migate/loader/types"
 )
 
@@ -16,7 +17,7 @@ import (
 // Returns:
 //   - A map[string]types.ColumnsInfo containing unique index details, where the key is the index name.
 //   - An error if the query or row scanning fails.
-func (m *MigratorLoaderMysql) LoadAllUniIndex() (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllUniIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	// SQL query to fetch unique index information from INFORMATION_SCHEMA.
 	// Joins STATISTICS and COLUMNS tables to get index name, table name, column name,
 	// data type, nullability, and character length for unique indexes (NON_UNIQUE = 0)
@@ -42,7 +43,7 @@ func (m *MigratorLoaderMysql) LoadAllUniIndex() (map[string]types.ColumnsInfo, e
 	`
 
 	// Execute the query on the provided database connection.
-	rows, err := m.db.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		// Return an error if the query execution fails, wrapping it with context.
 		return nil, fmt.Errorf("failed to query unique indexes: %w", err)
