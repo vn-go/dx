@@ -250,44 +250,17 @@ func (db *DB) fecthItems(items any, sql string, args ...any) error {
 		return err
 	}
 	for rows.Next() {
+		ptr := reflect.New(typElem).Elem()
+		for i, fx := range fectInfo {
+			ptrs[i] = ptr.FieldByIndex(fx.fieldIndexes).Addr().Interface()
+		}
+
 		if err := rows.Scan(ptrs...); err != nil {
 			return err
 		}
-
-		// tạo instance struct
-		ptr := reflect.New(typElem).Elem()
-
-		for i := range cols {
-			raw := vals[i]
-			if raw == nil {
-				continue
-			}
-
-			val := reflect.ValueOf(raw)
-			if !val.IsValid() || (val.Kind() == reflect.Ptr && val.IsNil()) {
-				continue
-			}
-			if val.Kind() == reflect.Ptr {
-				val = val.Elem()
-				if !val.IsValid() {
-					continue
-				}
-			}
-
-			field := ptr.FieldByIndex(fectInfo[i].fieldIndexes)
-			if !field.CanSet() {
-				continue
-			}
-
-			if val.Type().AssignableTo(fectInfo[i].fieldType) {
-				field.Set(val)
-			} else if val.Type().ConvertibleTo(fectInfo[i].fieldType) {
-				field.Set(val.Convert(fectInfo[i].fieldType))
-			}
-		}
-
-		// append vào slice gốc
+		//data := ptr.Interface()
 		sliceVal.Set(reflect.Append(sliceVal, ptr))
+
 	}
 
 	if err := rows.Err(); err != nil {
