@@ -17,7 +17,11 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	fieldName := expr.Name.String()
 	aliasFieldName := ""
 	if context.Purpose == BUILD_SELECT {
-		aliasFieldName = expr.Name.String()
+		var found bool
+		if aliasFieldName, found = context.stackAliasFields.Pop(); !found {
+			aliasFieldName = expr.Name.String()
+		}
+
 	}
 	if context.schema == nil {
 		context.schema = &map[string]bool{}

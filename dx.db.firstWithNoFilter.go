@@ -1,12 +1,14 @@
 package dx
 
 import (
+	"context"
+	"database/sql"
 	"reflect"
 
 	"github.com/vn-go/dx/internal"
 )
 
-func (db *DB) firstWithNoFilter(entity interface{}) error {
+func (db *DB) firstWithNoFilter(entity interface{}, ctx context.Context, sqlTx *sql.Tx) error {
 	err := internal.Helper.AddrssertSinglePointerToStruct(entity)
 	if err != nil {
 		return err
@@ -20,6 +22,6 @@ func (db *DB) firstWithNoFilter(entity interface{}) error {
 	if err != nil {
 		return err
 	}
-	return db.ExecToItem(entity, sql)
+	return db.ExecToItem(entity, sql, ctx, sqlTx)
 
 }

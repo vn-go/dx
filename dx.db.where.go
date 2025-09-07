@@ -1,6 +1,8 @@
 package dx
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -20,12 +22,40 @@ type whereTypes struct {
 	orders    []string
 	limit     *uint64
 	offset    *uint64
+	ctx       context.Context
+	sqlTx     *sql.Tx
 }
-type findResult struct {
-	RowsAffected uint64
-	Error        error
+type dbContext struct {
+	ctx context.Context
+	*DB
 }
 
+func (c *dbContext) Begin() *Tx {
+	sqlTx, err := c.DB.BeginTx(c.ctx, nil)
+	if err != nil {
+		return &Tx{
+			Error: err,
+		}
+	}
+	return sqlTx
+}
+func (db *DB) WithContext(ctx context.Context) *dbContext {
+	return &dbContext{
+		ctx: ctx,
+		DB:  db,
+	}
+}
+func (tx *Tx) Where(args ...interface{}) *whereTypes {
+
+	ret := tx.db.Where(args...)
+	ret.sqlTx = tx.Tx
+	return ret
+}
+func (db *dbContext) Where(args ...interface{}) *whereTypes {
+	ret := db.DB.Where(args...)
+	ret.ctx = db.ctx
+	return ret
+}
 func (db *DB) Where(args ...interface{}) *whereTypes {
 	if len(args) == 0 {
 		return &whereTypes{
@@ -95,6 +125,9 @@ func (w *whereTypes) Or(args ...interface{}) *whereTypes {
 	return w
 }
 func (w *whereTypes) getFilter() (string, []any) {
+	if w.whereExpr == nil {
+		return "", nil
+	}
 	ret := w.whereExpr.filter
 	args := w.whereExpr.args
 	if w.whereExpr.next != nil {
@@ -113,7 +146,8 @@ func (w *whereTypes) First(item any) error {
 		return w.err
 	}
 	whereStr, ars := w.getFilter()
-	return w.db.firstWithFilter(item, whereStr, ars...)
+
+	return w.db.firstWithFilter(item, whereStr, w.ctx, w.sqlTx, ars...)
 }
 func (w *whereTypes) Order(order string) *whereTypes {
 	w.orders = append(w.orders, strings.Split(order, ",")...)
@@ -129,7 +163,18 @@ func (w *whereTypes) Find(item any) error {
 	if len(w.orders) > 0 {
 		orderStr = strings.Join(w.orders, ",")
 	}
-	return w.db.findtWithFilter(item, whereStr, orderStr, w.limit, w.offset, ars...)
+	return w.db.findtWithFilter(item, w.ctx, w.sqlTx, whereStr, orderStr, w.limit, w.offset, true, ars...)
+}
+func (w *whereTypes) AddTo(item any) error {
+	if w.err != nil {
+		return w.err
+	}
+	whereStr, ars := w.getFilter()
+	orderStr := ""
+	if len(w.orders) > 0 {
+		orderStr = strings.Join(w.orders, ",")
+	}
+	return w.db.findtWithFilter(item, w.ctx, w.sqlTx, whereStr, orderStr, w.limit, w.offset, false, ars...)
 }
 
 // for sql server
@@ -138,6 +183,22 @@ func (w *whereTypes) Find(item any) error {
 func (m *whereTypes) Limit(num uint64) *whereTypes {
 	m.limit = &num
 	return m
+}
+func (db *DB) Limit(num uint64) *whereTypes {
+	ret := &whereTypes{
+		db:     db,
+		orders: []string{},
+		limit:  &num,
+	}
+	return ret
+}
+func (db *DB) Offset(num uint64) *whereTypes {
+	ret := &whereTypes{
+		db:     db,
+		orders: []string{},
+		offset: &num,
+	}
+	return ret
 }
 func (m *whereTypes) Offset(num uint64) *whereTypes {
 	m.offset = &num

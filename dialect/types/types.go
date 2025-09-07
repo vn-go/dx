@@ -82,4 +82,39 @@ type Dialect interface {
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
 	NewDataBase(db *db.DB, dbName string) (string, error)
 	LimitAndOffset(sql string, limit, offset *uint64, orderBy string) string
+	BuildSql(info *SqlInfo) (string, error)
+}
+
+type SqlInfo struct {
+	StrSelect  string
+	StrWhere   string
+	Limit      *uint64
+	Offset     *uint64
+	StrOrder   string
+	From       interface{} //<--string or SqlInfo
+	StrGroupBy string
+	StrHaving  string
+}
+
+func (info *SqlInfo) GetKey() string {
+	ret := fmt.Sprintf("%s/%s/%s/%s/%s",
+		info.StrSelect,
+		info.StrWhere,
+		info.StrOrder,
+		info.StrHaving,
+		info.StrGroupBy,
+	)
+	if info.Limit != nil {
+		ret += fmt.Sprintln("/%d", *info.Limit)
+	}
+	if info.Offset != nil {
+		ret += fmt.Sprintln("/%d", *info.Offset)
+	}
+	if strForm, ok := info.From.(string); ok {
+		ret += "/" + strForm
+	}
+	if nextInfo, ok := info.From.(SqlInfo); ok {
+		ret += "/" + nextInfo.GetKey()
+	}
+	return ret
 }

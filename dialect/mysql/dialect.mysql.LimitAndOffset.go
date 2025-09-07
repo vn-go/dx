@@ -16,7 +16,7 @@ func (d *mySqlDialect) LimitAndOffset(sql string, limit, offset *uint64, orderBy
 		return sql + fmt.Sprintf(" OFFSET %d", *limit)
 	}
 	if limit != nil && offset != nil {
-		return sql + fmt.Sprintf(" OFFSET %d LIMIT %d", *offset, *limit)
+		return sql + fmt.Sprintf(" LIMIT %d OFFSET %d", *limit, *offset)
 	}
 
 	return sql

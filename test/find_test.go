@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,131 @@ func BenchmarkFindbyWhereMysql(t *testing.B) {
 	user := []models.User{}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+		err = db.WithContext(t.Context()).Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+
 	}
 
+}
+func TestFindbyWhereMysqlWithTrans(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	tx := db.WithContext(t.Context()).Begin()
+	if tx.Error != nil {
+		t.Log(tx.Error)
+	}
+
+	var users []models.User
+	w := tx.Where("username != ?", "admin")
+	if err := w.Find(&users); err != nil {
+		// Rollback nếu có lỗi
+		err := tx.Rollback()
+		t.Log(err)
+	}
+
+	// 4. Commit transaction sau khi tất cả các thao tác đã thành công
+	if err := tx.Commit(); err != nil {
+		t.Log(err)
+	}
+
+}
+func BenchmarkFindbyWhereMysqlWithTrans(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	tx := db.WithContext(t.Context()).Begin()
+	if tx.Error != nil {
+		t.Log(tx.Error)
+	}
+	for i := 0; i < t.N; i++ {
+		var users []models.User
+		w := tx.Where("username != ?", "admin").Limit(100).Order("Id desc")
+		if err := w.Find(&users); err != nil {
+			// Rollback nếu có lỗi
+			tx.Rollback()
+
+		} else {
+			tx.Commit()
+		}
+	}
+
+}
+func TestDbLimitMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users []models.User
+	db.Offset(1000).Limit(100).Find(&users)
+	t.Log(users)
+}
+func BenchmarkDbLimitMysql(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users []models.User
+	for i := 0; i < t.N; i++ {
+		db.Offset(1000).Limit(100).Find(&users)
+	}
+
+	//t.Log(users)
+}
+func TestSelectMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users = []models.User{}
+	fx := db.Select(
+		"username",
+		"email",
+	).Find(&users)
+	t.Log(fx)
+}
+func BenchmarkSelectMysql(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	//fx := db.Select("amount+?+size", "concat(firstName,?,lastName) FullName", "code", 1, " ")
+	var users = []models.User{}
+	for i := 0; i < t.N; i++ {
+		db.Select(
+			"username",
+			"email",
+		).Find(&users)
+	}
+
+}
+func TestSelectUserAndEmailMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users = &[]struct {
+		Username string
+		Email    *string
+	}{}
+	fxx := db.Model(&models.User{}).Select(
+		"concat(username,?,username) username",
+		"email", " ",
+	)
+	sql, _, err := fxx.GetSQL(*fxx.GetModelType())
+	t.Log(err)
+	fmt.Print(sql)
+	fx := db.Model(&models.User{}).Select(
+		"concat(username,?,username) username",
+		"email", " ",
+	).Find(users)
+	t.Log(fx)
 }

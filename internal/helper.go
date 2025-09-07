@@ -206,6 +206,22 @@ func (c *helperType) FindField(typ reflect.Type, fieldName string) ([]int, refle
 	return item.fieldIndex, item.fieldType, item.found
 }
 
+// Hàm kiểm tra tên trường hợp lệ
+func (c *helperType) IsValidFieldName(field string) bool {
+	re := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	return re.MatchString(field)
+}
+func (c *helperType) GetAlias(txt string) string {
+	items := strings.Split(txt, " ")
+	if len(items) < 2 {
+		return ""
+	}
+	if c.IsValidFieldName(items[len(items)-1]) {
+		return items[len(items)-1]
+	}
+	return ""
+}
+
 var Helper = newHelper()
 
 func newHelper() *helperType {

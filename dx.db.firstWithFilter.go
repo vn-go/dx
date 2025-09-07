@@ -1,6 +1,8 @@
 package dx
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,7 +12,7 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (db *DB) firstWithFilter(entity interface{}, filter string, args ...interface{}) error {
+func (db *DB) firstWithFilter(entity interface{}, filter string, ctx context.Context, sqlTx *sql.Tx, args ...interface{}) error {
 	typ := reflect.TypeOf(entity)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
@@ -19,10 +21,19 @@ func (db *DB) firstWithFilter(entity interface{}, filter string, args ...interfa
 	if err != nil {
 		return err
 	}
-	return db.ExecToItem(entity, sql, args...)
+	return db.ExecToItem(entity, sql, ctx, sqlTx, args...)
 
 }
-func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string, limit, offset *uint64, args ...interface{}) error {
+func (db *DB) findtWithFilter(
+	entity interface{},
+	ctx context.Context,
+	sqtTx *sql.Tx,
+	filter string,
+	orderStr string,
+	limit,
+	offset *uint64,
+	resetLen bool,
+	args ...interface{}) error {
 	typ := reflect.TypeOf(entity)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
@@ -93,6 +104,6 @@ func (db *DB) findtWithFilter(entity interface{}, filter string, orderStr string
 		return err
 	}
 
-	return db.fecthItems(entity, sql, args...)
+	return db.fecthItems(entity, sql, ctx, sqtTx, resetLen, args...)
 
 }

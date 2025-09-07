@@ -2,6 +2,7 @@ package dx
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -193,7 +194,7 @@ func (db *DB) SelectAllWithContext(context context.Context, items any) error {
 	}
 	return nil
 }
-func (db *DB) fecthItems(items any, sql string, args ...any) error {
+func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
 	// items phải là pointer đến slice
 	typ := reflect.TypeOf(items)
 	if typ.Kind() != reflect.Ptr {
@@ -203,14 +204,45 @@ func (db *DB) fecthItems(items any, sql string, args ...any) error {
 	if sliceVal.Kind() != reflect.Slice {
 		return errors.NewSysError(fmt.Sprintf("%s is not slice", typ.String()))
 	}
+	if resetLen {
+		sliceVal.SetLen(0)
+	}
 
 	// lấy kiểu phần tử của slice
 	typElem := sliceVal.Type().Elem()
 	if typElem.Kind() == reflect.Ptr {
 		typElem = typElem.Elem()
 	}
+	var rows *sql.Rows
+	var err error
+	if sqlTx != nil {
+		stmt, err := sqlTx.Prepare(queryStmt)
+		if err != nil {
+			return err
+		}
+		rows, err = stmt.Query(args...)
+		if err != nil {
+			return err
+		}
+	} else {
+		stmt, err := db.Prepare(queryStmt)
+		if err != nil {
+			return err
+		}
+		if ctx != nil {
+			rows, err = stmt.QueryContext(ctx, args...)
+			if err != nil {
+				return err
+			}
+		} else {
+			rows, err = stmt.Query(args...)
+			if err != nil {
+				return err
+			}
+		}
 
-	rows, err := db.Query(sql, args...)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -221,12 +253,12 @@ func (db *DB) fecthItems(items any, sql string, args ...any) error {
 		return db.parseError(err)
 	}
 
-	vals := make([]interface{}, len(cols))
+	//vals := make([]interface{}, len(cols))
 	ptrs := make([]interface{}, len(cols))
-	for i := range ptrs {
-		ptrs[i] = &vals[i]
-	}
-	key := typElem.String() + "://" + sql + "://fecthItems"
+	// for i := range ptrs {
+	// 	ptrs[i] = &vals[i]
+	// }
+	key := typElem.String() + "://" + queryStmt + "://fecthItems"
 	fectInfo, err := internal.OnceCall(key, func() ([]struct {
 		fieldIndexes []int
 		fieldType    reflect.Type

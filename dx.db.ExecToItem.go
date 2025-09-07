@@ -2,6 +2,7 @@ package dx
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (db *DB) ExecToItem(result interface{}, query string, args ...interface{}) error {
+func (db *DB) ExecToItem(result interface{}, query string, ctx context.Context, sqlTx *sql.Tx, args ...interface{}) error {
 	if result == nil {
 		return fmt.Errorf("result must not be nil")
 	}
@@ -38,8 +39,10 @@ func (db *DB) ExecToItem(result interface{}, query string, args ...interface{}) 
 		return err
 	}
 	//mapIndex := onTenantDbNeedGetMapIndex(typ)
-
-	return db.execToItemOptimized(context.Background(), result, ret, query, args...)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return db.execToItemOptimized(ctx, sqlTx, result, ret, query, args...)
 }
 
 var scanArgsPool = sync.Pool{
@@ -48,7 +51,7 @@ var scanArgsPool = sync.Pool{
 	},
 }
 
-func (db *DB) execToItemOptimized(context context.Context, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
+func (db *DB) execToItemOptimized(context context.Context, sqlTx *sql.Tx, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
 	ptrVal := reflect.ValueOf(result)
 	if ptrVal.Kind() != reflect.Ptr {
 		return fmt.Errorf("result must be a pointer to slice")
@@ -60,11 +63,22 @@ func (db *DB) execToItemOptimized(context context.Context, result interface{}, m
 	}
 	typ = typ.Elem()
 
-	stm, err := db.DB.Prepare(query)
-	if err != nil {
-		return err
+	var rows *sql.Rows
+	var err error
+	if sqlTx != nil {
+		stm, err := sqlTx.Prepare(query)
+		if err != nil {
+			return err
+		}
+		rows, err = stm.QueryContext(context, args...)
+	} else {
+		stm, err := db.DB.Prepare(query)
+		if err != nil {
+			return err
+		}
+		rows, err = stm.QueryContext(context, args...)
 	}
-	rows, err := stm.QueryContext(context, args...)
+
 	if err != nil {
 		return err
 	}
