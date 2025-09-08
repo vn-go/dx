@@ -1,6 +1,10 @@
 package compiler
 
-import "github.com/vn-go/dx/sqlparser"
+import (
+	"fmt"
+
+	"github.com/vn-go/dx/sqlparser"
+)
 
 type tabelExtractorTypes struct {
 }
@@ -29,22 +33,30 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		if len(nextTbl) > 0 {
 			ret = append(ret, nextTbl...)
 		}
-		nextTbl = t.getTables(joinTableExpr.Condition, visited)
-		if len(nextTbl) > 0 {
-			ret = append(ret, nextTbl...)
-		}
+		// nextTbl = t.getTables(joinTableExpr.Condition, visited)
+		// if len(nextTbl) > 0 {
+		// 	ret = append(ret, nextTbl...)
+		// }
 		return ret
 	}
 	if aliasedTableExpr, ok := node.(*sqlparser.AliasedTableExpr); ok {
-		nextTbl := t.getTables(aliasedTableExpr.As, visited)
-		if len(nextTbl) > 0 {
-			ret = append(ret, nextTbl...)
+		if aliasedTableExpr.As.IsEmpty() {
+			nextTbl := t.getTables(aliasedTableExpr.Expr, visited)
+			if len(nextTbl) > 0 {
+				ret = append(ret, nextTbl...)
+			}
+			return ret
+		} else {
+			nextTbl := t.getTables(aliasedTableExpr.Expr, visited)
+			if len(nextTbl) > 0 {
+				for _, t := range nextTbl {
+					ret = append(ret, fmt.Sprintf("%s\n%s", t, aliasedTableExpr.As.String()))
+				}
+
+			}
+			return ret
 		}
-		nextTbl = t.getTables(aliasedTableExpr.Expr, visited)
-		if len(nextTbl) > 0 {
-			ret = append(ret, nextTbl...)
-		}
-		return ret
+
 	}
 	//sqlparser.TableIdent
 	if tableIdent, ok := node.(sqlparser.TableIdent); ok {
@@ -103,6 +115,23 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 			}
 			return ret
 		}
+	}
+	if selects, ok := node.(sqlparser.SelectExprs); ok {
+		for _, x := range selects {
+			next := t.getTables(x, visited)
+			if len(next) > 0 {
+				ret = append(ret, next...)
+			}
+		}
+		return ret
+	}
+	if x, ok := node.(*sqlparser.AliasedExpr); ok {
+		next := t.getTables(x.Expr, visited)
+		if !x.As.IsEmpty() {
+			next = append(next, x.As.String())
+		}
+		ret = append(ret, next...)
+		return ret
 	}
 
 	//sqlparser.Expr

@@ -43,17 +43,31 @@ type compiler struct {
 }
 
 func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
-	mapEntities := model.ModelRegister.GetMapEntities(tables)
+	tableAlias := map[string]string{}
+	tblList := []string{}
+	i := 1
+	for _, x := range tables {
+		items := strings.Split(x, "\n")
+		if len(items) > 1 {
+			tableAlias[strings.ToLower(items[0])] = items[1]
+			tblList = append(tblList, items[0])
+		} else {
+			tableAlias[strings.ToLower(x)] = fmt.Sprintf("T%d", i)
+			tblList = append(tblList, x)
+			i++
+		}
+	}
+	mapEntities := model.ModelRegister.GetMapEntities(tblList)
 	ret := &Dictionary{
 		TableAlias:  map[string]string{},
 		Field:       map[string]string{},
 		StructField: map[string]reflect.StructField{},
 		Tables:      tables,
 	}
-	i := 1
+	ret.TableAlias = tableAlias
 	for tbl, x := range mapEntities {
-		aliasTable := fmt.Sprintf("T%d", i)
-		ret.TableAlias[tbl] = aliasTable
+		aliasTable := ret.TableAlias[tbl]
+
 		for _, col := range x.Cols {
 			key := strings.ToLower(fmt.Sprintf("%s.%s", tbl, col.Field.Name))
 			ret.Field[key] = cmp.dialect.Quote(aliasTable, col.Name)
@@ -98,11 +112,34 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	strFrom, err := cmp.resolveFrom(stmSelect.From)
+	if err != nil {
+		return nil, err
+	}
+	strWhere, err := cmp.resolveWhere(stmSelect.Where)
+	if err != nil {
+		return nil, err
+	}
 	ret := &types.SqlInfo{
 		StrSelect: strSelect,
+		From:      strFrom,
+		StrWhere:  strWhere,
 	}
 	return ret, nil
 
+}
+func (cmp *compiler) resolveFrom(node sqlparser.TableExprs) (string, error) {
+	ret := []string{}
+	for _, x := range node {
+
+		strRet, err := cmp.resolve(x, C_JOIN)
+		if err != nil {
+			return "", err
+		}
+		ret = append(ret, strRet)
+
+	}
+	return strings.Join(ret, ","), nil
 }
 func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, error) {
 	fields := []string{}
@@ -147,10 +184,63 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, e
 	}
 	return strings.Join(fields, ","), nil
 }
+
+func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
+	return cmp.resolve(node.Expr, C_WHERE)
+}
 func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
 	cmp, err := newCompiler(sql, dbDriver)
 	if err != nil {
 		return nil, err
 	}
 	return cmp.getSqlInfo()
+}
+func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
+
+	sql = internal.Helper.QuoteExpression(sql)
+
+	stm, err := sqlparser.Parse(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &compiler{
+		sql:     sql,
+		node:    stm,
+		dialect: factory.DialectFactory.Create(dbDriver),
+	}
+
+	return ret, nil
+}
+func (cmp *compiler) initDict(node sqlparser.SQLNode) {
+	tableList := tabelExtractor.getTables(node, make(map[string]bool))
+	cmp.dict = cmp.CreateDictionary(tableList)
+}
+func CompileJoin(JoinExpr, dbDriver string) (string, error) {
+	key := fmt.Sprintf("%s@%s", JoinExpr, dbDriver)
+	return internal.OnceCall(key, func() (string, error) {
+		//cmp, err := newCompiler("select * form "+JoinExpr, dbDriver)
+		cmp, err := newBasicCompiler("select * form "+JoinExpr, dbDriver)
+		if err != nil {
+			return "", err
+		}
+		stmSelect := cmp.node.(*sqlparser.Select)
+		cmp.initDict(stmSelect.From)
+		return cmp.resolveFrom(stmSelect.From)
+	})
+
+}
+
+func CompileSelect(Selecttor, dbDriver string) (string, error) {
+	key := fmt.Sprintf("%s@%s", Selecttor, dbDriver)
+	return internal.OnceCall(key, func() (string, error) {
+		cmp, err := newBasicCompiler("select  "+Selecttor, dbDriver)
+		if err != nil {
+			return "", err
+		}
+		stmSelect := cmp.node.(*sqlparser.Select)
+		cmp.initDict(stmSelect.SelectExprs)
+		return cmp.resolveSelect(stmSelect.SelectExprs)
+	})
+
 }

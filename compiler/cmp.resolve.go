@@ -20,8 +20,23 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 	if x, ok := node.(*sqlparser.FuncExpr); ok {
 		return cmp.funcExpr(x, cmpType)
 	}
-	if x,ok:=node.(*sqlparser.SQLVal);ok {
+	if x, ok := node.(*sqlparser.SQLVal); ok {
 		return cmp.sqlVal(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.AliasedTableExpr); ok {
+		return cmp.aliasedTableExpr(x, cmpType)
+	}
+	if x, ok := node.(sqlparser.TableName); ok {
+		return cmp.tableName(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.ComparisonExpr); ok {
+		return cmp.comparisonExpr(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.JoinTableExpr); ok {
+		return cmp.joinTableExpr(x, cmpType)
+	}
+	if x, ok := node.(sqlparser.JoinCondition); ok {
+		return cmp.joinCondition(x, cmpType)
 	}
 	panic(fmt.Sprintf("Not support %T", node))
 }
@@ -39,11 +54,19 @@ func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER) (s
 }
 func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (string, error) {
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
+		resStr, err := cmp.resolve(x.Expr, cmpType)
+		if err != nil {
+			return "", err
+		}
+		if resStr != "" {
+			return resStr, nil
+		}
 		tableAlias := x.As.String()
 		field := ""
+
 		if x.As.IsEmpty() {
 			if len(cmp.dict.Tables) > 1 {
-				return "", fmt.Errorf("sql command is error")
+				return "", newCompilerError("table not foud", ERR_TABLE_NOT_FOUND)
 			}
 			tableAlias = cmp.dict.TableAlias[cmp.dict.Tables[0]]
 
