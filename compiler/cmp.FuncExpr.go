@@ -1,0 +1,38 @@
+package compiler
+
+import (
+	"strings"
+
+	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/sqlparser"
+)
+
+func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER) (string, error) {
+	strArgs := []string{}
+
+	for _, arg := range expr.Exprs {
+		strArg, err := cmp.resolve(arg, C_FUNC)
+		if err != nil {
+			return "", err
+		} else {
+			strArgs = append(strArgs, strArg)
+		}
+
+	}
+	dialectDelegateFunction := types.DialectDelegateFunction{
+		FuncName:         expr.Name.String(),
+		Args:             strArgs,
+		HandledByDialect: false,
+	}
+	ret, err := cmp.dialect.SqlFunction(&dialectDelegateFunction)
+	if err != nil {
+
+		return "", err
+	}
+	if dialectDelegateFunction.HandledByDialect {
+
+		return ret, nil
+	}
+	return dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")", nil
+
+}

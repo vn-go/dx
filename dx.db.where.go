@@ -207,3 +207,20 @@ func (m *whereTypes) Offset(num uint64) *whereTypes {
 
 //db.Limit(pageSize).Offset(offset).Find(&users)
 //SELECT * FROM [users] ORDER BY (SELECT NULL) OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+
+func (db *DB) Transaction(opts *TxOptions, fn func(tx *Tx) error) error {
+	tx, err := db.BeginTx(context.Background(), opts)
+	if err != nil {
+		return err
+	}
+	err = fn(tx)
+	return err
+}
+func (db *dbContext) Transaction(opts *TxOptions, fn func(tx *Tx) error) error {
+	tx, err := db.BeginTx(db.ctx, opts)
+	if err != nil {
+		return err
+	}
+	err = fn(tx)
+	return err
+}

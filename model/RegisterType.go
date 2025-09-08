@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/entity"
@@ -50,6 +51,22 @@ func (reg *modelRegister) RegisterType(typ reflect.Type) {
 		}
 
 		reg.cacheModelRegistry[typ] = &cacheItem
+		reg.cacheTableNameAndEntity[strings.ToLower(typ.Name())] = &ent
 	})
 
+}
+func (reg *modelRegister) FindEntityByName(name string) *entity.Entity {
+	if ret, ok := reg.cacheTableNameAndEntity[strings.ToLower(name)]; ok {
+		return ret
+	}
+	return nil
+}
+func (reg *modelRegister) GetMapEntities(tables []string) map[string]*entity.Entity {
+	ret := map[string]*entity.Entity{}
+	for _, tblName := range tables {
+		if x := reg.FindEntityByName(tblName); x != nil {
+			ret[strings.ToLower(tblName)] = x
+		}
+	}
+	return ret
 }

@@ -29,7 +29,11 @@ type selectorTypes struct {
 	selectFields []string
 	entityType   *reflect.Type
 	valuaOfEnt   reflect.Value
+	strJoin      string
+	argJoin      []interface{}
 }
+
+var regexpDBSelectFindPlaceHolder = regexp.MustCompile(`\?`)
 
 func (db *DB) Select(args ...any) *selectorTypes {
 	strArgs := []string{}
@@ -38,10 +42,9 @@ func (db *DB) Select(args ...any) *selectorTypes {
 			strArgs = append(strArgs, a.(string))
 		}
 	}
-	re := regexp.MustCompile(`\?`)
 
 	// Tìm tất cả các kết quả khớp pattern
-	matches := re.FindAllStringIndex(strings.Join(strArgs, ","), -1)
+	matches := regexpDBSelectFindPlaceHolder.FindAllStringIndex(strings.Join(strArgs, ","), -1)
 	params := make([]interface{}, len(matches))
 	if len(matches) > 0 {
 
@@ -271,30 +274,57 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 	retArgs := append(selectors.args, whereArgs...)
 	return selectSql, retArgs, err
 }
+
 func (selectors *selectorTypes) Find(item any) error {
-	typeEle := reflect.TypeOf(item)
-	if typeEle.Kind() == reflect.Ptr {
-		typeEle = typeEle.Elem()
-	}
-	if typeEle.Kind() != reflect.Slice {
-		return dxErrors.NewSysError(fmt.Sprintf("%s is not slice", reflect.TypeOf(item).String()))
-	}
-	typeEle = typeEle.Elem()
-	if selectors.entityType != nil {
-		sqlQuery, args, err := selectors.GetSQL(*selectors.entityType)
-		if err != nil {
-			return err
-		}
-		return selectors.db.fecthItems(item, sqlQuery, nil, nil, true, args...)
+	if selectors.strJoin != "" {
+		return selectors.findByJoin(item)
 	} else {
-		sqlQuery, args, err := selectors.GetSQL(typeEle)
-		if err != nil {
-			return err
+		typeEle := reflect.TypeOf(item)
+		if typeEle.Kind() == reflect.Ptr {
+			typeEle = typeEle.Elem()
 		}
-		return selectors.db.fecthItems(item, sqlQuery, nil, nil, true, args...)
+		if typeEle.Kind() != reflect.Slice {
+			return dxErrors.NewSysError(fmt.Sprintf("%s is not slice", reflect.TypeOf(item).String()))
+		}
+		typeEle = typeEle.Elem()
+		if selectors.entityType != nil {
+			sqlQuery, args, err := selectors.GetSQL(*selectors.entityType)
+			if err != nil {
+				return err
+			}
+			return selectors.db.fecthItems(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
+		} else {
+			sqlQuery, args, err := selectors.GetSQL(typeEle)
+			if err != nil {
+				return err
+			}
+			return selectors.db.fecthItems(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
+		}
 	}
 
 }
 func (selectors *selectorTypes) GetModelType() *reflect.Type {
 	return selectors.entityType
+}
+func (selectors *selectorTypes) First(item any) error {
+	typeEle := reflect.TypeOf(item)
+	if typeEle.Kind() == reflect.Ptr {
+		typeEle = typeEle.Elem()
+	}
+
+	selectors.Limit(1)
+	if selectors.entityType != nil {
+		sqlQuery, args, err := selectors.GetSQL(*selectors.entityType)
+		if err != nil {
+			return err
+		}
+		return selectors.db.fecthItem(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
+	} else {
+		sqlQuery, args, err := selectors.GetSQL(typeEle)
+		if err != nil {
+			return err
+		}
+		return selectors.db.fecthItem(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
+	}
+
 }

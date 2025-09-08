@@ -12,6 +12,7 @@ type modelRegistryInfo struct {
 	Entity    *entity.Entity
 }
 type modelRegister struct {
-	cacheModelRegistry  map[reflect.Type]*modelRegistryInfo
-	cacheGetModelByType sync.Map
+	cacheModelRegistry      map[reflect.Type]*modelRegistryInfo
+	cacheGetModelByType     sync.Map
+	cacheTableNameAndEntity map[string]*entity.Entity
 }

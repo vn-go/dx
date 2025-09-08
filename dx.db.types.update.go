@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 
 	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/expr"
@@ -17,13 +16,9 @@ func (m *modelType) Select(args ...any) *selectorTypes {
 	ret := m.db.Select(args...)
 	ret.entityType = &m.typEle
 	ret.valuaOfEnt = m.valuaOfEnt
+	ret.ctx = m.ctx
+	ret.sqlTx = m.tx.Tx
 	return ret
-}
-
-type initBuildUpdateSqlOnce struct {
-	val  string
-	err  error
-	once sync.Once
 }
 
 func (m *selectorTypes) buildUpdateSql() (string, []any, error) {

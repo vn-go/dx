@@ -162,3 +162,118 @@ func TestSelectUserAndEmailMysql(t *testing.T) {
 	).Find(users)
 	t.Log(fx)
 }
+func BenchmarkSelectUserAndEmailMysql(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users = &[]struct {
+		Username string
+		Email    *string
+	}{}
+
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		db.Model(&models.User{}).Limit(100).Select(
+			"concat(username,?,username) username",
+			"email", " ",
+		).Find(users)
+	}
+
+}
+func TestWithContextSelectUserAndEmailMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users = &[]struct {
+		Username string
+		Email    *string
+	}{}
+
+	fx := db.WithContext(t.Context()).Model(&models.User{}).Select(
+		"concat(username,?,username) username",
+		"email", " ",
+	).Find(users)
+	t.Log(fx)
+}
+func BenchmarkWithContextSelectUserAndEmailMysql(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	var users = &[]struct {
+		Username string
+		Email    *string
+	}{}
+	for i := 0; i < t.N; i++ {
+		db.WithContext(t.Context()).Model(&models.User{}).Select(
+			"concat(username,?,username) username",
+			"email", " ",
+		).Find(users)
+	}
+
+}
+func TestTransSelectUserAndEmailMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	tx := db.WithContext(t.Context()).Begin()
+	assert.NoError(t, tx.Error)
+	var users = &[]struct {
+		Username string
+		Email    *string
+	}{}
+
+	fx := tx.Model(&models.User{}).Select(
+		"concat(username,?,username) username",
+		"email", " ",
+	).Find(users)
+	t.Log(fx)
+}
+func TestTransFirstUserAndEmailMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	tx := db.WithContext(t.Context()).Begin()
+	assert.NoError(t, tx.Error)
+	var user = &struct {
+		Username string
+		Email    *string
+	}{}
+
+	fx := tx.Model(&models.User{}).Select(
+		"concat(username,?,username) username",
+		"email", " ",
+	).First(user)
+	t.Log(fx)
+}
+func TestFnTransFirstUserAndEmailMysql(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	tx := db.WithContext(t.Context()).Begin()
+	assert.NoError(t, tx.Error)
+	var user = &struct {
+		Username string
+		Email    *string
+	}{}
+	db.WithContext(t.Context()).Transaction(nil, func(tx *dx.Tx) error {
+		fx := tx.Model(&models.User{}).Select(
+			"concat(username,?,username) username",
+			"email", " ",
+		).First(user)
+		t.Log(fx)
+		return fx
+	})
+
+}

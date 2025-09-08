@@ -1,0 +1,72 @@
+^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	     225	   5164603 ns/op	 1275113 B/op	   49046 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.620s
+
+
+// db.WithContext(t.Context()).Model(&models.User{})
+
+^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	12517833	        80.64 ns/op	     192 B/op	       2 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.198s
+
+
+//db.WithContext(t.Context()).Model(&models.User{}).Select(
+			"concat(username,?,username) username",
+			"email", " ",
+		)
+
+
+^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	 1009946	      1215 ns/op	    1619 B/op	      21 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.093s
+// 
+// select 12244 rows
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	 2188870	       533.5 ns/op	     828 B/op	      10 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.728s
+
+// select 12244 rows
+
+^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	     225	   5164603 ns/op	 1275113 B/op	   49046 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.620s
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	     232	   4528975 ns/op	 1273670 B/op	   49035 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.353s
+

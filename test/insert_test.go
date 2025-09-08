@@ -12,7 +12,7 @@ import (
 
 func TestInsertUser(t *testing.T) {
 	user, err := dx.NewDTO[models.User]()
-	user.Username = "admin"
+	user.Username = "user12345"
 	assert.NoError(t, err)
 	db, err := dx.Open("mysql", mySqlDsn)
 	//dx.SetManagerDb("mysql", "a001")

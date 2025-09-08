@@ -1,6 +1,7 @@
 package dx
 
 import (
+	"context"
 	"reflect"
 )
 
@@ -9,8 +10,11 @@ type modelType struct {
 	typ        reflect.Type
 	typEle     reflect.Type
 	valuaOfEnt reflect.Value
+	ctx        context.Context
+	tx         *Tx
 }
-type modelTypeSelect struct {
-	modelType
-	fields []string
-}
+
+// type modelTypeSelect struct {
+// 	modelType
+// 	fields []string
+// }

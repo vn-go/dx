@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+
+	"github.com/vn-go/dx/entity"
 )
 
 var ModelRegister = &modelRegister{
-	cacheModelRegistry:  map[reflect.Type]*modelRegistryInfo{},
-	cacheGetModelByType: sync.Map{},
+	cacheModelRegistry:      map[reflect.Type]*modelRegistryInfo{},
+	cacheGetModelByType:     sync.Map{},
+	cacheTableNameAndEntity: map[string]*entity.Entity{},
 }
 
 type initGetModelByType struct {

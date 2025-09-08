@@ -47,6 +47,11 @@ func (compiler *exprReceiver) TableName(context *exprCompileContext, expr *sqlpa
 				context.Tables = append(context.Tables, tableName)
 				context.Alias[tableName] = "T" + strconv.Itoa(len(context.Tables))
 			}
+			if context.AlterTableJoin != nil {
+				if alterTable, ok := context.AlterTableJoin[compileTableName]; ok {
+					compileTableName = alterTable
+				}
+			}
 			return context.Dialect.Quote(compileTableName) + " AS " + context.Dialect.Quote(context.Alias[tableName]), nil
 		}
 	} else {

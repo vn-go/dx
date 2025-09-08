@@ -14,6 +14,11 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	}
 
 	tableName := expr.Qualifier.Name.String()
+	if context.AlterTableJoin != nil {
+		if t, ok := context.AlterTableJoin[tableName]; ok {
+			tableName = t
+		}
+	}
 	fieldName := expr.Name.String()
 	aliasFieldName := ""
 	if context.Purpose == BUILD_SELECT {
@@ -26,9 +31,9 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 	if context.schema == nil {
 		context.schema = &map[string]bool{}
 	}
-	checlAlaisTableName := internal.Utils.Pluralize(tableName)
-	if _, ok := (context.Alias)[checlAlaisTableName]; ok { // if not found in database schema, then assume it is a plural table name
-		tableName = checlAlaisTableName
+	checklAlaisTableName := internal.Utils.Pluralize(tableName)
+	if _, ok := (context.Alias)[checklAlaisTableName]; ok { // if not found in database schema, then assume it is a plural table name
+		tableName = checklAlaisTableName
 	}
 
 	if _, ok := (*context.schema)[tableName]; !ok {
@@ -82,13 +87,21 @@ func (e *exprReceiver) ColName(context *exprCompileContext, expr sqlparser.ColNa
 		*/
 		if alias, ok := context.Alias[tableName]; ok {
 			tableName = alias
-			aliasFieldName = fieldName
+
 			fieldName = internal.Utils.SnakeCase(fieldName)
 
 		}
 		return context.Dialect.Quote(tableName, fieldName) + " AS " + context.Dialect.Quote(aliasFieldName), nil
 
 	} else {
+		if context.Purpose == BUILD_JOIN {
+			if _, ok := context.Alias[tableName]; !ok {
+				context.Tables = append(context.Tables, tableName)
+				context.Alias[tableName] = tableName
+				context.AliasToDbTable[tableName] = tableName
+			}
+
+		}
 		if alias, ok := context.Alias[tableName]; ok {
 			tableName = alias
 

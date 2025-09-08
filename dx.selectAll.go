@@ -10,6 +10,7 @@ import (
 
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
+	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
@@ -297,6 +298,106 @@ func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx
 
 	if err := rows.Err(); err != nil {
 		return err
+	}
+	return nil
+}
+func (db *DB) fecthItem(
+	item any,
+	queryStmt string,
+	ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
+	// items phải là pointer đến slice
+	typ := reflect.TypeOf(item)
+
+	// lấy kiểu phần tử của slice
+	typElem := typ
+	if typElem.Kind() == reflect.Ptr {
+		typElem = typElem.Elem()
+	}
+	var rows *sql.Rows
+	var err error
+	if sqlTx != nil {
+		stmt, err := sqlTx.Prepare(queryStmt)
+		if err != nil {
+			return err
+		}
+		rows, err = stmt.Query(args...)
+		if err != nil {
+			return err
+		}
+	} else {
+		stmt, err := db.Prepare(queryStmt)
+		if err != nil {
+			return err
+		}
+		if ctx != nil {
+			rows, err = stmt.QueryContext(ctx, args...)
+			if err != nil {
+				return err
+			}
+		} else {
+			rows, err = stmt.Query(args...)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+
+		return db.parseError(err)
+	}
+
+	//vals := make([]interface{}, len(cols))
+	ptrs := make([]interface{}, len(cols))
+	// for i := range ptrs {
+	// 	ptrs[i] = &vals[i]
+	// }
+	key := typElem.String() + "://" + queryStmt + "://fecthItem"
+	fectInfo, err := internal.OnceCall(key, func() ([]struct {
+		fieldIndexes []int
+		fieldType    reflect.Type
+	}, error) {
+		ret := make([]struct {
+			fieldIndexes []int
+			fieldType    reflect.Type
+		}, len(cols))
+		for i, col := range cols {
+			if field, ok := typElem.FieldByNameFunc(func(s string) bool {
+				r := []rune(s)
+				return unicode.IsUpper(r[0]) && strings.EqualFold(s, col)
+			}); ok {
+				ret[i].fieldIndexes = field.Index
+				ret[i].fieldType = field.Type
+			}
+		}
+		return ret, nil
+	})
+	if err != nil {
+		return err
+	}
+	ptr := reflect.ValueOf(item).Elem()
+	for i, fx := range fectInfo {
+		ptrs[i] = ptr.FieldByIndex(fx.fieldIndexes).Addr().Interface()
+	}
+	found := false
+	for rows.Next() {
+		if err := rows.Scan(ptrs...); err != nil {
+			return err
+		}
+		found = true
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !found {
+		return dxErrors.NewNotFoundErr()
 	}
 	return nil
 }
