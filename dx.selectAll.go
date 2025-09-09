@@ -219,26 +219,36 @@ func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx
 	if sqlTx != nil {
 		stmt, err := sqlTx.Prepare(queryStmt)
 		if err != nil {
-			return err
+			return dxErrors.NewSqlExecError(
+				"Exec error", queryStmt, db.DriverName, err,
+			)
 		}
 		rows, err = stmt.Query(args...)
 		if err != nil {
-			return err
+			return dxErrors.NewSqlExecError(
+				"Exec error", queryStmt, db.DriverName, err,
+			)
 		}
 	} else {
 		stmt, err := db.Prepare(queryStmt)
 		if err != nil {
-			return err
+			return dxErrors.NewSqlExecError(
+				"Exec error", queryStmt, db.DriverName, err,
+			)
 		}
 		if ctx != nil {
 			rows, err = stmt.QueryContext(ctx, args...)
 			if err != nil {
-				return err
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
 			}
 		} else {
 			rows, err = stmt.Query(args...)
 			if err != nil {
-				return err
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
 			}
 		}
 

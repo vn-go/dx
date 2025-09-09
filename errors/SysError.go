@@ -12,3 +12,22 @@ func NewSysError(msg string) error {
 		message: msg,
 	}
 }
+
+type SqlExecError struct {
+	message  string
+	sql      string
+	dbDriver string
+	err      error
+}
+
+func (s *SqlExecError) Error() string {
+	return s.message + "\nsql\t:" + s.sql + "\ndb\t:" + s.dbDriver + "\n" + s.err.Error()
+}
+func NewSqlExecError(msg, sql, dbDriver string, err error) error {
+	return &SqlExecError{
+		message:  msg,
+		sql:      sql,
+		dbDriver: dbDriver,
+		err:      err,
+	}
+}

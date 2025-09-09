@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"strings"
+
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -22,5 +24,5 @@ func (cmp *compiler) joinTableExpr(node *sqlparser.JoinTableExpr, cmpType COMPIL
 	// if err != nil {
 	// 	return "", err
 	// }
-	return strLeft + " INNER JOIN " + strRight + " ON " + strCon, nil
+	return strLeft + " " + strings.ToUpper(node.Join) + " " + strRight + " ON " + strCon, nil
 }

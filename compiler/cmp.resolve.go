@@ -38,7 +38,23 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 	if x, ok := node.(sqlparser.JoinCondition); ok {
 		return cmp.joinCondition(x, cmpType)
 	}
-	panic(fmt.Sprintf("Not support %T", node))
+	if x, ok := node.(*sqlparser.AndExpr); ok {
+		return cmp.andExpr(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.OrExpr); ok {
+		return cmp.orExpr(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.NotExpr); ok {
+		return cmp.notExpr(x, cmpType)
+	}
+	if x, ok := node.(*sqlparser.IsExpr); ok {
+		ret, err := cmp.resolve(x.Expr, cmpType)
+		if err != nil {
+			return "", err
+		}
+		return ret + strings.ToUpper(x.Operator), nil
+	}
+	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 
 func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER) (string, error) {
@@ -108,5 +124,14 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 		}
 
 	}
-	panic(fmt.Sprintf("Not support %T", expr))
+	if x, ok := expr.(*sqlparser.StarExpr); ok {
+		if x.TableName.Qualifier.IsEmpty() {
+			return "*", nil
+		} else {
+			return cmp.dialect.Quote(x.TableName.Qualifier.String()) + ".*", nil
+		}
+
+	}
+
+	panic(fmt.Sprintf("compiler.selectExpr:Not support %T", expr, `compiler\cmp.resolve.go`))
 }

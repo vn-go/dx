@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
@@ -70,6 +71,59 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 		return &basicSqlFirstItemNoFilterResult{
 			sql:           sql,
 			sqlCompiler:   compiler.Content,
+			keyFieldIndex: keyFieldIndex,
+		}, nil
+		//return sql, compiler.Content, keyFieldIndex, nil
+	})
+	if err != nil {
+		return "", "", nil, err
+	}
+	return ret.sql, ret.sqlCompiler, ret.keyFieldIndex, nil
+}
+func (db *DB) buildBasicSqlFirstItemNoFilterV2(typ reflect.Type) (string, string, [][]int, error) {
+	retType := reflect.TypeOf(basicSqlFirstItemNoFilterResult{})
+	key := retType.String() + "@" + retType.PkgPath()
+
+	//key := typ.String() + "://" + db.DbName + "://" + db.DriverName
+	ret, err := internal.OnceCall(key, func() (*basicSqlFirstItemNoFilterResult, error) {
+
+		dialect := factory.DialectFactory.Create(db.DriverName)
+
+		ent, err := model.ModelRegister.GetModelByType(typ)
+		if err != nil {
+			return nil, err
+		}
+
+		tableName := ent.Entity.TableName
+
+		columns := ent.Entity.Cols
+
+		fieldsSelect := make([]string, len(columns))
+		//filterFields := []string{}
+		keyFieldIndex := [][]int{}
+		for i, col := range columns {
+			if col.PKName != "" {
+				//filterFields = append(filterFields, dialect.Quote(tableName, col.Name)+" =?")
+				keyFieldIndex = append(keyFieldIndex, col.IndexOfField)
+			}
+			fieldsSelect[i] = dialect.Quote(tableName, col.Name) + " AS " + dialect.Quote(col.Field.Name)
+		}
+		//filter := strings.Join(filterFields, " AND ")
+		linit := uint64(1)
+		sqlInfo := &types.SqlInfo{
+			StrSelect: strings.Join(fieldsSelect, ","),
+			Limit:     &linit,
+			From:      dialect.Quote(tableName),
+		}
+
+		sql, err := dialect.BuildSql(sqlInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		return &basicSqlFirstItemNoFilterResult{
+			sql: sql,
+			//sqlCompiler:   filter,
 			keyFieldIndex: keyFieldIndex,
 		}, nil
 		//return sql, compiler.Content, keyFieldIndex, nil

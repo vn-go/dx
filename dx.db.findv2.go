@@ -14,6 +14,10 @@ import (
 )
 
 func (w *whereTypes) Find(item any) error {
+	err := internal.Helper.AddrssertSinglePointerToStruct(item)
+	if err != nil {
+		return err
+	}
 	if w.err != nil {
 		return w.err
 	}

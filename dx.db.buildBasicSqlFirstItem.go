@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
@@ -48,8 +50,41 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 			}
 			sql += " WHERE " + compiler.Content
 		}
-		var limitPtr *uint64 
+		var limitPtr *uint64
 		sql = dialect.LimitAndOffset(sql, nil, limitPtr, "")
+		return sql, nil
+	})
+
+}
+func (db *DB) buildBasicSqlFirstItemV2(typ reflect.Type, filter string) (string, error) {
+	key := db.DriverName + "://" + db.DbName + "/" + typ.String() + "/buildBasicSqlFirstItem/" + filter
+	return internal.OnceCall(key, func() (string, error) {
+
+		ent, err := model.ModelRegister.GetModelByType(typ)
+		if err != nil {
+			return "", err
+		}
+		tableName := ent.Entity.TableName
+
+		columns := ent.Entity.Cols
+
+		fieldsSelect := make([]string, len(columns))
+		for i, col := range columns {
+			fieldsSelect[i] = ent.Entity.TableName + "." + col.Field.Name + " AS " + col.Field.Name
+		}
+
+		limit := uint64(1)
+		sqlInfo := &types.SqlInfo{
+			StrSelect: strings.Join(fieldsSelect, ","),
+			From:      tableName,
+			StrWhere:  filter,
+			Limit:     &limit,
+		}
+
+		sql, err := compiler.GetSql(sqlInfo, db.DriverName)
+		if err != nil {
+			return "", err
+		}
 		return sql, nil
 	})
 

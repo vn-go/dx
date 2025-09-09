@@ -7,7 +7,8 @@ import (
 )
 
 func (compiler *exprReceiver) SimpleTableExpr(context *exprCompileContext, expr sqlparser.SimpleTableExpr) (string, error) {
-	panic("not implemented")
+
+	panic(fmt.Sprintf("not implement, exprReceiver.SimpleTableExpr %s", `expr\expr.JoinTableExpr.go`))
 }
 func (compiler *exprReceiver) JoinTableExpr(context *exprCompileContext, expr *sqlparser.JoinTableExpr) (string, error) {
 	var left, right, on string

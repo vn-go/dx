@@ -1,7 +1,11 @@
 package mysql
 
-import "github.com/vn-go/dx/entity"
+import (
+	"fmt"
+
+	"github.com/vn-go/dx/entity"
+)
 
 func (d *mySqlDialect) MakeSqlInsertBatch(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{}) {
-	panic("not implemented")
+	panic(fmt.Sprintf("not implemented MakeSqlInsertBatch, %s", `dialect\mysql\dialect.mysql.MakeSqlInsertBatch.go`))
 }

@@ -13,7 +13,23 @@ var tabelExtractor = &tabelExtractorTypes{}
 
 func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[string]bool) []string {
 	//sqlparser.TableExprs
+	if node == nil {
+		return []string{}
+	}
 	ret := []string{}
+	if sqlSelect, ok := node.(*sqlparser.Select); ok {
+		next := t.getTables(sqlSelect.From, visited)
+		ret = append(ret, next...)
+		next = t.getTables(sqlSelect.GroupBy, visited)
+		ret = append(ret, next...)
+		next = t.getTables(sqlSelect.Where, visited)
+		ret = append(ret, next...)
+		next = t.getTables(sqlSelect.Having, visited)
+		ret = append(ret, next...)
+		next = t.getTables(sqlSelect.SelectExprs, visited)
+		ret = append(ret, next...)
+		return ret
+	}
 	if tableExprs, ok := node.(sqlparser.TableExprs); ok {
 		for _, n := range tableExprs {
 			nextTbl := t.getTables(n, visited)
@@ -127,14 +143,84 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 	}
 	if x, ok := node.(*sqlparser.AliasedExpr); ok {
 		next := t.getTables(x.Expr, visited)
-		if !x.As.IsEmpty() {
-			next = append(next, x.As.String())
-		}
+
 		ret = append(ret, next...)
 		return ret
 	}
+	if x, ok := node.(sqlparser.GroupBy); ok {
+		for _, f := range x {
+			ret = append(ret, t.getTables(f, visited)...)
+		}
+		return ret
+	}
+	if x, ok := node.(*sqlparser.Where); ok {
+		if x == nil {
+			return []string{}
+		}
+		ret = append(ret, t.getTables(x.Expr, visited)...)
+		return ret
+	}
+	if x, ok := node.(*sqlparser.JoinTableExpr); ok {
+		ret = append(ret, t.getTables(x.LeftExpr, visited)...)
+		ret = append(ret, t.getTables(x.Condition, visited)...)
+		ret = append(ret, t.getTables(x.RightExpr, visited)...)
+		return ret
+	}
+	if x, ok := node.(*sqlparser.SelectExprs); ok {
+		for _, f := range *x {
+			ret = append(ret, t.getTables(f, visited)...)
+		}
+		return ret
 
+	}
+	//*sqlparser.BinaryExpr
+	if x, ok := node.(*sqlparser.BinaryExpr); ok {
+		ret = append(ret, t.getTables(x.Left, visited)...)
+		ret = append(ret, t.getTables(x.Right, visited)...)
+		return ret
+
+	}
+	if _, ok := node.(*sqlparser.SQLVal); ok {
+		return []string{}
+	}
+	if fn, ok := node.(*sqlparser.FuncExpr); ok {
+		for _, f := range fn.Exprs {
+			ret = append(ret, t.getTables(f, visited)...)
+		}
+		return ret
+	}
+	if s, ok := node.(*sqlparser.StarExpr); ok {
+		if s.TableName.IsEmpty() {
+			return []string{}
+		}
+		ret = append(ret, s.TableName.Name.String())
+		return ret
+	}
+	if s, ok := node.(*sqlparser.AndExpr); ok {
+		next := t.getTables(s.Left, visited)
+		ret = append(ret, next...)
+		next = t.getTables(s.Right, visited)
+		ret = append(ret, next...)
+		return ret
+	}
+	if s, ok := node.(*sqlparser.OrExpr); ok {
+		next := t.getTables(s.Left, visited)
+		ret = append(ret, next...)
+		next = t.getTables(s.Right, visited)
+		ret = append(ret, next...)
+		return ret
+	}
+	if s, ok := node.(*sqlparser.NotExpr); ok {
+		next := t.getTables(s.Expr, visited)
+		ret = append(ret, next...)
+
+		return ret
+	}
+	if s, ok := node.(*sqlparser.IsExpr); ok {
+		next := t.getTables(s.Expr, visited)
+		return append(ret, next...)
+	}
 	//sqlparser.Expr
-	panic("not implement")
+	panic(fmt.Sprintf("not implement ,%s", `compiler\tabelExtractorTypes.go`))
 
 }

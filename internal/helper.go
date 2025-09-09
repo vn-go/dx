@@ -174,6 +174,39 @@ func (c *helperType) AddrssertSinglePointerToStruct(obj interface{}) error {
 
 	return nil
 }
+func (c *helperType) AddrssertSinglePointerToSlice(obj interface{}) error {
+	v := reflect.ValueOf(obj)
+	t := v.Type()
+	key := t.String() + "://helperType/AddrssertSinglePointerToSlice"
+	_, err := OnceCall(key, func() (int, error) {
+		depth := 0
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+			depth++
+			if depth > 1 {
+				break
+			}
+		}
+
+		if depth != 1 {
+			return depth, fmt.Errorf("expected pointer to slice (*T), got %d-level pointer", depth)
+		}
+
+		if t.Kind() != reflect.Slice {
+			return depth, fmt.Errorf(" expected pointer to slice, got pointer to %s", t.Kind())
+		}
+		if t.Elem().Kind() != reflect.Struct {
+			return depth, fmt.Errorf(" expected pointer to slice of struct , got pointer to %s", t.String())
+		}
+		return depth, nil
+
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 type intHelperTypeFindField struct {
 	fieldIndex []int
@@ -233,7 +266,7 @@ func newHelper() *helperType {
 			"inner": true, "left": true, "right": true, "full": true, "join": true,
 			"on": true, "using": true, "where": true, "group": true, "by": true,
 			"like": true, "desc": true, "asc": true, "select": true, "from": true, "order": true,
-			"limit": true,
+			"limit": true, "having": true, "is": true, "null": true,
 		},
 		funcWhitelist: map[string]bool{
 			"min": true, "max": true, "abs": true, "len": true,

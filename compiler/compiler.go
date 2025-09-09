@@ -47,10 +47,11 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 	tableAlias := map[string]string{}
 	tblList := []string{}
 	i := 1
+	manualAlaisMap := map[string]string{}
 	for _, x := range tables {
 		items := strings.Split(x, "\n")
 		if len(items) > 1 {
-			tableAlias[strings.ToLower(items[0])] = items[1]
+			manualAlaisMap[strings.ToLower(items[0])] = items[1]
 			tblList = append(tblList, items[0])
 		} else {
 			tableAlias[strings.ToLower(x)] = fmt.Sprintf("T%d", i)
@@ -66,16 +67,38 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 		Tables:      tables,
 	}
 	ret.TableAlias = tableAlias
+	mapEntityTypes := map[reflect.Type]string{}
+	count := 1
+	newMap := map[string]string{}
 	for tbl, x := range mapEntities {
-		aliasTable := ret.TableAlias[tbl]
+		alias := ""
+		found := false
+
+		if mAlias, ok := manualAlaisMap[tbl]; ok {
+			alias = mAlias
+			newMap[tbl] = alias
+		} else {
+			if alias, found = mapEntityTypes[x.EntityType]; !found {
+				alias = fmt.Sprintf("T%d", count)
+				count++
+				newMap[tbl] = alias
+				mapEntityTypes[x.EntityType] = alias
+			}
+
+		}
+
+		//aliasTable := ret.TableAlias[tbl]
 
 		for _, col := range x.Cols {
+
 			key := strings.ToLower(fmt.Sprintf("%s.%s", tbl, col.Field.Name))
-			ret.Field[key] = cmp.dialect.Quote(aliasTable, col.Name)
+			ret.Field[key] = cmp.dialect.Quote(alias, col.Name)
 			ret.StructField[key] = col.Field
+
 		}
 		i++
 	}
+	ret.TableAlias = newMap
 	return ret
 }
 
@@ -97,11 +120,12 @@ func newCompiler(sql, dbDriver string) (*compiler, error) {
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
 
-		tableList := tabelExtractor.getTables(stmSelect.From, make(map[string]bool))
+		tableList := tabelExtractor.getTables(stmSelect, make(map[string]bool))
+
 		ret.dict = ret.CreateDictionary(tableList)
 
 	} else {
-		return nil, fmt.Errorf("compiler not support %s", originalSql)
+		return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
 	}
 	return ret, nil
 }
@@ -139,15 +163,46 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 			return nil, err
 		}
 	}
+	strGroupBy := ""
+	if stmSelect.GroupBy != nil {
+		strGroupBy, err = cmp.resolveGroupBy(stmSelect.GroupBy)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	strHaving := ""
+	if stmSelect.Having != nil {
+		strHaving, err = cmp.resolveWhere(stmSelect.Having)
+		if err != nil {
+			return nil, err
+		}
+
+	}
 	ret := &types.SqlInfo{
-		StrSelect: strSelect,
-		From:      strFrom,
-		StrWhere:  strWhere,
-		StrOrder:  strOrderBy,
-		Limit:     limit,
-		Offset:    offset,
+		StrSelect:  strSelect,
+		From:       strFrom,
+		StrWhere:   strWhere,
+		StrOrder:   strOrderBy,
+		Limit:      limit,
+		Offset:     offset,
+		StrGroupBy: strGroupBy,
+		StrHaving:  strHaving,
 	}
 	return ret, nil
+
+}
+
+func (cmp *compiler) resolveGroupBy(group sqlparser.GroupBy) (string, error) {
+	groupItems := []string{}
+	for _, x := range group {
+		str, err := cmp.resolve(x, C_WHERE)
+		if err != nil {
+			return "", err
+		}
+		groupItems = append(groupItems, str)
+	}
+	return strings.Join(groupItems, ","), nil
 
 }
 func (cmp *compiler) resolveLimit(limit *sqlparser.Limit) (*uint64, *uint64, error) {
@@ -213,7 +268,13 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, e
 
 				ent := model.ModelRegister.FindEntityByName(tblName)
 				if ent != nil {
-					if tableAlais, found := cmp.dict.TableAlias[strings.ToLower(tblName)]; found {
+					tableAlais := ""
+					found := false
+					tableAlais, found = cmp.dict.TableAlias[strings.ToLower(tblName)]
+					if !found {
+						tableAlais, found = cmp.dict.TableAlias[strings.ToLower(ent.TableName)]
+					}
+					if found {
 						for _, c := range ent.Cols {
 							fields = append(fields, cmp.dialect.Quote(tableAlais, c.Name)+" "+cmp.dialect.Quote(c.Field.Name))
 						}

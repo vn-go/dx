@@ -8,9 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/types"
 	dxErrors "github.com/vn-go/dx/errors"
-	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
@@ -31,6 +31,10 @@ type selectorTypes struct {
 	valuaOfEnt   reflect.Value
 	strJoin      string
 	argJoin      []interface{}
+	strGroup     string
+	argGroup     []interface{}
+	strHaving    string
+	argHaving    []interface{}
 }
 
 var regexpDBSelectFindPlaceHolder = regexp.MustCompile(`\?`)
@@ -42,33 +46,39 @@ func (db *DB) Select(args ...any) *selectorTypes {
 			strArgs = append(strArgs, a.(string))
 		}
 	}
-
-	// Tìm tất cả các kết quả khớp pattern
-	matches := regexpDBSelectFindPlaceHolder.FindAllStringIndex(strings.Join(strArgs, ","), -1)
-	params := make([]interface{}, len(matches))
-	if len(matches) > 0 {
-
-		offsetVar := len(args) - len(matches)
-		for i := range matches {
-			params[i] = args[offsetVar+i]
-		}
-	}
-	selectFields := args[0 : len(args)-len(matches)]
+	params := []any{}
 	strFields := []string{}
-	for _, x := range selectFields {
-		if reflect.TypeOf(x) == reflect.TypeFor[string]() {
-			strFields = append(strFields, x.(string))
-		} else {
-			errMsg := "db.Select: invalid selector; field placeholder and argument do not correspond"
-			errMsg += "\n"
-			for _, x := range args {
-				errMsg += fmt.Sprintf("%s", x)
-			}
-			return &selectorTypes{
+	if len(args) > 1 {
 
-				err: dxErrors.NewSysError(errMsg),
+		// Tìm tất cả các kết quả khớp pattern
+		matches := regexpDBSelectFindPlaceHolder.FindAllStringIndex(strings.Join(strArgs, ","), -1)
+		params = make([]interface{}, len(matches))
+		if len(matches) > 0 {
+
+			offsetVar := len(args) - len(matches)
+			for i := range matches {
+				params[i] = args[offsetVar+i]
 			}
 		}
+		selectFields := args[0 : len(args)-len(matches)]
+		strFields = []string{}
+		for _, x := range selectFields {
+			if reflect.TypeOf(x) == reflect.TypeFor[string]() {
+				strFields = append(strFields, x.(string))
+			} else {
+				errMsg := "db.Select: invalid selector; field placeholder and argument do not correspond"
+				errMsg += "\n"
+				for _, x := range args {
+					errMsg += fmt.Sprintf("%s", x)
+				}
+				return &selectorTypes{
+
+					err: dxErrors.NewSysError(errMsg),
+				}
+			}
+		}
+	} else {
+		strFields = strArgs
 	}
 	ret := &selectorTypes{
 		db:           db,
@@ -185,7 +195,7 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 	strSort := strings.Join(selectors.orders, ",")
 	strSelect := strings.Join(selectors.selectFields, ",")
 
-	key := typModel.String() + "/selectorTypes/GetSQL/" + strWhere + "/" + strSort + "/" + strSelect
+	key := typModel.String() + "/selectorTypes/GetSQL/" + strWhere + "/" + strSort + "/" + strSelect + "/" + selectors.strGroup + "/" + selectors.strHaving
 	if selectors.limit != nil {
 		key += fmt.Sprintf("/%d", *selectors.limit)
 	}
@@ -198,72 +208,22 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 		if err != nil {
 			return "", err
 		}
-		complier, err := expr.CompileJoin(ent.Entity.TableName, selectors.db.DB)
-		if err != nil {
-			return "", err
-		}
+		// complier, err := expr.CompileJoin(ent.Entity.TableName, selectors.db.DB)
+		// if err != nil {
+		// 	return "", err
+		// }
 		sqlInfo := &types.SqlInfo{
-			Limit:  selectors.limit,
-			Offset: selectors.offset,
-		}
-		complier.Context.Purpose = expr.BUILD_JOIN
-		sqlInfo.From = complier.Content
-		complier.Context.Purpose = expr.BUILD_SELECT
-		selectFields := make([]string, len(selectors.selectFields))
-		for i, x := range selectors.selectFields {
-			strAlias := internal.Helper.GetAlias(x)
-			if strAlias == "" {
-				for _, y := range ent.Entity.Cols {
-					if strings.EqualFold(x, y.Name) {
-						strAlias = y.Field.Name
-						break
-					}
-				}
-				if strAlias != "" {
-					selectFields[i] = x + " AS " + strAlias
-				} else {
-					selectFields[i] = x
-				}
-			} else {
-				replaceAlias := ""
-				for _, y := range ent.Entity.Cols {
-					if strings.EqualFold(strAlias, y.Name) {
-						replaceAlias = y.Field.Name
-						break
-					}
-				}
-				if replaceAlias != "" {
-					x = strings.TrimSuffix(x, strAlias)
-					x += " " + replaceAlias
-				}
-				selectFields[i] = x
-			}
-
-		}
-		strSelectCompiler := strings.Join(selectFields, ",")
-		err = complier.BuildSelectField(strSelectCompiler)
-		if err != nil {
-			return "", err
-		}
-		sqlInfo.StrSelect = complier.Content
-		if strWhere != "" {
-			complier.Context.Purpose = expr.BUILD_WHERE
-			err = complier.BuildSelectField(strWhere)
-			if err != nil {
-				return "", err
-			}
-			sqlInfo.StrWhere = strWhere
-		}
-		if strSort != "" {
-			complier.Context.Purpose = expr.BUILD_ORDER
-			err = complier.BuildSortField(strSort)
-			if err != nil {
-				return "", err
-			}
-			sqlInfo.StrOrder = complier.Content
+			Limit:      selectors.limit,
+			Offset:     selectors.offset,
+			StrSelect:  strSelect,
+			StrWhere:   strWhere,
+			StrHaving:  selectors.strHaving,
+			StrOrder:   strSort,
+			StrGroupBy: selectors.strGroup,
+			From:       ent.Entity.TableName,
 		}
 
-		sql, err := complier.Context.Dialect.BuildSql(sqlInfo)
+		sql, err := compiler.GetSql(sqlInfo, selectors.db.DriverName)
 		if err != nil {
 			return "", err
 		}
@@ -276,6 +236,9 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 }
 
 func (selectors *selectorTypes) Find(item any) error {
+	if err := internal.Helper.AddrssertSinglePointerToSlice(item); err != nil {
+		return err
+	}
 	if selectors.strJoin != "" {
 		return selectors.findByJoin(item)
 	} else {

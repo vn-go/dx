@@ -17,10 +17,40 @@ func (m *modelType) Select(args ...any) *selectorTypes {
 	ret.entityType = &m.typEle
 	ret.valuaOfEnt = m.valuaOfEnt
 	ret.ctx = m.ctx
-	ret.sqlTx = m.tx.Tx
+	if m.tx != nil {
+		ret.sqlTx = m.tx.Tx
+	}
+
 	return ret
 }
+func (s *selectorTypes) Joins(join string, args ...any) *selectorTypes {
+	s.argJoin = args
+	s.strJoin = join
 
+	return s
+}
+func (s *selectorTypes) Having(args ...any) *selectorTypes {
+
+	having, params, err := internal.ExtractTextsAndArgs(args)
+	if err != nil {
+		s.err = err
+		return s
+	}
+	s.argHaving = params
+	s.strHaving = strings.Join(having, ",")
+	return s
+}
+func (s *selectorTypes) Group(args ...any) *selectorTypes {
+
+	groups, params, err := internal.ExtractTextsAndArgs(args)
+	if err != nil {
+		s.err = err
+		return s
+	}
+	s.argGroup = params
+	s.strGroup = strings.Join(groups, ",")
+	return s
+}
 func (m *selectorTypes) buildUpdateSql() (string, []any, error) {
 	strWhere, args := m.getFilter()
 	key := (*m.entityType).String() + "://selectorTypes/buildUpdateSql/" + strWhere

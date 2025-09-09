@@ -1,11 +1,15 @@
 package expr
 
-import "github.com/vn-go/dx/sqlparser"
+import (
+	"fmt"
+
+	"github.com/vn-go/dx/sqlparser"
+)
 
 func (compiler *exprReceiver) StarExpr(context *exprCompileContext, expr *sqlparser.StarExpr) (string, error) {
 	if expr.TableName.IsEmpty() {
 		return "*", nil
 	}
-	panic("not implemented")
+	panic(fmt.Sprintf("not implement, exprReceiver.StarExpr %s", `expr\expr.StarExpr.go`))
 
 }

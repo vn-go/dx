@@ -391,6 +391,6 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 	}
 
 	//sqlparser.Expr
-	panic("not implement")
+	panic(fmt.Sprintf("not implement, tabelExtractorTypes.getTables %s", `expr\expr.join.go`))
 
 }
