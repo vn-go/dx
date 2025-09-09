@@ -55,11 +55,34 @@ func (reg *modelRegister) RegisterType(typ reflect.Type) {
 	})
 
 }
+
+type initModelRegisterFindEntityByName struct {
+	val  *entity.Entity
+	once sync.Once
+}
+
+var cacheModelRegisterFindEntityByName sync.Map
+
 func (reg *modelRegister) FindEntityByName(name string) *entity.Entity {
-	if ret, ok := reg.cacheTableNameAndEntity[strings.ToLower(name)]; ok {
-		return ret
-	}
-	return nil
+	actually, _ := cacheModelRegisterFindEntityByName.LoadOrStore(name, &initModelRegisterFindEntityByName{})
+	item := actually.(*initModelRegisterFindEntityByName)
+	item.once.Do(func() {
+		if ret, ok := reg.cacheTableNameAndEntity[strings.ToLower(name)]; ok {
+			item.val = ret
+			return
+		}
+		for _, v := range reg.cacheTableNameAndEntity {
+			if strings.EqualFold(v.EntityType.Name(), name) || strings.EqualFold(v.TableName, name) {
+				item.val = v
+				return
+			}
+
+		}
+		if item.val == nil {
+			cacheModelRegisterFindEntityByName.Delete(name)
+		}
+	})
+	return item.val
 }
 func (reg *modelRegister) GetMapEntities(tables []string) map[string]*entity.Entity {
 	ret := map[string]*entity.Entity{}

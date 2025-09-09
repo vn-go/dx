@@ -154,7 +154,7 @@ func (w *whereTypes) Order(order string) *whereTypes {
 	return w
 }
 
-func (w *whereTypes) Find(item any) error {
+func (w *whereTypes) FindV1(item any) error {
 	if w.err != nil {
 		return w.err
 	}

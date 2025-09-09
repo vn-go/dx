@@ -50,3 +50,10 @@ func TestCompileSelect(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log(ret)
 }
+func BenchmarkCompileSelect(t *testing.B) {
+	for i := 0; i < t.N; i++ {
+		compiler.CompileSelect("user.userId", "mysql")
+
+	}
+
+}

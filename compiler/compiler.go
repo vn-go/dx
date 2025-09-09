@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/factory"
@@ -109,6 +110,7 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 
 	stmSelect := cmp.node.(*sqlparser.Select)
 	strSelect, err := cmp.resolveSelect(stmSelect.SelectExprs)
+
 	if err != nil {
 		return nil, err
 	}
@@ -116,16 +118,77 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	strWhere, err := cmp.resolveWhere(stmSelect.Where)
-	if err != nil {
-		return nil, err
+	strWhere := ""
+	if stmSelect.Where != nil {
+		strWhere, err = cmp.resolveWhere(stmSelect.Where)
+		if err != nil {
+			return nil, err
+		}
+	}
+	strOrderBy := ""
+	if stmSelect.OrderBy != nil {
+		strOrderBy, err = cmp.resolveOrderBy(stmSelect.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var limit, offset *uint64
+	if stmSelect.Limit != nil {
+		limit, offset, err = cmp.resolveLimit(stmSelect.Limit)
+		if err != nil {
+			return nil, err
+		}
 	}
 	ret := &types.SqlInfo{
 		StrSelect: strSelect,
 		From:      strFrom,
 		StrWhere:  strWhere,
+		StrOrder:  strOrderBy,
+		Limit:     limit,
+		Offset:    offset,
 	}
 	return ret, nil
+
+}
+func (cmp *compiler) resolveLimit(limit *sqlparser.Limit) (*uint64, *uint64, error) {
+	var retLimit, retOffset *uint64
+	if limit.Rowcount != nil {
+		strLimit, err := cmp.resolve(limit.Rowcount, C_LIMIT)
+		if err != nil {
+			return nil, nil, err
+		}
+		rLimit, err := strconv.ParseUint(strLimit, 10, 64) // (string, base, bitSize)
+		if err != nil {
+			return nil, nil, err
+		}
+		retLimit = &rLimit
+	}
+	if limit.Offset != nil {
+		strOffset, err := cmp.resolve(limit.Offset, C_OFFSET)
+		if err != nil {
+			return nil, nil, err
+		}
+		rOffset, err := strconv.ParseUint(strOffset, 10, 64) // (string, base, bitSize)
+		if err != nil {
+			return nil, nil, err
+		}
+		retOffset = &rOffset
+	}
+	return retLimit, retOffset, nil
+}
+func (cmp *compiler) resolveOrderBy(orderBy sqlparser.OrderBy) (string, error) {
+	/*
+
+	 */
+	sortLst := []string{}
+	for _, x := range orderBy {
+		fx, err := cmp.resolve(x.Expr, C_ORDER)
+		if err != nil {
+			return "", err
+		}
+		sortLst = append(sortLst, fx+" "+x.Direction)
+	}
+	return strings.Join(sortLst, ","), nil
 
 }
 func (cmp *compiler) resolveFrom(node sqlparser.TableExprs) (string, error) {
@@ -242,5 +305,22 @@ func CompileSelect(Selecttor, dbDriver string) (string, error) {
 		cmp.initDict(stmSelect.SelectExprs)
 		return cmp.resolveSelect(stmSelect.SelectExprs)
 	})
+
+}
+func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (string, error) {
+
+	sql, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
+	if err != nil {
+		return "", err
+	}
+	sqlInfo, err = Compile(sql, dbDriver)
+	if err != nil {
+		return "", err
+	}
+	sql, err = factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
 
 }

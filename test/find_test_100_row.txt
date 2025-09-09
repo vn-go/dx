@@ -1,0 +1,20 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFindbyWhereLimit100RowsMysqlV1$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFindbyWhereLimit100RowsMysqlV1-16    	    3300	    383642 ns/op	   32206 B/op	     950 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.410s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFindbyWhereLimit100RowsMysqlV2$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFindbyWhereLimit100RowsMysqlV2-16    	    3928	    305224 ns/op	   32185 B/op	     950 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	3.261s

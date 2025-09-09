@@ -59,7 +59,12 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 			return "", err
 		}
 		if resStr != "" {
-			return resStr, nil
+			if !x.As.IsEmpty() && cmpType == C_SELECT {
+				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
+			} else {
+				return resStr, nil
+			}
+
 		}
 		tableAlias := x.As.String()
 		field := ""

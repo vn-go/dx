@@ -24,7 +24,38 @@ func TestFindbyWhereMysql(t *testing.T) {
 
 	assert.NoError(t, err)
 }
-func BenchmarkFindbyWhereMysql(t *testing.B) {
+func BenchmarkFindbyWhereNoCacheV1(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+
+	user := []models.User{}
+	total := uint64(0)
+	err = db.Model(&models.User{}).Where("username!=?", 25).Count(&total)
+	assert.NoError(t, err)
+	for i := 0; i < t.N; i++ {
+		db.Where("username!=?", "admin").Limit(100).Order("Id desc").FindV1(&user)
+	}
+
+}
+func TestFindbyWhereLimit100RowsMysqlV2(t *testing.T) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+
+	user := []models.User{}
+	total := uint64(0)
+	err = db.Model(&models.User{}).Where("username!=?", 25).Count(&total)
+	assert.NoError(t, err)
+	err = db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+
+	assert.NoError(t, err)
+}
+func BenchmarkFindbyWhereLimit100RowsMysqlV1(t *testing.B) {
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
@@ -34,7 +65,22 @@ func BenchmarkFindbyWhereMysql(t *testing.B) {
 	user := []models.User{}
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		err = db.WithContext(t.Context()).Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+		db.WithContext(t.Context()).Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+
+	}
+
+}
+func BenchmarkFindbyWhereLimit100RowsMysqlV2(t *testing.B) {
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+
+	user := []models.User{}
+	t.ResetTimer()
+	for i := 0; i < t.N; i++ {
+		db.WithContext(t.Context()).Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
 
 	}
 
