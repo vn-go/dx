@@ -1,15 +1,19 @@
 package dx
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
-	"sync"
+	"strings"
+	"unicode"
 	"unsafe"
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/errors"
+	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
 )
 
@@ -46,9 +50,11 @@ func (sql *sqlStatementType) ScanRow(items any) error {
 	if err != nil {
 		return err
 	}
-	//sql.db.fecthItems(items, sqlExec.Sql, nil, nil, false, sql.args...)
-	return ScanUnsafe(sql.db.DB.DB, sqlExec.Sql, items, sql.args...)
-	//return nil
+	err = sql.db.fecthItems(items, sqlExec.Sql, nil, nil, false, sql.args...)
+	if err != nil {
+		return sql.db.parseError(err)
+	}
+	return nil
 }
 
 type globalOptType struct {
@@ -59,14 +65,111 @@ var Options = globalOptType{
 	ShowSql: false,
 }
 
-var metaCache sync.Map // key: reflect.Type.String(), value: map[column]fieldInfo
+func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
+	// items phải là pointer đến slice
+	if err := internal.Helper.AddrssertSinglePointerToSlice(items); err != nil {
+		return err
+	}
+	typ := reflect.TypeOf(items)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	//sliceVal := reflect.ValueOf(items).Elem()
+	if typ.Kind() != reflect.Slice {
+		return errors.NewSysError(fmt.Sprintf("%s is not slice", typ.String()))
+	}
+	// if resetLen {
+	// 	sliceVal.SetLen(0)
+	// }
+
+	// // lấy kiểu phần tử của slice
+	typElem := typ.Elem()
+	if typElem.Kind() == reflect.Ptr {
+		typElem = typElem.Elem()
+	}
+	var rows *sql.Rows
+	var err error
+	if sqlTx != nil {
+		if ctx == nil {
+			rows, err = sqlTx.Query(queryStmt, args...)
+			if err != nil {
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
+			}
+		} else {
+			rows, err = sqlTx.QueryContext(ctx, queryStmt, args...)
+			if err != nil {
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
+			}
+		}
+
+	} else {
+		//stmt, err := db.Prepare(queryStmt)
+		if err != nil {
+			return dxErrors.NewSqlExecError(
+				"Exec error", queryStmt, db.DriverName, err,
+			)
+		}
+		if ctx != nil {
+			rows, err = db.QueryContext(ctx, queryStmt, args...)
+			//rows, err = stmt.QueryContext(ctx, args...)
+			if err != nil {
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
+			}
+		} else {
+			rows, err = db.Query(queryStmt, args...)
+			if err != nil {
+				return dxErrors.NewSqlExecError(
+					"Exec error", queryStmt, db.DriverName, err,
+				)
+			}
+		}
+
+	}
+
+	if err != nil {
+		return err
+	}
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+	key := typElem.String() + "://" + queryStmt + "://fecthItems"
+	fectInfo, err := internal.OnceCall(key, func() (map[string]fieldInfo, error) {
+		ret := make(map[string]fieldInfo)
+		for _, col := range cols {
+			if field, ok := typElem.FieldByNameFunc(func(s string) bool {
+				r := []rune(s)
+				return unicode.IsUpper(r[0]) && strings.EqualFold(s, col)
+			}); ok {
+				ret[field.Name] = fieldInfo{
+					offset: field.Offset,
+					typ:    field.Type,
+				}
+			}
+		}
+		return ret, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return fetchUnsafe(rows, items, cols, fectInfo)
+}
 
 type fieldInfo struct {
 	offset uintptr
 	typ    reflect.Type
 }
 
-func ScanUnsafe(db *sql.DB, query string, items any, args ...any) error {
+func fetchUnsafe(rows *sql.Rows, items any, cols []string, fieldMap map[string]fieldInfo) error {
+	defer rows.Close()
 	v := reflect.ValueOf(items)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Slice {
 		return fmt.Errorf("items must be a pointer to slice")
@@ -75,47 +178,18 @@ func ScanUnsafe(db *sql.DB, query string, items any, args ...any) error {
 	sliceVal := v.Elem()
 	elemType := sliceVal.Type().Elem()
 
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	cols, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-
-	// chuẩn bị map column -> field offset
-	fieldMap := make(map[string]struct {
-		offset uintptr
-		typ    reflect.Type
-	})
-	for i := 0; i < elemType.NumField(); i++ {
-		f := elemType.Field(i)
-		name := f.Tag.Get("db")
-		if name == "" {
-			name = f.Name
-		}
-		fieldMap[name] = struct {
-			offset uintptr
-			typ    reflect.Type
-		}{f.Offset, f.Type}
-	}
+	ptrs := make([]any, len(cols))
+	var dummy interface{}
 
 	for rows.Next() {
-		// tạo struct mới
 		newElem := reflect.New(elemType).Elem()
 		basePtr := unsafe.Pointer(newElem.UnsafeAddr())
 
-		ptrs := make([]any, len(cols))
 		for i, col := range cols {
 			if info, ok := fieldMap[col]; ok {
 				fieldPtr := unsafe.Add(basePtr, info.offset)
 				ptrs[i] = reflect.NewAt(info.typ, fieldPtr).Interface()
 			} else {
-				// nếu không match field thì scan vào dummy
-				var dummy any
 				ptrs[i] = &dummy
 			}
 		}
@@ -123,7 +197,6 @@ func ScanUnsafe(db *sql.DB, query string, items any, args ...any) error {
 		if err := rows.Scan(ptrs...); err != nil {
 			return err
 		}
-
 		sliceVal.Set(reflect.Append(sliceVal, newElem))
 	}
 

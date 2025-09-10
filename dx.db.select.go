@@ -311,9 +311,7 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 }
 
 func (selectors *selectorTypes) Find(item any) error {
-	if err := internal.Helper.AddrssertSinglePointerToSlice(item); err != nil {
-		return err
-	}
+
 	if selectors.strJoin != "" {
 		return selectors.findByJoin(item)
 	} else {

@@ -40,3 +40,9 @@ git commit -m "release"
 git tag -a v1.0.5 -m "support compiler union,group by, having, sub query"
 git push origin v1.0.5
 git push origin --tags
+---
+git add .
+git commit -m "release"
+git tag -a v1.0.6 -m "optimize unsafe scanrow "
+git push origin v1.0.6
+git push origin --tags
