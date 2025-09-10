@@ -46,3 +46,9 @@ git commit -m "release"
 git tag -a v1.0.6 -m "optimize unsafe scanrow "
 git push origin v1.0.6
 git push origin --tags
+---
+git add .
+git commit -m "release"
+git tag -a v1.0.7 -m "Fix the error when calling find: reset length of dest instead of appending"
+git push origin v1.0.7
+git push origin --tags

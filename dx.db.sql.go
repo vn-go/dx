@@ -74,13 +74,13 @@ func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	//sliceVal := reflect.ValueOf(items).Elem()
+	sliceVal := reflect.ValueOf(items).Elem()
 	if typ.Kind() != reflect.Slice {
 		return errors.NewSysError(fmt.Sprintf("%s is not slice", typ.String()))
 	}
-	// if resetLen {
-	// 	sliceVal.SetLen(0)
-	// }
+	if resetLen {
+		sliceVal.SetLen(0)
+	}
 
 	// // lấy kiểu phần tử của slice
 	typElem := typ.Elem()
