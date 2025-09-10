@@ -159,11 +159,11 @@ func (c *helperType) AddrssertSinglePointerToStruct(obj interface{}) error {
 		}
 
 		if depth != 1 {
-			return depth, fmt.Errorf("Insert: expected pointer to struct (*T), got %d-level pointer", depth)
+			return depth, fmt.Errorf("expected pointer to struct (*T), got %d-level pointer", depth)
 		}
 
 		if t.Kind() != reflect.Struct {
-			return depth, fmt.Errorf("Insert: expected pointer to struct, got pointer to %s", t.Kind())
+			return depth, fmt.Errorf("expected pointer to struct, got pointer to %s", t.Kind())
 		}
 		return depth, nil
 
@@ -266,7 +266,8 @@ func newHelper() *helperType {
 			"inner": true, "left": true, "right": true, "full": true, "join": true,
 			"on": true, "using": true, "where": true, "group": true, "by": true,
 			"like": true, "desc": true, "asc": true, "select": true, "from": true, "order": true,
-			"limit": true, "having": true, "is": true, "null": true,
+			"union": true, "all": true,
+			"limit": true, "having": true, "is": true, "null": true, "offset": true,
 		},
 		funcWhitelist: map[string]bool{
 			"min": true, "max": true, "abs": true, "len": true,

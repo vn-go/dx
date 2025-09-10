@@ -4,7 +4,9 @@ func (db *DB) Joins(query string, args ...interface{}) *selectorTypes {
 	return &selectorTypes{
 		db:      db,
 		strJoin: query,
-		argJoin: args,
+		args: selectorTypesArgs{
+			ArgJoin: args,
+		},
 	}
 
 }

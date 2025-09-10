@@ -2,34 +2,40 @@ package mssql
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 )
 
-func buildSQLmssql(info types.SqlInfo) (string, error) {
+func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
-
+	ret := &types.SqlParse{
+		ArgIndex: []reflect.StructField{},
+	}
 	// SELECT
 	if info.StrSelect == "" {
 		sb.WriteString("SELECT *")
 	} else {
 		sb.WriteString("SELECT " + info.StrSelect)
 	}
-
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgsSelect)
 	// FROM
 	switch v := info.From.(type) {
 	case string:
 		if v != "" {
 			sb.WriteString(" FROM " + v)
 		}
+
 	case types.SqlInfo:
 		inner, err := buildSQLmssql(v)
 		if err != nil {
-			return "", err
+			return nil, err
+
 		}
-		sb.WriteString(" FROM (" + inner + ") AS T")
+		ret.ArgIndex = append(ret.ArgIndex, inner.ArgIndex...)
+		sb.WriteString(" FROM (" + inner.Sql + ") AS T")
 	default:
 		// nothing
 	}
@@ -38,16 +44,19 @@ func buildSQLmssql(info types.SqlInfo) (string, error) {
 	if info.StrWhere != "" {
 		sb.WriteString(" WHERE " + info.StrWhere)
 	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgWhere)
 
 	// GROUP BY
 	if info.StrGroupBy != "" {
 		sb.WriteString(" GROUP BY " + info.StrGroupBy)
 	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgGroup)
 
 	// HAVING
 	if info.StrHaving != "" {
 		sb.WriteString(" HAVING " + info.StrHaving)
 	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgHaving)
 
 	// ORDER BY
 	if info.StrOrder != "" {
@@ -61,12 +70,12 @@ func buildSQLmssql(info types.SqlInfo) (string, error) {
 			sb.WriteString(fmt.Sprintf(" OFFSET %d", *info.Offset))
 		}
 	}
-
-	return sb.String(), nil
+	ret.Sql = sb.String()
+	return ret, nil
 }
-func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (string, error) {
+func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
 
-	return internal.OnceCall(info.GetKey(), func() (string, error) {
+	return internal.OnceCall(info.GetKey(), func() (*types.SqlParse, error) {
 		return buildSQLmssql(*info)
 	})
 }

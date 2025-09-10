@@ -44,3 +44,20 @@ func BenchmarkInsertUser(t *testing.B) {
 	}
 
 }
+func TestInsertUserWithContext(t *testing.T) {
+	user, err := dx.NewDTO[models.User]()
+	user.Username = "user12345"
+	assert.NoError(t, err)
+	db, err := dx.Open("mysql", mySqlDsn)
+	//dx.SetManagerDb("mysql", "a001")
+	assert.NoError(t, err)
+	err = db.WithContext(t.Context()).Insert(user)
+	if dxError, ok := err.(*dxErr.DbErr); ok {
+		if dxError.ErrorType != dxErr.ERR_DUPLICATE {
+			t.Fail()
+		}
+	} else {
+		assert.NoError(t, err)
+	}
+
+}

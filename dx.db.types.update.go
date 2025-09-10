@@ -24,7 +24,7 @@ func (m *modelType) Select(args ...any) *selectorTypes {
 	return ret
 }
 func (s *selectorTypes) Joins(join string, args ...any) *selectorTypes {
-	s.argJoin = args
+	s.args.ArgJoin = args
 	s.strJoin = join
 
 	return s
@@ -36,7 +36,7 @@ func (s *selectorTypes) Having(args ...any) *selectorTypes {
 		s.err = err
 		return s
 	}
-	s.argHaving = params
+	s.args.ArgHaving = params
 	s.strHaving = strings.Join(having, ",")
 	return s
 }
@@ -47,7 +47,7 @@ func (s *selectorTypes) Group(args ...any) *selectorTypes {
 		s.err = err
 		return s
 	}
-	s.argGroup = params
+	s.args.ArgGroup = params
 	s.strGroup = strings.Join(groups, ",")
 	return s
 }

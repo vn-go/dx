@@ -33,7 +33,7 @@ func (db *DB) firstWithFilterV2(entity interface{}, filter string, ctx context.C
 	if err != nil {
 		return err
 	}
-	return db.ExecToItem(entity, sql, ctx, sqlTx, args...)
+	return db.ExecToItem(entity, sql.Sql, ctx, sqlTx, args...)
 
 }
 func (db *DB) findtWithFilter(

@@ -1,0 +1,19 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUnionGetSql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUnionGetSql-16    	   49872	     22992 ns/op	   36681 B/op	     280 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.426s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUnionGetSql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUnionGetSql-16    	13267320	        89.39 ns/op	     136 B/op	       3 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.311s

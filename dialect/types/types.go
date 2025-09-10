@@ -3,6 +3,7 @@ package types
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/vn-go/dx/db"
@@ -69,6 +70,10 @@ func (e *DialectError) Reload() {
 	e.ErrorMessage = ErrorMessage(e.ErrorType)
 }
 
+type SqlParse struct {
+	Sql      string
+	ArgIndex []reflect.StructField
+}
 type Dialect interface {
 	LikeValue(val string) string
 
@@ -82,18 +87,44 @@ type Dialect interface {
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
 	NewDataBase(db *db.DB, dbName string) (string, error)
 	LimitAndOffset(sql string, limit, offset *uint64, orderBy string) string
-	BuildSql(info *SqlInfo) (string, error)
-}
+	/*
+				Build sql info and produce index field of arg in SqlInfo
 
+				Example:
+					SqlInfo{
+						StrSelect  "a,b,c"
+		    			StrWhere   strin
+					}
+
+	*/
+	BuildSql(info *SqlInfo) (*SqlParse, error)
+}
+type SqlInfoArgs struct {
+	ArgWhere   reflect.StructField
+	ArgsSelect reflect.StructField
+	ArgJoin    reflect.StructField
+	ArgGroup   reflect.StructField
+	ArgHaving  reflect.StructField
+	ArgOrder   reflect.StructField
+}
 type SqlInfo struct {
-	StrSelect  string
-	StrWhere   string
-	Limit      *uint64
-	Offset     *uint64
-	StrOrder   string
-	From       interface{} //<--string or SqlInfo
+	FieldArs  SqlInfoArgs
+	StrSelect string
+
+	StrWhere string
+
+	Limit    *uint64
+	Offset   *uint64
+	StrOrder string
+
+	From interface{} //<--string or SqlInfo
+
 	StrGroupBy string
-	StrHaving  string
+
+	StrHaving string
+
+	UnionNext *SqlInfo
+	UnionType string
 }
 
 func (info *SqlInfo) GetKey() string {
@@ -105,16 +136,19 @@ func (info *SqlInfo) GetKey() string {
 		info.StrGroupBy,
 	)
 	if info.Limit != nil {
-		ret += fmt.Sprintln("/%d", *info.Limit)
+		ret += fmt.Sprintf("/%d", *info.Limit)
 	}
 	if info.Offset != nil {
-		ret += fmt.Sprintln("/%d", *info.Offset)
+		ret += fmt.Sprintf("/%d", *info.Offset)
 	}
 	if strForm, ok := info.From.(string); ok {
 		ret += "/" + strForm
 	}
 	if nextInfo, ok := info.From.(SqlInfo); ok {
 		ret += "/" + nextInfo.GetKey()
+	}
+	if info.UnionNext != nil {
+		ret += "/" + info.UnionNext.GetKey()
 	}
 	return ret
 }

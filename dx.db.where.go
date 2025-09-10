@@ -24,6 +24,7 @@ type whereTypes struct {
 	offset    *uint64
 	ctx       context.Context
 	sqlTx     *sql.Tx
+	args      selectorTypesArgs
 }
 type dbContext struct {
 	ctx context.Context
@@ -197,6 +198,7 @@ func (db *DB) Offset(num uint64) *whereTypes {
 		db:     db,
 		orders: []string{},
 		offset: &num,
+		args:   selectorTypesArgs{},
 	}
 	return ret
 }

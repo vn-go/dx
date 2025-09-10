@@ -122,7 +122,7 @@ func (db *DB) buildBasicSqlFirstItemNoFilterV2(typ reflect.Type) (string, string
 		}
 
 		return &basicSqlFirstItemNoFilterResult{
-			sql: sql,
+			sql: sql.Sql,
 			//sqlCompiler:   filter,
 			keyFieldIndex: keyFieldIndex,
 		}, nil

@@ -14,7 +14,7 @@ import (
 )
 
 func (w *whereTypes) Find(item any) error {
-	err := internal.Helper.AddrssertSinglePointerToStruct(item)
+	err := internal.Helper.AddrssertSinglePointerToSlice(item)
 	if err != nil {
 		return err
 	}
@@ -26,6 +26,7 @@ func (w *whereTypes) Find(item any) error {
 	if len(w.orders) > 0 {
 		orderStr = strings.Join(w.orders, ",")
 	}
+
 	return w.db.findtWithFilterV2(item, w.ctx, w.sqlTx, whereStr, orderStr, w.limit, w.offset, true, ars...)
 }
 func (db *DB) findtWithFilterV2(
@@ -56,11 +57,11 @@ func (db *DB) findtWithFilterV2(
 	if offset != nil {
 		key += fmt.Sprintf("/%d", *offset)
 	}
-	sql, err := internal.OnceCall(key, func() (string, error) {
+	sql, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 
 		repoType, err := model.ModelRegister.GetModelByType(eleType)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		fieldsSelect := make([]string, len(repoType.Entity.Cols))
 		for i, col := range repoType.Entity.Cols {
@@ -75,7 +76,7 @@ func (db *DB) findtWithFilterV2(
 
 		if filter != "" {
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			sqlInfo.StrWhere = filter
 
@@ -91,7 +92,9 @@ func (db *DB) findtWithFilterV2(
 	if err != nil {
 		return err
 	}
-
-	return db.fecthItems(entity, sql, ctx, sqtTx, resetLen, args...)
+	if Options.ShowSql {
+		fmt.Println(sql.Sql)
+	}
+	return db.fecthItems(entity, sql.Sql, ctx, sqtTx, resetLen, args...)
 
 }

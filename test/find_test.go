@@ -18,7 +18,7 @@ func TestFindbyWhereMysql(t *testing.T) {
 
 	user := []models.User{}
 	total := uint64(0)
-	err = db.Model(&models.User{}).Where("username!=?", 25).Count(&total)
+	err = db.Model(&models.User{}).Where("username!=?", "admin").Count(&total)
 	assert.NoError(t, err)
 	err = db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
 
@@ -36,7 +36,7 @@ func BenchmarkFindbyWhereNoCacheV1(t *testing.B) {
 	err = db.Model(&models.User{}).Where("username!=?", 25).Count(&total)
 	assert.NoError(t, err)
 	for i := 0; i < t.N; i++ {
-		db.Where("username!=?", "admin").Limit(100).Order("Id desc").FindV1(&user)
+		db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
 	}
 
 }
@@ -134,14 +134,16 @@ func BenchmarkFindbyWhereMysqlWithTrans(t *testing.B) {
 
 }
 func TestDbLimitMysql(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
 	}
 	defer db.Close()
 	var users []models.User
-	db.Offset(1000).Limit(100).Find(&users)
+	err = db.Offset(1000).Limit(100).Order("userId desc").Find(&users)
 	t.Log(users)
+	assert.NoError(t, err)
 }
 func BenchmarkDbLimitMysql(t *testing.B) {
 	db, err := dx.Open("mysql", mySqlDsn)
@@ -150,13 +152,15 @@ func BenchmarkDbLimitMysql(t *testing.B) {
 	}
 	defer db.Close()
 	var users []models.User
+	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
-		db.Offset(1000).Limit(100).Find(&users)
+		db.Offset(1000).Limit(100).Order("userId desc").Find(&users)
 	}
 
 	//t.Log(users)
 }
 func TestSelectMysql(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()

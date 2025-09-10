@@ -7,6 +7,9 @@ func (cmp *compiler) aliasedTableExpr(expr *sqlparser.AliasedTableExpr, cmpType 
 	if err != nil {
 		return "", err
 	}
+	if _, ok := expr.Expr.(*sqlparser.Subquery); ok {
+		return "(" + ret + ") " + cmp.dialect.Quote(expr.As.String()), nil
+	}
 	return ret, nil
 
 }

@@ -315,6 +315,9 @@ func (db *DB) fecthItem(
 	item any,
 	queryStmt string,
 	ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
+	if Options.ShowSql {
+		fmt.Println(queryStmt)
+	}
 	// items phải là pointer đến slice
 	typ := reflect.TypeOf(item)
 

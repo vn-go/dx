@@ -49,10 +49,10 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		if len(nextTbl) > 0 {
 			ret = append(ret, nextTbl...)
 		}
-		// nextTbl = t.getTables(joinTableExpr.Condition, visited)
-		// if len(nextTbl) > 0 {
-		// 	ret = append(ret, nextTbl...)
-		// }
+		nextTbl = t.getTables(joinTableExpr.Condition, visited)
+		if len(nextTbl) > 0 {
+			ret = append(ret, nextTbl...)
+		}
 		return ret
 	}
 	if aliasedTableExpr, ok := node.(*sqlparser.AliasedTableExpr); ok {
@@ -219,6 +219,17 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 	if s, ok := node.(*sqlparser.IsExpr); ok {
 		next := t.getTables(s.Expr, visited)
 		return append(ret, next...)
+	}
+	if s, ok := node.(*sqlparser.Subquery); ok {
+		next := t.getTables(s.Select, visited)
+		return append(ret, next...)
+	}
+	if s, ok := node.(*sqlparser.Union); ok {
+		next := t.getTables(s.Left, visited)
+		ret = append(ret, next...)
+		next = t.getTables(s.Right, visited)
+		ret = append(ret, next...)
+		return ret
 	}
 	//sqlparser.Expr
 	panic(fmt.Sprintf("not implement ,%s", `compiler\tabelExtractorTypes.go`))

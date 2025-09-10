@@ -56,13 +56,13 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 	})
 
 }
-func (db *DB) buildBasicSqlFirstItemV2(typ reflect.Type, filter string) (string, error) {
+func (db *DB) buildBasicSqlFirstItemV2(typ reflect.Type, filter string) (*types.SqlParse, error) {
 	key := db.DriverName + "://" + db.DbName + "/" + typ.String() + "/buildBasicSqlFirstItem/" + filter
-	return internal.OnceCall(key, func() (string, error) {
+	return internal.OnceCall(key, func() (*types.SqlParse, error) {
 
 		ent, err := model.ModelRegister.GetModelByType(typ)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		tableName := ent.Entity.TableName
 
@@ -83,7 +83,7 @@ func (db *DB) buildBasicSqlFirstItemV2(typ reflect.Type, filter string) (string,
 
 		sql, err := compiler.GetSql(sqlInfo, db.DriverName)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		return sql, nil
 	})

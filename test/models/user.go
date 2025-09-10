@@ -12,3 +12,7 @@ type User struct {
 	HashPassword *string `db:"size:100"`
 	BaseModel
 }
+
+func (u *User) FTS() string {
+	return "email,Username,description"
+}

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
-	"github.com/vn-go/dx/expr"
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
@@ -17,6 +18,7 @@ type modelTypeWhere struct {
 	lastWhere *whereTypesItem
 	limit     *uint64
 	offset    *uint64
+	arg       selectorTypesArgs
 }
 
 func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
@@ -37,6 +39,7 @@ func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
 			filter: args[0].(string),
 			args:   args[1:],
 		},
+		arg: selectorTypesArgs{},
 	}
 	ret.lastWhere = ret.whereExpr
 	return ret
@@ -109,33 +112,43 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		return m.err
 	}
 	wherStr, args := m.getFilter()
-	key := m.typEle.String() + "//modelTypeWhere/Count" + "/" + wherStr
-	query, err := internal.OnceCall(key, func() (string, error) {
+	m.arg.ArgWhere = args
+	key := m.typEle.String() + "/modelTypeWhere/Count//modelTypeWhere/Count" + "/" + wherStr
+
+	query, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 
 		ent, err := model.ModelRegister.GetModelByType(m.typEle)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		compiler, err := expr.CompileJoin(ent.Entity.TableName, m.db.DB)
+		// compiler, err := expr.CompileJoin(ent.Entity.TableName, m.db.DB)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// //compiler.Context.Tables = append(compiler.Context.Tables, ent.Entity.TableName)
+		// compiler.Context.Purpose = expr.BUILD_WHERE
+		// err = compiler.BuildWhere(wherStr)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// dialect := factory.DialectFactory.Create(m.db.DriverName)
+		retSql := "select count(*) from " + ent.Entity.TableName + " where " + wherStr
+		sqlInfo, err := compiler.Compile(retSql, m.db.DriverName)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		//compiler.Context.Tables = append(compiler.Context.Tables, ent.Entity.TableName)
-		compiler.Context.Purpose = expr.BUILD_WHERE
-		err = compiler.BuildWhere(wherStr)
-		if err != nil {
-			return "", err
-		}
-		dialect := factory.DialectFactory.Create(m.db.DriverName)
-		retSql := "select count(*) from " + dialect.Quote(ent.Entity.TableName) + " " + dialect.Quote(compiler.Context.Alias[ent.Entity.TableName]) + " where " + compiler.Content
-		return retSql, nil
+		sqlArgs := m.arg.getFields()
+		sqlInfo.FieldArs = *sqlArgs
+		ret := factory.DialectFactory.Create(m.db.DriverName)
+		return ret.BuildSql(sqlInfo)
+
 	})
 	if err != nil {
 		return err
 	}
-
+	argsExec := m.arg.getArgs(query.ArgIndex)
 	// Thực thi câu lệnh SQL và quét kết quả vào biến 'count'
-	err = m.db.QueryRow(query, args...).Scan(&ret)
+	err = m.db.QueryRow(query.Sql, argsExec...).Scan(ret)
 	if err != nil {
 		return m.db.parseError(err)
 	}

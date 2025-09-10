@@ -7,6 +7,7 @@ import (
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
 
@@ -24,23 +25,35 @@ func (selectors *selectorTypes) findByJoin(item any) error {
 	if err != nil {
 		return err
 	}
-	strJoin := ent.Entity.TableName + " " + selectors.strJoin
-	strFilter, argsWhere := selectors.getFilter()
-
-	if len(selectors.selectFields) == 0 {
-		for _, x := range ent.Entity.Cols {
-			selectors.selectFields = append(selectors.selectFields, fmt.Sprintf("%s.%s %s", ent.Entity.TableName, x.Name, x.Field.Name))
+	selectors.strJoin = ent.Entity.TableName + " " + selectors.strJoin
+	key := modelType.String() + "://selectorTypes/findByJoin/" + selectors.getKey()
+	sqlQuery, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
+		if len(selectors.selectFields) == 0 {
+			for _, x := range ent.Entity.Cols {
+				selectors.selectFields = append(selectors.selectFields, fmt.Sprintf("%s.%s %s", ent.Entity.TableName, x.Name, x.Field.Name))
+			}
 		}
-	}
-	sqlInfo := &types.SqlInfo{
-		From:       strJoin,
-		StrWhere:   strFilter,
-		StrSelect:  strings.Join(selectors.selectFields, ","),
-		StrGroupBy: selectors.strGroup,
-	}
-	sqlQuery, err := compiler.GetSql(sqlInfo, selectors.db.DriverName)
+		strSelect := strings.Join(selectors.selectFields, ",")
+		sqlInfo := &types.SqlInfo{
+			From:       selectors.strJoin,
+			StrWhere:   selectors.strWhere,
+			StrSelect:  strSelect,
+			StrGroupBy: selectors.strGroup,
+			FieldArs:   *selectors.args.getFields(),
+			Limit:      selectors.limit,
+			Offset:     selectors.offset,
+			StrHaving:  selectors.strHaving,
+			StrOrder:   selectors.strSort,
+		}
+		return compiler.GetSql(sqlInfo, selectors.db.DriverName)
+
+	})
 	if err != nil {
 		return err
 	}
-	return selectors.db.fecthItems(item, sqlQuery, nil, nil, true, argsWhere...)
+	args := selectors.args.getArgs(sqlQuery.ArgIndex)
+	if Options.ShowSql {
+		fmt.Println(sqlQuery.Sql)
+	}
+	return selectors.db.fecthItems(item, sqlQuery.Sql, nil, nil, true, args...)
 }

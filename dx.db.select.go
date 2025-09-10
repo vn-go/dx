@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/types"
@@ -15,26 +16,96 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
+type selectorTypesArgs struct {
+	ArgWhere   []any
+	ArgsSelect []any
+	ArgJoin    []any
+	ArgGroup   []any
+	ArgHaving  []any
+	ArgOrder   []any
+}
+
+func (a *selectorTypesArgs) getArgs(fields []reflect.StructField) []any {
+	ret := []any{}
+	val := reflect.ValueOf(*a)
+	for _, f := range fields {
+		fv := val.FieldByIndex(f.Index)
+		if fv.IsValid() {
+			//"reflect.Value.Elem"
+			if fv.IsNil() {
+				continue
+			}
+
+			ret = append(ret, fv.Interface().([]any)...)
+		}
+
+	}
+	return ret
+}
+
+var selectorTypesArgsGetFields = &types.SqlInfoArgs{}
+var selectorTypesArgsGetFieldsOnce sync.Once
+
+func (a *selectorTypesArgs) getFields() *types.SqlInfoArgs {
+	selectorTypesArgsGetFieldsOnce.Do(func() {
+		v := reflect.ValueOf(selectorTypesArgsGetFields).Elem()
+		typ := reflect.TypeFor[selectorTypesArgs]()
+		for i := 0; i < typ.NumField(); i++ {
+			vf := v.FieldByName(typ.Field(i).Name)
+			if vf.IsValid() {
+				vf.Set(reflect.ValueOf(typ.Field(i)))
+			}
+		}
+
+	})
+	return selectorTypesArgsGetFields
+}
+
 type selectorTypes struct {
-	db           *DB
-	err          error
-	whereExpr    *whereTypesItem
-	lastWhere    *whereTypesItem
-	orders       []string
-	limit        *uint64
-	offset       *uint64
-	ctx          context.Context
-	sqlTx        *sql.Tx
-	args         []interface{}
+	args      selectorTypesArgs
+	db        *DB
+	err       error
+	whereExpr *whereTypesItem
+	lastWhere *whereTypesItem
+	orders    []string
+	limit     *uint64
+	offset    *uint64
+	ctx       context.Context
+	sqlTx     *sql.Tx
+
 	selectFields []string
 	entityType   *reflect.Type
 	valuaOfEnt   reflect.Value
 	strJoin      string
-	argJoin      []interface{}
-	strGroup     string
-	argGroup     []interface{}
-	strHaving    string
-	argHaving    []interface{}
+
+	strGroup string
+
+	strHaving string
+	strWhere  string
+	strSelect string
+	strSort   string
+}
+
+func (s *selectorTypes) getKey() string {
+	if s.selectFields != nil {
+		s.strSelect = strings.Join(s.selectFields, ",")
+	}
+
+	s.strWhere, s.args.ArgWhere = s.getFilter()
+	if s.orders != nil {
+		s.strSort = strings.Join(s.orders, ",")
+	}
+
+	key := s.strSelect + "+/" + s.strSort + "/" + s.strWhere + "/" + s.strGroup + "/" + s.strHaving + "/" + s.strJoin + "/" + s.strHaving + "/"
+	if s.limit != nil {
+		key += "/" + fmt.Sprintf("%d", *s.limit)
+	}
+	if s.offset != nil {
+		key += "/" + fmt.Sprintf("%d", *s.offset)
+	}
+
+	return key
+
 }
 
 var regexpDBSelectFindPlaceHolder = regexp.MustCompile(`\?`)
@@ -81,9 +152,11 @@ func (db *DB) Select(args ...any) *selectorTypes {
 		strFields = strArgs
 	}
 	ret := &selectorTypes{
-		db:           db,
-		orders:       []string{},
-		args:         params,
+		db:     db,
+		orders: []string{},
+		args: selectorTypesArgs{
+			ArgsSelect: params,
+		},
 		selectFields: strFields,
 	}
 	return ret
@@ -124,7 +197,7 @@ func (selectors *selectorTypes) Select(args ...any) *selectorTypes {
 			}
 		}
 	}
-	selectors.args = append(selectors.args, params...)
+	selectors.args.ArgsSelect = append(selectors.args.ArgsSelect, params...)
 	selectors.selectFields = append(selectors.selectFields, strFields...)
 
 	return selectors
@@ -191,22 +264,23 @@ func (w *selectorTypes) getFilter() (string, []any) {
 
 func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interface{}, error) {
 
-	strWhere, whereArgs := selectors.getFilter()
-	strSort := strings.Join(selectors.orders, ",")
-	strSelect := strings.Join(selectors.selectFields, ",")
-
-	key := typModel.String() + "/selectorTypes/GetSQL/" + strWhere + "/" + strSort + "/" + strSelect + "/" + selectors.strGroup + "/" + selectors.strHaving
-	if selectors.limit != nil {
-		key += fmt.Sprintf("/%d", *selectors.limit)
-	}
-	if selectors.offset != nil {
-		key += fmt.Sprintf("/%d", *selectors.offset)
-	}
-	selectSql, err := internal.OnceCall(key, func() (string, error) {
+	// strWhere, whereArgs := selectors.getFilter()
+	// selectors.args.ArgWhere = whereArgs
+	// strSort := strings.Join(selectors.orders, ",")
+	// strSelect := strings.Join(selectors.selectFields, ",")
+	key := typModel.String() + "/selectorTypes/GetSQL/" + selectors.getKey()
+	//key := typModel.String() + "/selectorTypes/GetSQL/" + strWhere + "/" + strSort + "/" + strSelect + "/" + selectors.strGroup + "/" + selectors.strHaving
+	// if selectors.limit != nil {
+	// 	key += fmt.Sprintf("/%d", *selectors.limit)
+	// }
+	// if selectors.offset != nil {
+	// 	key += fmt.Sprintf("/%d", *selectors.offset)
+	// }
+	selectSql, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 		var err error
 		ent, err := model.ModelRegister.GetModelByType(typModel)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		// complier, err := expr.CompileJoin(ent.Entity.TableName, selectors.db.DB)
 		// if err != nil {
@@ -215,24 +289,25 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 		sqlInfo := &types.SqlInfo{
 			Limit:      selectors.limit,
 			Offset:     selectors.offset,
-			StrSelect:  strSelect,
-			StrWhere:   strWhere,
+			StrSelect:  selectors.strSelect,
+			StrWhere:   selectors.strWhere,
 			StrHaving:  selectors.strHaving,
-			StrOrder:   strSort,
+			StrOrder:   selectors.strSort,
 			StrGroupBy: selectors.strGroup,
 			From:       ent.Entity.TableName,
+			FieldArs:   *selectors.args.getFields(),
 		}
 
 		sql, err := compiler.GetSql(sqlInfo, selectors.db.DriverName)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		return sql, nil
 
 	})
-	retArgs := append(selectors.args, whereArgs...)
-	return selectSql, retArgs, err
+	retArgs := selectors.args.getArgs(selectSql.ArgIndex)
+	return selectSql.Sql, retArgs, err
 }
 
 func (selectors *selectorTypes) Find(item any) error {
@@ -257,6 +332,7 @@ func (selectors *selectorTypes) Find(item any) error {
 			}
 			return selectors.db.fecthItems(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
 		} else {
+			//"reflect.Value.Elem"
 			sqlQuery, args, err := selectors.GetSQL(typeEle)
 			if err != nil {
 				return err

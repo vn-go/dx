@@ -67,28 +67,26 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 		Tables:      tables,
 	}
 	ret.TableAlias = tableAlias
-	mapEntityTypes := map[reflect.Type]string{}
-	count := 1
+	// mapEntityTypes := map[reflect.Type]string{}
+	// count := 1
 	newMap := map[string]string{}
+	//mapAlias := map[string]string{}
+	typeToAlias := map[reflect.Type]string{}
+	c := 1
 	for tbl, x := range mapEntities {
-		alias := ""
-		found := false
-
 		if mAlias, ok := manualAlaisMap[tbl]; ok {
-			alias = mAlias
-			newMap[tbl] = alias
+			newMap[tbl] = mAlias
+			typeToAlias[x.EntityType] = mAlias
 		} else {
-			if alias, found = mapEntityTypes[x.EntityType]; !found {
-				alias = fmt.Sprintf("T%d", count)
-				count++
-				newMap[tbl] = alias
-				mapEntityTypes[x.EntityType] = alias
+			if _, ok := typeToAlias[x.EntityType]; !ok {
+				typeToAlias[x.EntityType] = fmt.Sprintf("T%d", c)
+				newMap[tbl] = fmt.Sprintf("T%d", c)
+				c++
 			}
-
 		}
-
-		//aliasTable := ret.TableAlias[tbl]
-
+	}
+	for tbl, x := range mapEntities {
+		alias := typeToAlias[x.EntityType]
 		for _, col := range x.Cols {
 
 			key := strings.ToLower(fmt.Sprintf("%s.%s", tbl, col.Field.Name))
@@ -96,16 +94,18 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 			ret.StructField[key] = col.Field
 
 		}
-		i++
 	}
+
 	ret.TableAlias = newMap
 	return ret
 }
 
-func newCompiler(sql, dbDriver string) (*compiler, error) {
+func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, error) {
 
 	originalSql := sql
-	sql = internal.Helper.QuoteExpression(sql)
+	if !skipQuoteExpression {
+		sql = internal.Helper.QuoteExpression(sql)
+	}
 
 	stm, err := sqlparser.Parse(sql)
 	if err != nil {
@@ -123,16 +123,54 @@ func newCompiler(sql, dbDriver string) (*compiler, error) {
 		tableList := tabelExtractor.getTables(stmSelect, make(map[string]bool))
 
 		ret.dict = ret.CreateDictionary(tableList)
+		return ret, nil
 
-	} else {
-		return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
 	}
-	return ret, nil
-}
+	if stmUnion, ok := stm.(*sqlparser.Union); ok {
+		tableList := tabelExtractor.getTables(stmUnion.Left, make(map[string]bool))
+		tableList = append(tableList, tabelExtractor.getTables(stmUnion.Right, make(map[string]bool))...)
+		ret.dict = ret.CreateDictionary(tableList)
+		return ret, nil
+	}
+	return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
 
+}
 func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 
-	stmSelect := cmp.node.(*sqlparser.Select)
+	if stmSelect, ok := cmp.node.(*sqlparser.Select); ok {
+		return cmp.getSqlInfoBySelect(stmSelect)
+	}
+	if stmUnion, ok := cmp.node.(*sqlparser.Union); ok {
+		var ret *types.SqlInfo
+		var err error
+		if left, ok := stmUnion.Left.(*sqlparser.Select); ok {
+			ret, err = cmp.getSqlInfoBySelect(left)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
+		}
+
+		if right, ok := stmUnion.Right.(*sqlparser.Select); ok {
+			var next *types.SqlInfo
+			next, err := cmp.getSqlInfoBySelect(right)
+			if err != nil {
+				return nil, err
+			} else {
+				ret.UnionType = stmUnion.Type
+				ret.UnionNext = next
+			}
+		} else {
+			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
+		}
+		return ret, nil
+	}
+
+	panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", cmp.node))
+}
+func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.SqlInfo, error) {
+
 	strSelect, err := cmp.resolveSelect(stmSelect.SelectExprs)
 
 	if err != nil {
@@ -313,7 +351,14 @@ func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE)
 }
 func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
-	cmp, err := newCompiler(sql, dbDriver)
+	cmp, err := newCompiler(sql, dbDriver, false)
+	if err != nil {
+		return nil, err
+	}
+	return cmp.getSqlInfo()
+}
+func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
+	cmp, err := newCompiler(sql, dbDriver, true)
 	if err != nil {
 		return nil, err
 	}
@@ -368,20 +413,23 @@ func CompileSelect(Selecttor, dbDriver string) (string, error) {
 	})
 
 }
-func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (string, error) {
+func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 
-	sql, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
+	retSql, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	sqlInfo, err = Compile(sql, dbDriver)
+
+	sqlInfo, err = Compile(retSql.Sql, dbDriver)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	sql, err = factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
+
+	retSql2, err := factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return sql, nil
+	retSql2.ArgIndex = retSql.ArgIndex
+	return retSql2, nil
 
 }

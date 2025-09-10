@@ -1,0 +1,19 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkJoin2Model$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkJoin2Model-16    	    4534	    232597 ns/op	   91361 B/op	     667 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.115s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkJoin2Model$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkJoin2Model-16    	    6436	    179383 ns/op	    5955 B/op	     136 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.100s

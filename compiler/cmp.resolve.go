@@ -54,6 +54,32 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 		}
 		return ret + strings.ToUpper(x.Operator), nil
 	}
+	if x, ok := node.(*sqlparser.Subquery); ok {
+		ret, err := cmp.resolve(x.Select, C_SELECT)
+		return ret, err
+	}
+	if x, ok := node.(*sqlparser.Union); ok {
+		retLeft, err := cmp.resolve(x.Left, C_SELECT)
+		if err != nil {
+			return "", err
+		}
+		retRight, err := cmp.resolve(x.Right, C_SELECT)
+		if err != nil {
+			return "", err
+		}
+		return retLeft + " " + x.Type + " " + retRight, nil
+	}
+	if x, ok := node.(*sqlparser.Select); ok {
+		info, err := cmp.getSqlInfoBySelect(x)
+		if err != nil {
+			return "", err
+		}
+		ret, err := cmp.dialect.BuildSql(info)
+		if err != nil {
+			return "", err
+		}
+		return ret.Sql, nil
+	}
 	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 
