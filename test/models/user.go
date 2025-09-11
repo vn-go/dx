@@ -1,8 +1,8 @@
 package models
 
 type User struct {
-	ID     int    `db:"pk;auto"`
-	UserId string `db:"size:36;default:uuid()"`
+	ID     int     `db:"pk;auto"`
+	UserId *string `db:"size:36;default:uuid()"`
 
 	Email *string `db:"uk:uq_email;size:150"`
 

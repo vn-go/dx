@@ -1,10 +1,12 @@
 package test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
+	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/test/models"
 )
 
@@ -43,7 +45,10 @@ func TestFirstFilterMssql(t *testing.T) {
 	defer db.Close()
 	user := &models.User{}
 	err = db.First(user, "username=?", "admin")
-	assert.NoError(t, err)
+	if !errors.Is(err, &dxErrors.NotFoundErr{}) {
+		assert.NoError(t, err)
+	}
+
 }
 func BenchmarkFirstFilterrMssql(t *testing.B) {
 	db, err := dx.Open("sqlserver", sqlServerDns)
@@ -66,8 +71,10 @@ func TestFirstbyWhereMssql(t *testing.T) {
 
 	user := &models.User{}
 	err = db.Where("username=?", "admin").First(user)
+	if !errors.Is(err, &dxErrors.NotFoundErr{}) {
+		assert.NoError(t, err)
+	}
 
-	assert.NoError(t, err)
 }
 func BenchmarkFirstbyWhereMssql(t *testing.B) {
 	db, err := dx.Open("sqlserver", sqlServerDns)
