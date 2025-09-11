@@ -35,7 +35,7 @@ func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, err
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
-		if _, ok := schema.UniqueKeys[constraintName]; !ok {
+		if _, ok := schema.Indexes[strings.ToLower(constraintName)]; !ok {
 			constraint := fmt.Sprintf("CREATE INDEX %s ON %s (%s)", m.Quote(constraintName), m.Quote(entityItem.Entity.TableName), strings.Join(colNames, ", "))
 			scripts = append(scripts, constraint)
 

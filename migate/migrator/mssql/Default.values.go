@@ -36,7 +36,8 @@ In this case, the function GetGetDefaultValueByFromDbTag() will return a map con
 */
 func (m *migratorMssql) GetGetDefaultValueByFromDbTag() map[string]string {
 	return map[string]string{
-		"now()": "GETDATE()", //<-- chỗ này sẽ mở rộng cho các case cụ thể về sau
+		"now()":  "GETDATE()", //<-- chỗ này sẽ mở rộng cho các case cụ thể về sau
+		"uuid()": "NEWID()",
 	}
 }
 

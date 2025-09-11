@@ -31,7 +31,8 @@ func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 	}
 	scripts := []string{}
 	for _, col := range entityItem.Entity.Cols {
-		if _, ok := schema.Tables[entityItem.Entity.TableName][col.Name]; !ok {
+
+		if _, ok := schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -60,14 +61,14 @@ func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 					err = fmt.Errorf("not support default value from %s, review GetGetDefaultValueByFromDbTag() function in %s ", col.Default, "github.com/vn-go/xdb/migrate/migrator.mssql.AddColumn.go")
 					panic(err)
 				}
-				colDef += " DEFAULT " + df
 
-				colDef += fmt.Sprintf(" DEFAULT %s", colDef)
+				colDef += fmt.Sprintf(" DEFAULT %s", df)
 			}
+			sqlAddColumn := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), colDef)
 
-			scripts = append(scripts, fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), colDef))
+			scripts = append(scripts, sqlAddColumn)
 
-			schema.Tables[entityItem.Entity.TableName][col.Name] = true
+			schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)] = true
 		}
 	}
 

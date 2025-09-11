@@ -17,12 +17,12 @@ func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 	}
 
 	for fk, info := range miragteTypes.ForeignKeyRegistry.FKMap {
-		if _, ok := schema.ForeignKeys[fk]; !ok {
+		if _, ok := schema.ForeignKeys[strings.ToLower(fk)]; !ok {
 
 			formCols := "[" + strings.Join(info.FromCols, "],[") + "]"
 			toCols := "[" + strings.Join(info.ToCols, "],[") + "]"
 			script := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", m.Quote(info.FromTable), m.Quote(fk), formCols, m.Quote(info.ToTable), toCols)
-			schema.ForeignKeys[fk] = types.DbForeignKeyInfo{
+			schema.ForeignKeys[strings.ToLower(fk)] = types.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.ToTable,
 				Columns:        info.FromCols,

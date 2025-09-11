@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/db"
+	dxErrors "github.com/vn-go/dx/errors"
 	loaderPostgres "github.com/vn-go/dx/migate/loader/postgres"
 	"github.com/vn-go/dx/migate/loader/types"
 	migartorType "github.com/vn-go/dx/migate/migrator/types"
@@ -51,7 +52,7 @@ func (m *MigratorPostgres) DoMigrates(db *db.DB) error {
 		for _, script := range scripts {
 			_, err = db.Exec(script)
 			if err != nil {
-				err = fmt.Errorf("sql-error:\n%s\n%s", script, err.Error())
+				err = dxErrors.NewMigrationError(script, err)
 				break
 			}
 		}

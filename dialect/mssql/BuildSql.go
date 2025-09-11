@@ -16,9 +16,19 @@ func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
 	}
 	// SELECT
 	if info.StrSelect == "" {
-		sb.WriteString("SELECT *")
+		if info.Offset == nil && info.Limit != nil {
+			sb.WriteString(fmt.Sprintf("SELECT TOP %d *", *info.Limit))
+		} else {
+			sb.WriteString("SELECT *")
+		}
+
 	} else {
-		sb.WriteString("SELECT " + info.StrSelect)
+		if info.Offset == nil && info.Limit != nil {
+			sb.WriteString(fmt.Sprintf("SELECT TOP %d %s", *info.Limit, info.StrSelect))
+		} else {
+			sb.WriteString("SELECT " + info.StrSelect)
+		}
+
 	}
 	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgsSelect)
 	// FROM
@@ -64,7 +74,7 @@ func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
 	}
 
 	// LIMIT + OFFSET (chuẩn MySQL)
-	if info.Limit != nil {
+	if info.Offset != nil {
 		sb.WriteString(fmt.Sprintf(" LIMIT %d", *info.Limit))
 		if info.Offset != nil {
 			sb.WriteString(fmt.Sprintf(" OFFSET %d", *info.Offset))

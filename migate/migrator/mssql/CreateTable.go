@@ -43,7 +43,8 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 	}
 
 	tableName := entityItem.Entity.TableName
-	if _, ok := schema.Tables[tableName]; ok {
+
+	if _, ok := schema.Tables[strings.ToLower(tableName)]; ok {
 		/*
 			If the table already exists in the database, there is no need to create it .
 		*/
@@ -53,9 +54,9 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 	strCols := []string{}            //<-- lits of column name in database table
 	newTableMap := map[string]bool{} //<-- this variable is used for update schema.Tables map after create table
 	for _, col := range entityItem.Entity.Cols {
-		newTableMap[col.Name] = true         // add column name to newTableMap
-		fieldType := col.Field.Type          // get field type, the type of the field in the struct
-		if fieldType.Kind() == reflect.Ptr { // if field type is pointer, get the real type of the field
+		newTableMap[strings.ToLower(col.Name)] = true // add column name to newTableMap
+		fieldType := col.Field.Type                   // get field type, the type of the field in the struct
+		if fieldType.Kind() == reflect.Ptr {          // if field type is pointer, get the real type of the field
 			fieldType = fieldType.Elem()
 		}
 
@@ -127,7 +128,7 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 
 	// Finally, Create Table here
 	sql := fmt.Sprintf("CREATE TABLE %s (\n  %s\n)", m.Quote(tableName), strings.Join(strCols, ",\n  "))
-	schema.Tables[tableName] = newTableMap
+	schema.Tables[strings.ToLower(tableName)] = newTableMap
 
 	return sql, nil
 }

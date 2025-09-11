@@ -23,7 +23,7 @@ func (db *DB) ExecToItem(result interface{}, query string, ctx context.Context, 
 		return fmt.Errorf("result must be a pointer to struct")
 	}
 	typ = typ.Elem()
-	key := typ.String() + "://" + reflect.TypeOf(db).String() + "/ExecToItem/" + query
+	key := typ.String() + "://" + db.DriverName + "/ExecToItem/" + query
 	ret, err := internal.OnceCall(key, func() (*map[string][]int, error) {
 		repoType, err := model.ModelRegister.GetModelByType(typ)
 		if err != nil {
@@ -71,17 +71,20 @@ func (db *DB) execToItemOptimized(context context.Context, sqlTx *sql.Tx, result
 			return err
 		}
 		rows, err = stm.QueryContext(context, args...)
+		if err != nil {
+			return err
+		}
 	} else {
 		stm, err := db.DB.Prepare(query)
 		if err != nil {
 			return err
 		}
 		rows, err = stm.QueryContext(context, args...)
+		if err != nil {
+			return err
+		}
 	}
 
-	if err != nil {
-		return err
-	}
 	defer rows.Close()
 
 	cols, err := rows.Columns()

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/db"
@@ -36,9 +37,18 @@ func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error)
 	if err != nil {
 		return nil, err
 	}
-	pks, _ := m.LoadAllPrimaryKey(db)
-	uks, _ := m.LoadAllUniIndex(db)
-	idxs, _ := m.LoadAllIndex(db)
+	pks, err := m.LoadAllPrimaryKey(db)
+	if err != nil {
+		return nil, err
+	}
+	uks, err := m.LoadAllUniIndex(db)
+	if err != nil {
+		return nil, err
+	}
+	idxs, err := m.LoadAllIndex(db)
+	if err != nil {
+		return nil, err
+	}
 
 	dbName := db.DbName
 	schema := &types.DbSchema{
@@ -54,14 +64,14 @@ func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error)
 	}
 	schema.ForeignKeys = map[string]types.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
-		schema.ForeignKeys[fk.ConstraintName] = fk
+		schema.ForeignKeys[strings.ToLower(fk.ConstraintName)] = fk
 	}
 	for table, columns := range tables {
 		cols := make(map[string]bool)
 		for col := range columns {
-			cols[col] = true
+			cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
 		}
-		schema.Tables[table] = cols
+		schema.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
 	}
 
 	return schema, nil

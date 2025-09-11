@@ -6,7 +6,8 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/db"
-	loaderMysql "github.com/vn-go/dx/migate/loader/mysql"
+	dxErrors "github.com/vn-go/dx/errors"
+	loaderMssql "github.com/vn-go/dx/migate/loader/mssql"
 	"github.com/vn-go/dx/migate/loader/types"
 	migartorType "github.com/vn-go/dx/migate/migrator/types"
 )
@@ -20,7 +21,7 @@ func NewMigrator() migartorType.IMigrator {
 
 	return &migratorMssql{
 
-		loader: loaderMysql.NewMysqlMigratorLoader(),
+		loader: &loaderMssql.MigratorLoaderMssql{},
 	}
 }
 func (m *migratorMssql) Quote(names ...string) string {
@@ -45,12 +46,13 @@ func (m *migratorMssql) DoMigrates(db *db.DB) error {
 
 		scripts, err := m.GetFullScript(db)
 		if err != nil {
+			mi.err = err
 			return
 		}
 		for _, script := range scripts {
 			_, err := db.Exec(script)
 			if err != nil {
-				mi.err = err
+				mi.err = dxErrors.NewMigrationError(script, err)
 				break
 			}
 		}

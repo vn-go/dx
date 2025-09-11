@@ -1,6 +1,7 @@
 package mssql
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/db"
@@ -16,8 +17,8 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB) (map[string]map[string]typ
 	ret, err := internal.OnceCall("MigratorLoaderMssql/LoadAllTable"+db.DbName+"/"+db.DriverName, func() (map[string]map[string]types.ColumnInfo, error) {
 		query := `
 		SELECT
-			t.name AS TableName,
-			c.name AS ColumnName,
+			lower(t.name) AS TableName,
+			lower(c.name) AS ColumnName,
 			ty.name AS DataType,
 			c.is_nullable,
 			c.max_length
@@ -59,14 +60,14 @@ func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB) (map[string]types.Col
 	key := "MigratorLoaderMssql/LoadAllPrimaryKey" + db.DbName + "/" + db.DriverName
 	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
 		query := `
-	SELECT
-		KCU.table_name,
-		KCU.column_name,
-		TC.constraint_name
-	FROM information_schema.table_constraints AS TC
-	JOIN information_schema.key_column_usage AS KCU
-		ON TC.constraint_name = KCU.constraint_name
-	WHERE TC.constraint_type = 'PRIMARY KEY'`
+		SELECT
+			Lower(KCU.table_name),
+			Lower(KCU.column_name),
+			Lower(TC.constraint_name)
+		FROM information_schema.table_constraints AS TC
+		JOIN information_schema.key_column_usage AS KCU
+			ON TC.constraint_name = KCU.constraint_name
+		WHERE TC.constraint_type = 'PRIMARY KEY'`
 
 		rows, err := db.Query(query)
 		if err != nil {
@@ -95,9 +96,9 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB) (map[string]types.Colum
 	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
 		query := `
 		SELECT
-			t.name AS TableName,
-			i.name AS IndexName,
-			c.name AS ColumnName
+			lower(t.name) AS TableName,
+			lower(i.name) AS IndexName,
+			lower(c.name) AS ColumnName
 		FROM sys.indexes i
 		JOIN sys.tables t ON i.object_id = t.object_id
 		JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
@@ -129,9 +130,9 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB) (map[string]types.Colum
 func (m *MigratorLoaderMssql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	query := `
 	SELECT
-		t.name AS TableName,
-		i.name AS IndexName,
-		c.name AS ColumnName
+		lower(t.name) AS TableName,
+		lower(i.name) AS IndexName,
+		lower(c.name) AS ColumnName
 	FROM sys.indexes i
 	JOIN sys.tables t ON i.object_id = t.object_id
 	JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
@@ -190,9 +191,9 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB) (*types.DbSchema, error)
 	for table, columns := range tables {
 		cols := make(map[string]bool)
 		for col := range columns {
-			cols[col] = true
+			cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
 		}
-		schema.Tables[table] = cols
+		schema.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
 	}
 	m.cacheLoadFullSchema.Store(cacheKey, schema)
 	return schema, nil
@@ -200,11 +201,11 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB) (*types.DbSchema, error)
 func (m *MigratorLoaderMssql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
-			fk.name AS constraint_name,
-			tp.name AS table_name,
-			cp.name AS column_name,
-			tr.name AS referenced_table_name,
-			cr.name AS referenced_column_name,
+			lower(fk.name) AS constraint_name,
+			lower(tp.name) AS table_name,
+			lower(cp.name) AS column_name,
+			lower(tr.name) AS referenced_table_name,
+			lower(cr.name) AS referenced_column_name,
 			fkc.constraint_column_id
 		FROM sys.foreign_keys AS fk
 		INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
