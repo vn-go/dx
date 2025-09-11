@@ -85,10 +85,13 @@ func (cmp *compiler) createDictionary(tables []string) *Dictionary {
 			newMap[tbl] = mAlias
 			typeToAlias[x.EntityType] = mAlias
 		} else {
-			if _, ok := typeToAlias[x.EntityType]; !ok {
+			alais, foud := typeToAlias[x.EntityType]
+			if !foud {
 				typeToAlias[x.EntityType] = fmt.Sprintf("T%d", c)
 				newMap[tbl] = fmt.Sprintf("T%d", c)
 				c++
+			} else {
+				newMap[tbl] = alais
 			}
 		}
 	}
@@ -141,7 +144,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, err
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
 
-		tableList := tabelExtractor.getTables(stmSelect, make(map[string]bool))
+		tableList := tabelExtractor.getTablesFromSql(sql, stmSelect)
 
 		ret.dict = ret.CreateDictionary(tableList)
 		return ret, nil
@@ -372,11 +375,14 @@ func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE)
 }
 func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
-	cmp, err := newCompiler(sql, dbDriver, false)
-	if err != nil {
-		return nil, err
-	}
-	return cmp.getSqlInfo()
+	return internal.OnceCall("compiler"+sql, func() (*types.SqlInfo, error) {
+		cmp, err := newCompiler(sql, dbDriver, false)
+		if err != nil {
+			return nil, err
+		}
+		return cmp.getSqlInfo()
+	})
+
 }
 func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
 	cmp, err := newCompiler(sql, dbDriver, true)
@@ -451,21 +457,23 @@ func CompileSelect(Selecttor, dbDriver string) (string, error) {
 }
 func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 
-	retSql, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
-	if err != nil {
-		return nil, err
-	}
+	return internal.OnceCall("compiler/GetSql"+sqlInfo.GetKey(), func() (*types.SqlParse, error) {
+		retSql, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
+		if err != nil {
+			return nil, err
+		}
 
-	sqlInfo, err = Compile(retSql.Sql, dbDriver)
-	if err != nil {
-		return nil, err
-	}
+		sqlInfo, err = Compile(retSql.Sql, dbDriver)
+		if err != nil {
+			return nil, err
+		}
 
-	retSql2, err := factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
-	if err != nil {
-		return nil, err
-	}
-	retSql2.ArgIndex = retSql.ArgIndex
-	return retSql2, nil
+		retSql2, err := factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
+		if err != nil {
+			return nil, err
+		}
+		retSql2.ArgIndex = retSql.ArgIndex
+		return retSql2, nil
+	})
 
 }

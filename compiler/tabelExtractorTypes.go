@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -11,6 +12,13 @@ type tabelExtractorTypes struct {
 
 var tabelExtractor = &tabelExtractorTypes{}
 
+func (t *tabelExtractorTypes) getTablesFromSql(sql string, node sqlparser.SQLNode) []string {
+	ret, _ := internal.OnceCall("tabelExtractorTypes/getTablesFromSql/"+sql, func() ([]string, error) {
+		x := t.getTables(node, make(map[string]bool))
+		return x, nil
+	})
+	return ret
+}
 func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[string]bool) []string {
 	//sqlparser.TableExprs
 	if node == nil {
