@@ -119,10 +119,13 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 }
 
 func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, error) {
-
+	var err error
 	originalSql := sql
 	if !skipQuoteExpression {
-		sql = internal.Helper.QuoteExpression(sql)
+		sql, err = internal.Helper.QuoteExpression(sql)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	stm, err := sqlparser.Parse(sql)
@@ -383,8 +386,11 @@ func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
 	return cmp.getSqlInfo()
 }
 func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
-
-	sql = internal.Helper.QuoteExpression(sql)
+	var err error
+	sql, err = internal.Helper.QuoteExpression(sql)
+	if err != nil {
+		return nil, err
+	}
 
 	stm, err := sqlparser.Parse(sql)
 	if err != nil {

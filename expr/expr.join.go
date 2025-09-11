@@ -73,7 +73,10 @@ type exprCompiler struct {
 
 func (e *exprCompiler) BuildSortField(selector string) error {
 	e.Context.Purpose = BUILD_ORDER
-	selector = internal.Helper.QuoteExpression(selector)
+	selector, err := internal.Helper.QuoteExpression(selector)
+	if err != nil {
+		return err
+	}
 	sqlTest := "select *  from tmp order by " + selector
 	stm, err := sqlparser.Parse(sqlTest)
 	if err != nil {
@@ -93,7 +96,10 @@ func (e *exprCompiler) BuildSortField(selector string) error {
 }
 func (e *exprCompiler) BuildSelectField(selector string) error {
 	e.Context.Purpose = BUILD_SELECT
-	selector = internal.Helper.QuoteExpression(selector)
+	selector, err := internal.Helper.QuoteExpression(selector)
+	if err != nil {
+		return err
+	}
 	sqlTest := "select " + selector
 	stm, err := sqlparser.Parse(sqlTest)
 	if err != nil {
@@ -125,7 +131,10 @@ func (e *exprCompiler) BuildSelectField(selector string) error {
 	return nil
 }
 func (e *exprCompiler) BuildSetter(stterExpr string) error {
-	stterExpr = internal.Helper.QuoteExpression(stterExpr)
+	stterExpr, err := internal.Helper.QuoteExpression(stterExpr)
+	if err != nil {
+		return err
+	}
 
 	sqlTest := "update test set " + stterExpr
 	stm, err := sqlparser.Parse(sqlTest)
@@ -148,7 +157,10 @@ func (e *exprCompiler) BuildSetter(stterExpr string) error {
 	return nil
 }
 func (e *exprCompiler) Build(joinText string) error {
-	joinText = internal.Helper.QuoteExpression(joinText)
+	joinText, err := internal.Helper.QuoteExpression(joinText)
+	if err != nil {
+		return err
+	}
 
 	sqlTest := "select * from " + joinText
 	stm, err := sqlparser.Parse(sqlTest)
@@ -170,7 +182,10 @@ func (e *exprCompiler) Build(joinText string) error {
 
 }
 func (e *exprCompiler) BuildWhere(where string) error {
-	where = internal.Helper.QuoteExpression(where)
+	where, err := internal.Helper.QuoteExpression(where)
+	if err != nil {
+		return err
+	}
 	e.Context.Purpose = BUILD_WHERE
 
 	sqlTest := "select * from tmp where" + where
@@ -272,7 +287,10 @@ func CompileJoin(joinText string, db *db.DB) (*exprCompiler, error) {
 }
 func ExtractTableFromJoin(joinText string) ([]string, error) {
 	return internal.OnceCall(joinText, func() ([]string, error) {
-		joinText = internal.Helper.QuoteExpression(joinText)
+		joinText, err := internal.Helper.QuoteExpression(joinText)
+		if err != nil {
+			return nil, err
+		}
 
 		sqlTest := "select * from tmp " + joinText
 		stm, err := sqlparser.Parse(sqlTest)

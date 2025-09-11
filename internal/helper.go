@@ -75,9 +75,9 @@ func (m *helperType) GetDefaultValue(defaultValue string, defaultValueByFromDbTa
 		return "", fmt.Errorf("not support default value from %s, review GetGetDefaultValueByFromDbTag() function in %s", defaultValue, reflect.TypeOf(m).Elem())
 	}
 }
-func (c *helperType) QuoteExpression(expr string) string {
+func (c *helperType) QuoteExpression(expr string) (string, error) {
 
-	ret, _ := OnceCall("helperType/QuoteExpression/"+expr, func() (string, error) {
+	return OnceCall("helperType/QuoteExpression/"+expr, func() (string, error) {
 		expr = strings.ReplaceAll(expr, "\n", " ")
 		expr = strings.ReplaceAll(expr, "\t", " ")
 		expr = strings.TrimSpace(expr)
@@ -124,7 +124,10 @@ func (c *helperType) QuoteExpression(expr string) string {
 		}
 
 		// Ghi phần còn lại
-		buf.WriteString(exprNoStr[lastPos:])
+		_, err := buf.WriteString(exprNoStr[lastPos:])
+		if err != nil {
+			return "", err
+		}
 
 		// Khôi phục các chuỗi literal
 		out := buf.String()
@@ -139,9 +142,9 @@ func (c *helperType) QuoteExpression(expr string) string {
 
 		// Cache kết quả
 
-		return out
+		return out, nil
 	})
-	return ret
+
 }
 
 type initAddrssertSinglePointerToStruct struct {

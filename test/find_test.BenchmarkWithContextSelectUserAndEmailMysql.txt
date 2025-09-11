@@ -91,3 +91,14 @@ cpu: 12th Gen Intel(R) Core(TM) i7-12650H
 BenchmarkWithContextSelectUserAndEmailMysql-16    	     291	   4215088 ns/op	 3235869 B/op	   61287 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	1.570s
+
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkWithContextSelectUserAndEmailMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkWithContextSelectUserAndEmailMysql-16    	     261	   4186251 ns/op	 1567947 B/op	   61290 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.392s
