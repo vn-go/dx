@@ -15,13 +15,13 @@ type helperType struct {
 	SkipDefaulValue string
 	keywords        map[string]bool
 	funcWhitelist   map[string]bool
-	cache           sync.Map // map[string]string
-	reSingleQuote   *regexp.Regexp
-	reFieldAccess   *regexp.Regexp
-	reFuncCall      *regexp.Regexp
-	reFromJoin      *regexp.Regexp
-	reAsAlias       *regexp.Regexp
-	bufPool         *sync.Pool
+
+	reSingleQuote *regexp.Regexp
+	reFieldAccess *regexp.Regexp
+	reFuncCall    *regexp.Regexp
+	reFromJoin    *regexp.Regexp
+	reAsAlias     *regexp.Regexp
+	bufPool       *sync.Pool
 }
 
 // if s is "true" or "false" retun true
@@ -76,73 +76,72 @@ func (m *helperType) GetDefaultValue(defaultValue string, defaultValueByFromDbTa
 	}
 }
 func (c *helperType) QuoteExpression(expr string) string {
-	// Check cache
-	if cached, ok := c.cache.Load(expr); ok {
-		return cached.(string)
-	}
 
-	expr = strings.ReplaceAll(expr, "\n", " ")
-	expr = strings.ReplaceAll(expr, "\t", " ")
-	expr = strings.TrimSpace(expr)
-	expr = strings.TrimSuffix(expr, ",")
+	ret, _ := OnceCall("helperType/QuoteExpression/"+expr, func() (string, error) {
+		expr = strings.ReplaceAll(expr, "\n", " ")
+		expr = strings.ReplaceAll(expr, "\t", " ")
+		expr = strings.TrimSpace(expr)
+		expr = strings.TrimSuffix(expr, ",")
 
-	exprNoStr, literals := c.extractLiterals(expr)
+		exprNoStr, literals := c.extractLiterals(expr)
 
-	// Lấy từng token và vị trí
-	matches := c.reFieldAccess.FindAllStringIndex(exprNoStr, -1)
+		// Lấy từng token và vị trí
+		matches := c.reFieldAccess.FindAllStringIndex(exprNoStr, -1)
 
-	// Sử dụng buffer để build lại chuỗi
-	buf := c.bufPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer c.bufPool.Put(buf)
+		// Sử dụng buffer để build lại chuỗi
+		buf := c.bufPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		defer c.bufPool.Put(buf)
 
-	lastPos := 0
-	for _, match := range matches {
-		start, end := match[0], match[1]
-		token := exprNoStr[start:end]
+		lastPos := 0
+		for _, match := range matches {
+			start, end := match[0], match[1]
+			token := exprNoStr[start:end]
 
-		lowered := strings.ToLower(token)
-		if c.keywords[lowered] {
-			continue
-		}
-		if c.funcWhitelist[strings.ToLower(strings.Split(token, ".")[0])] {
-			continue
-		}
-
-		// Ghi đoạn trước token
-		buf.WriteString(exprNoStr[lastPos:start])
-
-		// Quote token
-		parts := strings.Split(token, ".")
-		for i, p := range parts {
-			if i > 0 {
-				buf.WriteByte('.')
+			lowered := strings.ToLower(token)
+			if c.keywords[lowered] {
+				continue
 			}
-			buf.WriteString("`")
-			buf.WriteString(p)
-			buf.WriteString("`")
+			if c.funcWhitelist[strings.ToLower(strings.Split(token, ".")[0])] {
+				continue
+			}
+
+			// Ghi đoạn trước token
+			buf.WriteString(exprNoStr[lastPos:start])
+
+			// Quote token
+			parts := strings.Split(token, ".")
+			for i, p := range parts {
+				if i > 0 {
+					buf.WriteByte('.')
+				}
+				buf.WriteString("`")
+				buf.WriteString(p)
+				buf.WriteString("`")
+			}
+
+			lastPos = end
 		}
 
-		lastPos = end
-	}
+		// Ghi phần còn lại
+		buf.WriteString(exprNoStr[lastPos:])
 
-	// Ghi phần còn lại
-	buf.WriteString(exprNoStr[lastPos:])
+		// Khôi phục các chuỗi literal
+		out := buf.String()
+		for i, val := range literals {
+			placeholder := "<" + strconv.Itoa(i) + ">"
+			out = strings.ReplaceAll(out, placeholder, "'"+val+"'")
+		}
 
-	// Khôi phục các chuỗi literal
-	out := buf.String()
-	for i, val := range literals {
-		placeholder := "<" + strconv.Itoa(i) + ">"
-		out = strings.ReplaceAll(out, placeholder, "'"+val+"'")
-	}
+		// Chuyển [] sang ``
+		out = strings.ReplaceAll(out, "[", "`")
+		out = strings.ReplaceAll(out, "]", "`")
 
-	// Chuyển [] sang ``
-	out = strings.ReplaceAll(out, "[", "`")
-	out = strings.ReplaceAll(out, "]", "`")
+		// Cache kết quả
 
-	// Cache kết quả
-	c.cache.Store(expr, out)
-	return out
+		return out
+	})
+	return ret
 }
 
 type initAddrssertSinglePointerToStruct struct {

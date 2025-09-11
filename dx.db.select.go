@@ -264,28 +264,15 @@ func (w *selectorTypes) getFilter() (string, []any) {
 
 func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interface{}, error) {
 
-	// strWhere, whereArgs := selectors.getFilter()
-	// selectors.args.ArgWhere = whereArgs
-	// strSort := strings.Join(selectors.orders, ",")
-	// strSelect := strings.Join(selectors.selectFields, ",")
 	key := typModel.String() + "/selectorTypes/GetSQL/" + selectors.getKey()
-	//key := typModel.String() + "/selectorTypes/GetSQL/" + strWhere + "/" + strSort + "/" + strSelect + "/" + selectors.strGroup + "/" + selectors.strHaving
-	// if selectors.limit != nil {
-	// 	key += fmt.Sprintf("/%d", *selectors.limit)
-	// }
-	// if selectors.offset != nil {
-	// 	key += fmt.Sprintf("/%d", *selectors.offset)
-	// }
+
 	selectSql, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 		var err error
 		ent, err := model.ModelRegister.GetModelByType(typModel)
 		if err != nil {
 			return nil, err
 		}
-		// complier, err := expr.CompileJoin(ent.Entity.TableName, selectors.db.DB)
-		// if err != nil {
-		// 	return "", err
-		// }
+
 		sqlInfo := &types.SqlInfo{
 			Limit:      selectors.limit,
 			Offset:     selectors.offset,
