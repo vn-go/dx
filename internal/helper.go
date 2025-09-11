@@ -144,11 +144,21 @@ func (c *helperType) QuoteExpression(expr string) string {
 	c.cache.Store(expr, out)
 	return out
 }
+
+type initAddrssertSinglePointerToStruct struct {
+	err  error
+	once sync.Once
+}
+
+var cacheAddrssertSinglePointerToStruct sync.Map
+
 func (c *helperType) AddrssertSinglePointerToStruct(obj interface{}) error {
 	v := reflect.ValueOf(obj)
 	t := v.Type()
 	key := t.String() + "://helperType/AddrssertSinglePointerToStruct"
-	_, err := OnceCall(key, func() (int, error) {
+	actually, _ := cacheAddrssertSinglePointerToStruct.LoadOrStore(key, &initAddrssertSinglePointerToStruct{})
+	init := actually.(*initAddrssertSinglePointerToStruct)
+	init.once.Do(func() {
 		depth := 0
 		for t.Kind() == reflect.Ptr {
 			t = t.Elem()
@@ -159,26 +169,27 @@ func (c *helperType) AddrssertSinglePointerToStruct(obj interface{}) error {
 		}
 
 		if depth != 1 {
-			return depth, fmt.Errorf("expected pointer to struct (*T), got %d-level pointer", depth)
+			init.err = fmt.Errorf("expected pointer to struct (*T), got %d-level pointer", depth)
 		}
 
 		if t.Kind() != reflect.Struct {
-			return depth, fmt.Errorf("expected pointer to struct, got pointer to %s", t.Kind())
+			init.err = fmt.Errorf("expected pointer to struct, got pointer to %s", t.Kind())
 		}
-		return depth, nil
 
 	})
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return init.err
 }
+
+var cacheAddrssertSinglePointerToSlice sync.Map
+
 func (c *helperType) AddrssertSinglePointerToSlice(obj interface{}) error {
 	v := reflect.ValueOf(obj)
 	t := v.Type()
 	key := t.String() + "://helperType/AddrssertSinglePointerToSlice"
-	_, err := OnceCall(key, func() (int, error) {
+	actually, _ := cacheAddrssertSinglePointerToSlice.LoadOrStore(key, &initAddrssertSinglePointerToStruct{})
+	init := actually.(*initAddrssertSinglePointerToStruct)
+	init.once.Do(func() {
 		depth := 0
 		for t.Kind() == reflect.Ptr {
 			t = t.Elem()
@@ -189,23 +200,19 @@ func (c *helperType) AddrssertSinglePointerToSlice(obj interface{}) error {
 		}
 
 		if depth != 1 {
-			return depth, fmt.Errorf("expected pointer to slice (*T), got %d-level pointer", depth)
+			init.err = fmt.Errorf("expected pointer to slice (*T), got %d-level pointer", depth)
 		}
 
 		if t.Kind() != reflect.Slice {
-			return depth, fmt.Errorf(" expected pointer to slice, got pointer to %s", t.Kind())
+			init.err = fmt.Errorf(" expected pointer to slice, got pointer to %s", t.Kind())
 		}
 		if t.Elem().Kind() != reflect.Struct {
-			return depth, fmt.Errorf(" expected pointer to slice of struct , got pointer to %s", t.String())
+			init.err = fmt.Errorf(" expected pointer to slice of struct , got pointer to %s", t.String())
 		}
-		return depth, nil
 
 	})
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return init.err
 }
 
 type intHelperTypeFindField struct {
