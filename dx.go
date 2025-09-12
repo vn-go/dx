@@ -92,3 +92,6 @@ func NewThenSetDefaultValues[T any](fn func() (*T, error)) (*T, error) {
 	return val.(*T), nil
 
 }
+func Prt[T any](val T) *T {
+	return &val
+}

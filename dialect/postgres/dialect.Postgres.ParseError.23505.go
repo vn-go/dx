@@ -6,7 +6,7 @@ import (
 
 	"github.com/lib/pq"
 )
-
+//23502
 func (d *postgresDialect) ParseError23505(dbSchame *types.DbSchema, err *pq.Error) error {
 	ukContraint := err.Constraint
 	if colsInfo, ok := dbSchame.UniqueKeys[ukContraint]; ok {

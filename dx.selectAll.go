@@ -214,9 +214,10 @@ func (db *DB) fecthItem(
 	var rows *sql.Rows
 	var err error
 	if sqlTx != nil {
+
 		stmt, err := sqlTx.Prepare(queryStmt)
 		if err != nil {
-			return err
+			return dxErrors.NewMigrationError(queryStmt, err)
 		}
 		rows, err = stmt.Query(args...)
 		if err != nil {
@@ -225,17 +226,17 @@ func (db *DB) fecthItem(
 	} else {
 		stmt, err := db.Prepare(queryStmt)
 		if err != nil {
-			return err
+			return dxErrors.NewMigrationError(queryStmt, err)
 		}
 		if ctx != nil {
 			rows, err = stmt.QueryContext(ctx, args...)
 			if err != nil {
-				return err
+				return db.parseError(err)
 			}
 		} else {
 			rows, err = stmt.Query(args...)
 			if err != nil {
-				return err
+				return db.parseError(err)
 			}
 		}
 

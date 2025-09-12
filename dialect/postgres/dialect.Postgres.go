@@ -33,12 +33,22 @@ func (d *postgresDialect) ToParam(index int) string {
 	return fmt.Sprintf("$%d", index)
 }
 func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
-	switch delegator.FuncName {
-	case "LEN":
+	switch strings.ToLower(delegator.FuncName) {
+	case "len":
 		delegator.FuncName = "LENGTH"
 		delegator.HandledByDialect = true
 		return "LENGTH" + "(" + strings.Join(delegator.Args, ", ") + ")", nil
-
+	case "concat":
+		delegator.HandledByDialect = true
+		castArgs := make([]string, len(delegator.Args))
+		for i, x := range delegator.Args {
+			if x[0] == '$' {
+				castArgs[i] = x + "::text"
+			} else {
+				castArgs[i] = x
+			}
+		}
+		return "CONCAT" + "(" + strings.Join(castArgs, ", ") + ")", nil
 	default:
 
 		return "", nil
