@@ -97,10 +97,41 @@ func Prt[T any](val T) *T {
 	return &val
 }
 
+type dbErrType int
+
 type errorTypes struct {
+	UNKNOWN    dbErrType //unknown error
+	DUPLICATE  dbErrType // database return error duplicate value
+	REFERENCES dbErrType // database return error foreign key constraint value
+	REQUIRED   dbErrType // database return error field require value
+	SYSTEM     dbErrType // database return error
 }
 
-var Errors = &errorTypes{}
+/*
+type DB_ERR = int
+
+const (
+
+	ERR_UNKNOWN DB_ERR = iota
+	ERR_DUPLICATE
+	ERR_REFERENCES // ✅ refrences_violation
+	ERR_REQUIRED
+	ERR_SYSTEM
+
+)
+*/
+func String(t dbErrType) string {
+	return dxErrors.ErrorMessage(dxErrors.DB_ERR(t))
+
+}
+
+var Errors = &errorTypes{
+	UNKNOWN:    dbErrType(dxErrors.ERR_UNKNOWN),
+	DUPLICATE:  dbErrType(dxErrors.ERR_DUPLICATE),
+	REFERENCES: dbErrType(dxErrors.ERR_REFERENCES),
+	REQUIRED:   dbErrType(dxErrors.ERR_REQUIRED),
+	SYSTEM:     dbErrType(dxErrors.ERR_SYSTEM),
+}
 
 func (er *errorTypes) IsDbError(err error) (*dxErrors.DbErr, bool) {
 	if ret, ok := err.(*dxErrors.DbErr); ok {

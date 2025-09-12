@@ -100,3 +100,9 @@ git commit -m "release"
 git tag -a v1.0.15 -m "Support postgres"
 git push origin v1.0.15
 git push origin --tags
+--
+git add .
+git commit -m "release"
+git tag -a v1.0.16 -m "Support postgres"
+git push origin v1.0.16
+git push origin --tags
