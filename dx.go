@@ -133,9 +133,18 @@ var Errors = &errorTypes{
 	SYSTEM:     dbErrType(dxErrors.ERR_SYSTEM),
 }
 
-func (er *errorTypes) IsDbError(err error) (*dxErrors.DbErr, bool) {
+type DbError struct {
+	dxErrors.DbErr
+	ErrorType dbErrType
+}
+
+func (er *errorTypes) IsDbError(err error) *DbError {
 	if ret, ok := err.(*dxErrors.DbErr); ok {
-		return ret, ok
+		retErr := &DbError{
+			ErrorType: dbErrType(ret.ErrorType),
+			DbErr:     *ret,
+		}
+		return retErr
 	}
-	return nil, false
+	return nil
 }
