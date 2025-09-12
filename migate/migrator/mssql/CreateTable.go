@@ -8,8 +8,24 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/model"
 )
+
+func tableIfNotExist(tableName, sqlCreateTable string) string {
+	ret := fmt.Sprintf(`
+		IF NOT EXISTS (
+			SELECT 1
+			FROM sys.tables
+			WHERE name = '%s'
+			AND schema_id = SCHEMA_ID()  
+		)
+		BEGIN
+			%s;
+		END
+		;`, tableName, sqlCreateTable)
+	return ret
+}
 
 /*
 Hàm này là 1 implementation của interface .
@@ -127,8 +143,12 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 	}
 
 	// Finally, Create Table here
-	sql := fmt.Sprintf("CREATE TABLE %s (\n  %s\n)", m.Quote(tableName), strings.Join(strCols, ",\n  "))
-	schema.Tables[strings.ToLower(tableName)] = newTableMap
+	sqlCreateTable := fmt.Sprintf("CREATE TABLE %s (\n  %s\n)", m.Quote(tableName), strings.Join(strCols, ",\n  "))
+
+	sql := tableIfNotExist(tableName, sqlCreateTable)
+	if !types.SkipLoadSchemaOnMigrate {
+		schema.Tables[strings.ToLower(tableName)] = newTableMap
+	}
 
 	return sql, nil
 }

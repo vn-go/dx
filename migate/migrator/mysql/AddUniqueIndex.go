@@ -40,7 +40,7 @@ func (m *MigratorMySql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (strin
 
 		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
 
-		if _, ok := schema.UniqueKeys[constraintName]; !ok {
+		if _, ok := schema.UniqueKeys[strings.ToLower(constraintName)]; !ok {
 			script := fmt.Sprintf(
 				"CREATE UNIQUE INDEX %s ON %s (%s)",
 				m.Quote(constraintName),

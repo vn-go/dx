@@ -9,6 +9,20 @@ import (
 	miragteTypes "github.com/vn-go/dx/migate/migrator/types"
 )
 
+func fkIfNotExists(constraintName, tableName, sqlFk string) string {
+	ret := fmt.Sprintf(`
+				IF NOT EXISTS (
+					SELECT 1
+					FROM sys.foreign_keys
+					WHERE name = '%s'
+					AND parent_object_id = OBJECT_ID('%s')
+				)
+				BEGIN
+					%s;
+				END
+				`, constraintName, tableName, sqlFk)
+	return ret
+}
 func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 	ret := []string{}
 	schema, err := m.loader.LoadFullSchema(db)
@@ -35,7 +49,8 @@ func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			if info.Cascade.OnUpdate {
 				script += " ON UPDATE CASCADE"
 			}
-			ret = append(ret, script)
+			scriptIfNotExit := fkIfNotExists(fk, info.FromTable, script)
+			ret = append(ret, scriptIfNotExit)
 		}
 	}
 	return ret, nil

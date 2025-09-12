@@ -18,7 +18,7 @@ func (m *MigratorMySql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 	}
 
 	for fk, info := range miragteTypes.ForeignKeyRegistry.FKMap {
-		if _, ok := schema.ForeignKeys[fk]; !ok {
+		if _, ok := schema.ForeignKeys[strings.ToLower(fk)]; !ok {
 
 			// Quote column names bằng backtick cho MySQL
 			fromCols := make([]string, len(info.FromCols))

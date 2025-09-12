@@ -10,6 +10,22 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
+func createNotExistUniqueIndex(constrantName string, tableName string, sql string) string {
+	ret := fmt.Sprintf(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1
+				FROM pg_constraint
+				WHERE conname = '%s'
+				AND conrelid = '%s'::regclass
+			) THEN
+				%s;
+			END IF;
+		END$$;
+		`, constrantName, tableName, sql)
+	return ret
+}
 func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
 	scripts := []string{}
 
@@ -39,12 +55,13 @@ func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (st
 
 		// Nếu chưa có trong schema
 		if _, ok := schema.UniqueKeys[constraintName]; !ok {
-			sql := fmt.Sprintf(
-				`ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)`,
+			sqlAddCon := fmt.Sprintf(
+				`ALTER TABLE %s ADD CONSTRAINT  %s UNIQUE (%s)`,
 				m.Quote(entityItem.Entity.TableName),
 				m.Quote(constraintName),
 				strings.Join(colNames, ", "),
 			)
+			sql := createNotExistUniqueIndex(constraintName, entityItem.Entity.TableName, sqlAddCon)
 			scripts = append(scripts, sql)
 		}
 	}

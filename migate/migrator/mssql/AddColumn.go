@@ -8,9 +8,22 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/model"
 )
 
+func colIfNotExist(tableName, colName, sqlAddColumn string) string {
+	ret := fmt.Sprintf(`IF NOT EXISTS (
+			SELECT 1
+			FROM INFORMATION_SCHEMA.COLUMNS
+			WHERE TABLE_NAME = '%s'
+			AND COLUMN_NAME = '%s'
+		)
+		BEGIN
+			%s;
+		END`, tableName, colName, sqlAddColumn)
+	return ret
+}
 func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
@@ -65,10 +78,12 @@ func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 				colDef += fmt.Sprintf(" DEFAULT %s", df)
 			}
 			sqlAddColumn := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), colDef)
+			sqlAddColumnIfNotExist := colIfNotExist(entityItem.Entity.TableName, col.Name, sqlAddColumn)
+			scripts = append(scripts, sqlAddColumnIfNotExist)
+			if !types.SkipLoadSchemaOnMigrate {
+				schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)] = true
+			}
 
-			scripts = append(scripts, sqlAddColumn)
-
-			schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)] = true
 		}
 	}
 

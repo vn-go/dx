@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+
 	"strings"
 
 	"github.com/vn-go/dx/db"
@@ -9,6 +10,23 @@ import (
 	miragteTypes "github.com/vn-go/dx/migate/migrator/types"
 )
 
+func addFkIfNotExist(constraintName, tableName, sqlAddFK string) string {
+	ret := fmt.Sprintf(`
+		DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1
+					FROM pg_constraint
+					WHERE conname = '%s'
+					AND conrelid = '%s'::regclass
+				) THEN
+					%s;
+			END IF;
+		END$$;
+		`, constraintName, tableName, sqlAddFK)
+	return ret
+
+}
 func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 	ret := []string{}
 
@@ -29,7 +47,7 @@ func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 				toCols = append(toCols, m.Quote(col))
 			}
 
-			script := fmt.Sprintf(
+			scriptAddFK := fmt.Sprintf(
 				"ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
 				m.Quote(info.FromTable),
 				m.Quote(fk),
@@ -39,12 +57,12 @@ func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			)
 
 			if info.Cascade.OnDelete {
-				script += " ON DELETE CASCADE"
+				scriptAddFK += " ON DELETE CASCADE"
 			}
 			if info.Cascade.OnUpdate {
-				script += " ON UPDATE CASCADE"
+				scriptAddFK += " ON UPDATE CASCADE"
 			}
-
+			script := addFkIfNotExist(fk, info.FromTable, scriptAddFK)
 			ret = append(ret, script)
 
 			// Cập nhật lại schema cache

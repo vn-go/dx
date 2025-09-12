@@ -10,7 +10,7 @@ import (
 func (m *MigratorLoaderMysql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
-			rc.CONSTRAINT_NAME,
+			LOWER(rc.CONSTRAINT_NAME) CONSTRAINT_NAME ,
 			kcu.TABLE_NAME,
 			kcu.COLUMN_NAME,
 			kcu.REFERENCED_TABLE_NAME,

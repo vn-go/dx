@@ -79,3 +79,5 @@ type IMigratorLoader interface {
 	LoadFullSchema(db *db.DB) (*DbSchema, error)
 	LoadForeignKey(db *db.DB) ([]DbForeignKeyInfo, error)
 }
+
+var SkipLoadSchemaOnMigrate bool

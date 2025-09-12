@@ -32,7 +32,16 @@ func (m *MigratorLoaderMysql) LoadFullSchema(db *db.DB) (*types.DbSchema, error)
 	return initSchema.schema, initSchema.err
 }
 func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
-
+	if types.SkipLoadSchemaOnMigrate {
+		return &types.DbSchema{
+			DbName:      db.DbName,
+			Tables:      map[string]map[string]bool{},
+			PrimaryKeys: map[string]types.ColumnsInfo{},
+			UniqueKeys:  map[string]types.ColumnsInfo{},
+			Indexes:     map[string]types.ColumnsInfo{},
+			ForeignKeys: map[string]types.DbForeignKeyInfo{},
+		}, nil
+	}
 	tables, err := m.LoadAllTable(db)
 	if err != nil {
 		return nil, err

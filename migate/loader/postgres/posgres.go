@@ -27,7 +27,16 @@ func (m *MigratorLoaderPostgres) LoadFullSchema(db *db.DB) (*types.DbSchema, err
 	return init.val, init.err
 }
 func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
-
+	if types.SkipLoadSchemaOnMigrate {
+		return &types.DbSchema{
+			DbName:      db.DbName,
+			Tables:      map[string]map[string]bool{},
+			PrimaryKeys: map[string]types.ColumnsInfo{},
+			UniqueKeys:  map[string]types.ColumnsInfo{},
+			Indexes:     map[string]types.ColumnsInfo{},
+			ForeignKeys: map[string]types.DbForeignKeyInfo{},
+		}, nil
+	}
 	tables, err := m.LoadAllTable(db)
 	if err != nil {
 		return nil, err

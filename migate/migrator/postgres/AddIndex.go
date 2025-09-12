@@ -43,7 +43,7 @@ func (m *MigratorPostgres) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, 
 		if _, ok := schema.Indexes[constraintName]; !ok {
 			// PostgreSQL mặc định dùng BTREE, có thể thêm USING nếu cần
 			sql := fmt.Sprintf(
-				"CREATE INDEX %s ON %s (%s)",
+				"CREATE INDEX IF NOT EXISTS %s ON %s (%s)",
 				m.Quote(constraintName),
 				m.Quote(entityItem.Entity.TableName),
 				strings.Join(colNames, ", "),

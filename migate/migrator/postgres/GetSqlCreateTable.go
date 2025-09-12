@@ -8,6 +8,7 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/model"
 )
 
@@ -132,8 +133,11 @@ func (m *MigratorPostgres) GetSqlCreateTable(db *db.DB, typ reflect.Type) (strin
 		}
 	}
 
-	sql := fmt.Sprintf("CREATE TABLE %s (\n  %s\n);", m.Quote(tableName), strings.Join(strCols, ",\n  "))
-	schema.Tables[tableName] = newTableMap
+	sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n  %s\n);", m.Quote(tableName), strings.Join(strCols, ",\n  "))
+	if !types.SkipLoadSchemaOnMigrate {
+		schema.Tables[tableName] = newTableMap
+	}
+
 	sqlCiText := "CREATE EXTENSION IF NOT EXISTS citext"
 	return sqlCiText + ";\n" + sql + strings.Join(scriptSqlCheckLength, ";\n"), nil
 }

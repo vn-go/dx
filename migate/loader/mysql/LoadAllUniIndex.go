@@ -24,7 +24,7 @@ func (m *MigratorLoaderMysql) LoadAllUniIndex(db *db.DB) (map[string]types.Colum
 	// excluding primary keys, for the current database schema.
 	query := `
 		SELECT
-			s.INDEX_NAME,
+			LOWER(s.INDEX_NAME) INDEX_NAME,
 			s.TABLE_NAME,
 			s.COLUMN_NAME,
 			c.DATA_TYPE,

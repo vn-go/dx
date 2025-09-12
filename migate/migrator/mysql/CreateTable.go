@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/migate/loader/types"
+
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
@@ -102,7 +104,10 @@ func (m *MigratorMySql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 	}
 
 	sql := fmt.Sprintf("CREATE TABLE %s (\n  %s\n)", m.Quote(tableName), strings.Join(strCols, ",\n  "))
-	schema.Tables[tableName] = newTableMap
+	if !types.SkipLoadSchemaOnMigrate {
+		schema.Tables[tableName] = newTableMap
+
+	}
 
 	return sql, nil
 }

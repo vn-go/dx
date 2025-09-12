@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/migate/loader/types"
+
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
@@ -80,11 +82,14 @@ func (m *MigratorPostgres) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string,
 				colDef += fmt.Sprintf(" DEFAULT %s", defaultVal)
 			}
 
-			script := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", m.Quote(entityItem.Entity.TableName), colDef)
+			script := fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS %s", m.Quote(entityItem.Entity.TableName), colDef)
 			scripts = append(scripts, script)
 
 			// Update schema cache
-			schema.Tables[entityItem.Entity.TableName][col.Name] = true
+			if !types.SkipLoadSchemaOnMigrate {
+				schema.Tables[entityItem.Entity.TableName][col.Name] = true
+			}
+
 		}
 	}
 

@@ -32,7 +32,7 @@ struct ColumnsInfo  below:
 func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
-			kcu.CONSTRAINT_NAME,
+			LOWER(kcu.CONSTRAINT_NAME),
 			kcu.TABLE_NAME,
 			kcu.COLUMN_NAME,
 			c.DATA_TYPE,

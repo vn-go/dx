@@ -6,6 +6,7 @@ import (
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
 	dxErrors "github.com/vn-go/dx/errors"
+	migrateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/migate/migrator"
 	"github.com/vn-go/dx/model"
 )
@@ -147,4 +148,7 @@ func (er *errorTypes) IsDbError(err error) *DbError {
 		return retErr
 	}
 	return nil
+}
+func SkipLoadSchemOnMigrate(ok bool) {
+	migrateLoaderTypes.SkipLoadSchemaOnMigrate = ok
 }

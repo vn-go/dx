@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/db"
@@ -35,7 +36,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 			return nil, err
 		}
 		if script != "" {
-			scripts = append(scripts, script)
+			scripts = append(scripts, strings.Split(script, ";")...)
 		}
 
 	}
@@ -45,7 +46,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 			return nil, err
 		}
 		if script != "" {
-			scripts = append(scripts, script)
+			scripts = append(scripts, strings.Split(script, ";\n")...)
 		}
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
@@ -54,7 +55,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 			return nil, err
 		}
 		if script != "" {
-			scripts = append(scripts, script)
+			scripts = append(scripts, strings.Split(script, ";\n")...)
 		}
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
@@ -63,7 +64,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 			return nil, err
 		}
 		if script != "" {
-			scripts = append(scripts, script)
+			scripts = append(scripts, strings.Split(script, ";\n")...)
 		}
 	}
 	scriptForeignKey, err := m.GetSqlAddForeignKey(db)

@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/migate/loader/types"
+
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
@@ -68,7 +70,9 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 					colDef += fmt.Sprintf(" DEFAULT %s", col.Default)
 
 				} else if val, ok := defaultValueByFromDbTag[col.Default]; ok {
-					colDef += fmt.Sprintf(" DEFAULT %s", val)
+					if val != internal.Helper.SkipDefaulValue {
+						colDef += fmt.Sprintf(" DEFAULT %s", val)
+					}
 				} else {
 					panic(fmt.Errorf("unsupported default value from %s, check GetGetDefaultValueByFromDbTag()", col.Default))
 				}
@@ -76,9 +80,11 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 
 			stmt := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(tableName), colDef)
 			scripts = append(scripts, stmt)
-
+			if !types.SkipLoadSchemaOnMigrate {
+				schema.Tables[tableName][col.Name] = true
+			}
 			// Update schema cache
-			schema.Tables[tableName][col.Name] = true
+
 		}
 	}
 

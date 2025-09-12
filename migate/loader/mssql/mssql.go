@@ -160,6 +160,16 @@ func (m *MigratorLoaderMssql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsI
 }
 
 func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
+	if types.SkipLoadSchemaOnMigrate {
+		return &types.DbSchema{
+			DbName:      db.DbName,
+			Tables:      map[string]map[string]bool{},
+			PrimaryKeys: map[string]types.ColumnsInfo{},
+			UniqueKeys:  map[string]types.ColumnsInfo{},
+			Indexes:     map[string]types.ColumnsInfo{},
+			ForeignKeys: map[string]types.DbForeignKeyInfo{},
+		}, nil
+	}
 	cacheKey := db.Info.DbName
 	if val, ok := m.cacheLoadFullSchema.Load(cacheKey); ok {
 		return val.(*types.DbSchema), nil

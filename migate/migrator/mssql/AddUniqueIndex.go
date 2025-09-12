@@ -11,6 +11,20 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
+func uqIfNotExist(constraintName, tableName, sqlCmd string) string {
+	sql := fmt.Sprintf(`
+			IF NOT EXISTS (
+				SELECT 1
+				FROM sys.indexes
+				WHERE name = '%s'
+				AND object_id = OBJECT_ID('%s')
+			)
+			BEGIN
+				%s;
+			END;
+	`, constraintName, tableName, sqlCmd)
+	return sql
+}
 func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
 	scripts := []string{}
 
@@ -42,21 +56,23 @@ func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (strin
 			constraint := fmt.Sprintf("CONSTRAINT %s UNIQUE (%s)", m.Quote(constraintName), strings.Join(colNames, ", "))
 			if strWhere, cols, ok := m.getWhere(cols.Cols); ok {
 				sqlCreateConstraint := fmt.Sprintf("CREATE UNIQUE INDEX [%s] ON [%s] (%s) WHERE %s", constraintName, entityItem.Entity.TableName, cols, strWhere)
-				sql := fmt.Sprintf(`IF NOT EXISTS (
-									SELECT 1
-									FROM sys.indexes
-									WHERE name = '%s'
-									AND object_id = OBJECT_ID('%s')
-								)
-								BEGIN
-									%s;
-								END;`, constraintName, entityItem.Entity.TableName, sqlCreateConstraint)
+				// sql := fmt.Sprintf(`IF NOT EXISTS (
+				// 					SELECT 1
+				// 					FROM sys.indexes
+				// 					WHERE name = '%s'
+				// 					AND object_id = OBJECT_ID('%s')
+				// 				)
+				// 				BEGIN
+				// 					%s;
+				// 				END;`, constraintName, entityItem.Entity.TableName, sqlCreateConstraint)
+				sql := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlCreateConstraint)
 				//sql := fmt.Sprintf("ALTER TABLE [%s] DROP CONSTRAINT [%s];", entityItem.Entity.TableName, constraintName)
 				//sql += fmt.Sprintf("CREATE UNIQUE INDEX [%s] ON [%s] (%s) WHERE %s;", constraintName, entityItem.Entity.TableName, cols, strWhere)
 				scripts = append(scripts, sql)
 			} else {
 
-				script := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), constraint)
+				sqlAddCon := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), constraint)
+				script := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlAddCon)
 				scripts = append(scripts, script)
 			}
 

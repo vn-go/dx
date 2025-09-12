@@ -33,6 +33,7 @@ func (m *MigratorPostgres) Quote(names ...string) string {
 
 type postgresInitDoMigrates struct {
 	once sync.Once
+	err  error
 }
 
 var cacheMigratorPostgresMigratorPostgres sync.Map
@@ -50,11 +51,14 @@ func (m *MigratorPostgres) DoMigrates(db *db.DB) error {
 			return
 		}
 		for _, script := range scripts {
+			// subScript := strings.Split(script, ";")
 			_, err = db.Exec(script)
 			if err != nil {
 				err = dxErrors.NewMigrationError(script, err)
-				break
+
+				return
 			}
+
 		}
 
 	})

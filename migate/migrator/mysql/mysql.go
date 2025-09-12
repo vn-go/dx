@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/errors"
 	loaderMysql "github.com/vn-go/dx/migate/loader/mysql"
@@ -54,8 +55,21 @@ func (m *MigratorMySql) DoMigrates(db *db.DB) error {
 		for _, script := range scripts {
 			_, err := db.Exec(script)
 			if err != nil {
-				mi.err = errors.NewMigrationError(script, err)
-				break
+
+				if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+					if mysqlErr.Number != 1826 &&
+						mysqlErr.Number != 1060 &&
+						mysqlErr.Number != 1061 &&
+						mysqlErr.Number != 1050 {
+						mi.err = mysqlErr
+						break
+					}
+
+				} else {
+					mi.err = errors.NewMigrationError(script, err)
+					break
+				}
+
 			}
 		}
 
