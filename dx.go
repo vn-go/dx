@@ -5,6 +5,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
+	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/migate/migrator"
 	"github.com/vn-go/dx/model"
 )
@@ -94,4 +95,16 @@ func NewThenSetDefaultValues[T any](fn func() (*T, error)) (*T, error) {
 }
 func Prt[T any](val T) *T {
 	return &val
+}
+
+type errorTypes struct {
+}
+
+var Errors = &errorTypes{}
+
+func (er *errorTypes) IsDbError(err error) (*dxErrors.DbErr, bool) {
+	if ret, ok := err.(*dxErrors.DbErr); ok {
+		return ret, ok
+	}
+	return nil, false
 }
