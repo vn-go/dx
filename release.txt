@@ -120,3 +120,12 @@ git commit -m "release"
 git tag -a v1.0.18 -m "Support postgres"
 git push origin v1.0.18
 git push origin --tags
+--
+//fix migrate db when run on multi process
+
+
+git add .
+git commit -m "release"
+git tag -a v1.0.19 -m "Support migrate db when run on multi process"
+git push origin v1.0.19
+git push origin --tags
