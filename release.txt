@@ -129,3 +129,10 @@ git commit -m "release"
 git tag -a v1.0.19 -m "Support migrate db when run on multi process"
 git push origin v1.0.19
 git push origin --tags
+
+
+git add .
+git commit -m "release"
+git tag -a v1.0.20 -m "PG support default value migration"
+git push origin v1.0.20
+git push origin --tags

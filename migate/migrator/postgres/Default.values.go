@@ -12,6 +12,8 @@ func (m *MigratorPostgres) GetGetDefaultValueByFromDbTag() map[string]string {
 		"now()":              "CURRENT_TIMESTAMP", // hoặc "now()" đều hợp lệ với Postgres
 		"uuid_generate_v4()": "uuid_generate_v4()",
 		"uuid()":             "uuid_generate_v4()",
+		"true":               "TRUE",
+		"false":              "FALSE",
 	}
 }
 func (m *MigratorPostgres) GetColumnDataTypeMapping() map[reflect.Type]string {

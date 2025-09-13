@@ -25,3 +25,9 @@ func TestMigrateConflictMssql(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 }
+func BenchmarkMigrateConflictMysql(t *testing.B) {
+	dx.SkipLoadSchemOnMigrate(true)
+	db, err := dx.Open("mysql", mySqlDsn)
+	assert.NoError(t, err)
+	defer db.Close()
+}
