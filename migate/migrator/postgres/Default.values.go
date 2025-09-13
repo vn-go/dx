@@ -28,7 +28,7 @@ func (m *MigratorPostgres) GetColumnDataTypeMapping() map[reflect.Type]string {
 		reflect.TypeOf(uint8(0)):    "smallint",
 		reflect.TypeOf(uint16(0)):   "integer",
 		reflect.TypeOf(uint32(0)):   "bigint",
-		reflect.TypeOf(uint64(0)):   "numeric", // an toàn cho số lớn
+		reflect.TypeOf(uint64(0)):   "bigint", // an toàn cho số lớn
 		reflect.TypeOf(float32(0)):  "real",
 		reflect.TypeOf(float64(0)):  "double precision",
 		reflect.TypeOf(bool(false)): "boolean",
