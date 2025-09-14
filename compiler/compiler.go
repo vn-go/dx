@@ -63,19 +63,33 @@ func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 	return init.val
 }
 
+type sqlCompilerError struct {
+	err error
+	sql string
+}
+
+func (sqlErr *sqlCompilerError) Error() string {
+	return fmt.Sprintf("syntax error %s\n%s", sqlErr.err, sqlErr.sql)
+}
 func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, error) {
 	var err error
 	originalSql := sql
 	if !skipQuoteExpression {
 		sql, err = internal.Helper.QuoteExpression(sql)
 		if err != nil {
-			return nil, err
+			return nil, &sqlCompilerError{
+				err: err,
+				sql: originalSql,
+			}
 		}
 	}
 
 	stm, err := sqlparser.Parse(sql)
 	if err != nil {
-		return nil, err
+		return nil, &sqlCompilerError{
+			err: err,
+			sql: originalSql,
+		}
 	}
 
 	ret := &compiler{
@@ -161,14 +175,7 @@ func (cmp *compiler) getSqlInfoByUpdate(stmUpdate *sqlparser.Update) (*types.Sql
 	ret := &types.SqlInfo{
 		SqlType: types.SQL_UPDATE,
 	}
-	if stmUpdate.Where != nil {
-		ret.StrWhere, err = cmp.resolve(stmUpdate.Where, C_UPDATE)
-		if err != nil {
-			return nil, err
-		}
-		//alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
-		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
-	}
+
 	settors := []string{}
 	for _, x := range stmUpdate.Exprs {
 		strExpr, err := cmp.resolve(x, C_UPDATE)
@@ -180,6 +187,14 @@ func (cmp *compiler) getSqlInfoByUpdate(stmUpdate *sqlparser.Update) (*types.Sql
 	}
 	ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
 	ret.StrSetter = strings.Join(settors, ",")
+	if stmUpdate.Where != nil {
+		ret.StrWhere, err = cmp.resolve(stmUpdate.Where, C_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+		//alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
+		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
+	}
 	return ret, nil
 }
 func (cmp *compiler) getSqlInfoByDelete(stmDelete *sqlparser.Delete) (*types.SqlInfo, error) {

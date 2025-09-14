@@ -10,6 +10,7 @@ type User struct {
 
 	Username     string  `db:"size:250;unique"`
 	HashPassword *string `db:"size:100"`
+	IsAdmin      bool    `db:"default:false"`
 	BaseModel
 }
 

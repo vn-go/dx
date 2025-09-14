@@ -9,9 +9,9 @@ import (
 	"github.com/vn-go/dx/test/models"
 )
 
-func TestUpdatetUserMysql(t *testing.T) {
+func TestUpdatetUserPostgres(t *testing.T) {
 
-	db, err := dx.Open("mysql", mySqlDsn)
+	db, err := dx.Open("postgres", pgDsn)
 	//dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
 	user := &models.User{}
@@ -27,9 +27,9 @@ func TestUpdatetUserMysql(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
-func TestUpdatetUserWithWhereMysql(t *testing.T) {
-
-	db, err := dx.Open("mysql", mySqlDsn)
+func TestUpdatetUserWithWherePostgres(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("postgres", pgDsn)
 	//dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
 	// user := &models.User{}
@@ -37,7 +37,7 @@ func TestUpdatetUserWithWhereMysql(t *testing.T) {
 	assert.NoError(t, err)
 	// user.Phone = dx.Ptr("12345667")
 	// db.Model(&models.User{}).Select()
-	err = db.Model(&models.User{}).Where("username!=?", "admin").Update(map[string]interface{}{
+	err = db.Model(&models.User{}).Where("IsAdmin=?", false).Update(map[string]interface{}{
 		"Phone": "123456",
 	}).Error
 	if dxError, ok := err.(*dxErr.DbErr); ok {
@@ -48,12 +48,11 @@ func TestUpdatetUserWithWhereMysql(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
-func BenchmarkUpdatetUserWithWhereMysql(t *testing.B) {
+func BenchmarkUpdatetUserWithWherePostgres(t *testing.B) {
 
-	db, err := dx.Open("mysql", mySqlDsn)
+	db, err := dx.Open("postgres", pgDsn)
 	//dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
-	defer db.Close()
 	// user := &models.User{}
 	// err = db.First(user, "username!=?", "admin")
 	//assert.NoError(t, err)
@@ -61,7 +60,7 @@ func BenchmarkUpdatetUserWithWhereMysql(t *testing.B) {
 	// db.Model(&models.User{}).Select()
 
 	for i := 0; i < t.N; i++ {
-		err = db.Model(&models.User{}).Where("username!=?", "admin").Update(map[string]interface{}{
+		err = db.Model(&models.User{}).Where("IsAdmin=", false).Update(map[string]interface{}{
 			"Phone": "123456",
 		}).Error
 		if dxError, ok := err.(*dxErr.DbErr); ok {

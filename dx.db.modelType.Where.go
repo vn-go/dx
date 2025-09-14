@@ -197,19 +197,27 @@ func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
 	strWhere, argWhere := m.getFilter()
 	setterArsg = append(setterArsg, argWhere...)
 	sql := "Update " + ent.Entity.TableName + " set " + strings.Join(fields, ",") + " where " + strWhere
-	sqlInfo, err := compiler.Compile(sql, m.db.DriverName)
+	sql, err = internal.OnceCall("modelTypeWhere/"+m.db.DriverName+"/"+sql, func() (string, error) {
+		sqlInfo, err := compiler.Compile(sql, m.db.DriverName)
+		if err != nil {
+			return "", err
+		}
+		sqlParser, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
+		if err != nil {
+			return "", err
+		}
+		return sqlParser.Sql, nil
+	})
+
 	if err != nil {
 		return UpdateResult{
 			Error: err,
 		}
 	}
-	sqlParser, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
-	if err != nil {
-		return UpdateResult{
-			Error: err,
-		}
+	if Options.ShowSql {
+		fmt.Println(sql)
 	}
-	rs, err := m.db.Exec(sqlParser.Sql, setterArsg...)
+	rs, err := m.db.Exec(sql, setterArsg...)
 	if err != nil {
 		return UpdateResult{
 			Error: m.db.parseError(err),
