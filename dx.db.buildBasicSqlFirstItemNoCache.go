@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
-	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/model"
 )
 
@@ -18,34 +18,29 @@ func (db *DB) buildBasicSqlFirstItemNoCache(typ reflect.Type, filter string) (st
 		return "", err
 	}
 	tableName := repoType.Entity.TableName
-	compiler, err := expr.CompileJoin(tableName, db.DB)
-	if err != nil {
-		return "", err
-	}
-	tableName = compiler.Content
+
 	columns := repoType.Entity.Cols
 
 	fieldsSelect := make([]string, len(columns))
 	for i, col := range columns {
 		fieldsSelect[i] = repoType.Entity.TableName + "." + col.Field.Name + " AS " + col.Field.Name
 	}
-	compiler.Context.Purpose = expr.BUILD_SELECT
-	err = compiler.BuildSelectField(strings.Join(fieldsSelect, ", "))
+
+	sql := fmt.Sprintf("SELECT %s FROM %s", strings.Join(fieldsSelect, ","), tableName)
+	if filter != "" {
+
+		sql += " WHERE " + filter
+	}
+	sqlInfo, err := compiler.Compile(sql, db.DriverName)
 	if err != nil {
 		return "", err
 	}
-	strField := compiler.Content
-
-	sql := fmt.Sprintf("SELECT %s FROM %s", strField, tableName)
-	if filter != "" {
-		compiler.Context.Purpose = expr.BUILD_WHERE
-		err = compiler.BuildWhere(filter)
-		if err != nil {
-			return "", err
-		}
-		sql += " WHERE " + compiler.Content
+	sqlInfo.Limit = Ptr[uint64](1)
+	// offset := uint64(1)
+	sqlParse, err := dialect.BuildSql(sqlInfo)
+	if err != nil {
+		return "", err
 	}
-	offset := uint64(1)
-	sql = dialect.LimitAndOffset(sql, nil, &offset, "")
-	return sql, nil
+	//sql = dialect.LimitAndOffset(sql, nil, &offset, "")
+	return sqlParse.Sql, nil
 }

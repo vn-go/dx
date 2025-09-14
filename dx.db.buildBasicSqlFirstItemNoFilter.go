@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/dialect/types"
-	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
@@ -32,11 +32,11 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 			return nil, err
 		}
 		tableName := repoType.Entity.TableName
-		compiler, err := expr.CompileJoin(tableName, db.DB)
-		if err != nil {
-			return nil, err
-		}
-		tableName = compiler.Content
+		// compiler, err := expr.CompileJoin(tableName, db.DB)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// tableName = compiler.Content
 		columns := repoType.Entity.Cols
 
 		fieldsSelect := make([]string, len(columns))
@@ -50,30 +50,30 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 			fieldsSelect[i] = repoType.Entity.TableName + "." + col.Field.Name + " AS " + col.Field.Name
 		}
 		filter := strings.Join(filterFields, " AND ")
-		compiler.Context.Purpose = expr.BUILD_SELECT //build_purpose_select
-		err = compiler.BuildSelectField(strings.Join(fieldsSelect, ", "))
+
 		if err != nil {
 			return nil, err
 		}
-		strField := compiler.Content
+		// strField := compiler.Content
 
-		sql := fmt.Sprintf("SELECT %s FROM %s", strField, tableName)
+		sql := fmt.Sprintf("SELECT %s FROM %s", strings.Join(filterFields, ","), tableName)
 		if filter != "" {
-			compiler.Context.Purpose = expr.BUILD_WHERE //build_purpose_where
-			err = compiler.BuildWhere(filter)
-			if err != nil {
-				return nil, err
-			}
 
+			sql += " WHERE " + filter
 		}
-		offset := uint64(1)
-		sql = dialect.LimitAndOffset(sql, nil, &offset, "")
+		sqlInfo, err := compiler.Compile(sql, db.DriverName)
+		if err != nil {
+			return nil, err
+		}
+		sqlParse, err := dialect.BuildSql(sqlInfo)
+		if err != nil {
+			return nil, err
+		}
 		return &basicSqlFirstItemNoFilterResult{
 			sql:           sql,
-			sqlCompiler:   compiler.Content,
+			sqlCompiler:   sqlParse.Sql,
 			keyFieldIndex: keyFieldIndex,
 		}, nil
-		//return sql, compiler.Content, keyFieldIndex, nil
 	})
 	if err != nil {
 		return "", "", nil, err

@@ -239,6 +239,33 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		ret = append(ret, next...)
 		return ret
 	}
+	if s, ok := node.(*sqlparser.UpdateExprs); ok {
+		for _, x := range *s {
+			next := t.getTables(x, visited)
+
+			ret = append(ret, next...)
+		}
+
+		return ret
+	}
+	if s, ok := node.(sqlparser.UpdateExprs); ok {
+		for _, x := range s {
+			next := t.getTables(x, visited)
+
+			ret = append(ret, next...)
+		}
+
+		return ret
+	}
+	if s, ok := node.(*sqlparser.UpdateExpr); ok {
+		next := t.getTables(s.Expr, visited)
+		if !s.Name.Qualifier.IsEmpty() {
+			next = append(next, s.Name.Qualifier.Name.String())
+		}
+
+		ret = append(ret, next...)
+		return ret
+	}
 	//sqlparser.Expr
 	panic(fmt.Sprintf("not implement ,%s", `compiler\tabelExtractorTypes.go`))
 

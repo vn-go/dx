@@ -52,6 +52,9 @@ var scanArgsPool = sync.Pool{
 }
 
 func (db *DB) execToItemOptimized(context context.Context, sqlTx *sql.Tx, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
+	if Options.ShowSql {
+		fmt.Println(query)
+	}
 	ptrVal := reflect.ValueOf(result)
 	if ptrVal.Kind() != reflect.Ptr {
 		return fmt.Errorf("result must be a pointer to slice")

@@ -80,6 +80,27 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 		}
 		return ret.Sql, nil
 	}
+	if x, ok := node.(*sqlparser.UpdateExpr); ok {
+		strExpr, err := cmp.resolve(x.Expr, C_UPDATE)
+		if err != nil {
+			return "", err
+		}
+		if len(cmp.dict.Tables) == 1 {
+			// alias := cmp.dict.TableAlias[cmp.dict.Tables[0]]
+			if field, ok := cmp.dict.Field[strings.ToLower(fmt.Sprintf("%s.%s", cmp.dict.Tables[0], x.Name.Name.String()))]; ok {
+				return strings.Split(field, ".")[1] + "=" + strExpr, nil
+			}
+			return cmp.dialect.Quote(x.Name.Name.String()) + "=" + strExpr, nil
+
+		} else {
+			panic(fmt.Sprintf("Not support mmulti source update statement, %s", `compiler\cmp.resolve.go`))
+		}
+
+		//return "", nil
+	}
+	if x, ok := node.(*sqlparser.Where); ok {
+		return cmp.resolve(x.Expr, cmpType)
+	}
 	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 

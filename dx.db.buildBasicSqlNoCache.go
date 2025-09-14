@@ -5,7 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/vn-go/dx/expr"
+	"github.com/vn-go/dx/compiler"
+	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/model"
 )
 
@@ -16,33 +17,41 @@ func (db *DB) buildBasicSqlNoCache(typ reflect.Type, filter string) (string, err
 		return "", err
 	}
 	tableName := repoType.Entity.TableName
-	compiler, err := expr.CompileJoin(tableName, db.DB)
-	if err != nil {
-		return "", err
-	}
-	tableName = compiler.Content
+	// compiler, err := expr.CompileJoin(tableName, db.DB)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// tableName = compiler.Content
 	columns := repoType.Entity.Cols
 
 	fieldsSelect := make([]string, len(columns))
 	for i, col := range columns {
 		fieldsSelect[i] = col.Name + " AS " + col.Field.Name
 	}
-	compiler.Context.Purpose = expr.BUILD_SELECT
-	err = compiler.BuildSelectField(strings.Join(fieldsSelect, ", "))
+	// compiler.Context.Purpose = expr.BUILD_SELECT
+	// err = compiler.BuildSelectField(strings.Join(fieldsSelect, ", "))
+	// if err != nil {
+	// 	return "", err
+	// }
+	// strField := compiler.Content
+
+	sql := fmt.Sprintf("SELECT %s FROM %s", strings.Join(fieldsSelect, ","), tableName)
+	if filter != "" {
+		// compiler.Context.Purpose = expr.BUILD_WHERE
+		// err = compiler.BuildWhere(filter)
+		// if err != nil {
+		// 	return "", err
+		// }
+		sql += " WHERE " + filter
+	}
+	sqlInfo, err := compiler.Compile(sql, db.DriverName)
 	if err != nil {
 		return "", err
 	}
-	strField := compiler.Content
-
-	sql := fmt.Sprintf("SELECT %s FROM %s", strField, tableName)
-	if filter != "" {
-		compiler.Context.Purpose = expr.BUILD_WHERE
-		err = compiler.BuildWhere(filter)
-		if err != nil {
-			return "", err
-		}
-		sql += " WHERE " + compiler.Content
+	sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+	if err != nil {
+		return "", err
 	}
 
-	return sql, nil
+	return sqlParse.Sql, nil
 }

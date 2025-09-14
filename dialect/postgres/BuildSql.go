@@ -9,7 +9,39 @@ import (
 	"github.com/vn-go/dx/internal"
 )
 
-func buildSQLPg(info types.SqlInfo) (*types.SqlParse, error) {
+func postgresBuilSql(info types.SqlInfo) (*types.SqlParse, error) {
+	if info.SqlType == types.SQL_SELECT {
+		return postgresBuilSqlSelect(info)
+	}
+	if info.SqlType == types.SQL_DELETE {
+		return postgresBuilSqlDelete(info)
+	}
+	panic(fmt.Sprintf("not support %s, see file %s", info.SqlType, `dialect\postgres\BuildSql.go`))
+}
+func postgresBuilSqlDelete(info types.SqlInfo) (*types.SqlParse, error) {
+	var sb strings.Builder
+	ret := &types.SqlParse{
+		ArgIndex: []reflect.StructField{},
+	}
+	if strFrom, ok := info.From.(string); ok {
+		_, err := sb.WriteString("DELETE FROM " + strFrom)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		panic(fmt.Sprintf("not support %s with from %T, see file %s", info.SqlType, info.From, `dialect\postgres\BuildSql.go`))
+	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgWhere)
+	if info.StrWhere != "" {
+		_, err := sb.WriteString(" WHERE " + info.StrWhere)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ret.Sql = sb.String()
+	return ret, nil
+}
+func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
 	ret := &types.SqlParse{
 		ArgIndex: []reflect.StructField{},
@@ -29,7 +61,7 @@ func buildSQLPg(info types.SqlInfo) (*types.SqlParse, error) {
 			sb.WriteString(" FROM " + v)
 		}
 	case types.SqlInfo:
-		inner, err := buildSQLPg(v)
+		inner, err := postgresBuilSqlSelect(v)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +99,7 @@ func buildSQLPg(info types.SqlInfo) (*types.SqlParse, error) {
 		}
 	}
 	if info.UnionNext != nil {
-		sqlParse, err := buildSQLPg(*info.UnionNext)
+		sqlParse, err := postgresBuilSqlSelect(*info.UnionNext)
 		if err != nil {
 			return nil, err
 		}
@@ -80,6 +112,6 @@ func buildSQLPg(info types.SqlInfo) (*types.SqlParse, error) {
 }
 func (mssql *postgresDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
 	return internal.OnceCall(info.GetKey(), func() (*types.SqlParse, error) {
-		return buildSQLPg(*info)
+		return postgresBuilSql(*info)
 	})
 }

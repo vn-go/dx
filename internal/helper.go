@@ -277,6 +277,7 @@ func newHelper() *helperType {
 			"like": true, "desc": true, "asc": true, "select": true, "from": true, "order": true,
 			"union": true, "all": true,
 			"limit": true, "having": true, "is": true, "null": true, "offset": true,
+			"delete": true, "update": true, "set": true,
 		},
 		funcWhitelist: map[string]bool{
 			"min": true, "max": true, "abs": true, "len": true,

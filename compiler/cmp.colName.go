@@ -13,9 +13,15 @@ func (cmp *compiler) colName(expr *sqlparser.ColName, cmpType COMPILER) (string,
 		matchField := strings.ToLower(fmt.Sprintf("%s.%s", cmp.dict.Tables[0], field))
 
 		if retField, ok := cmp.dict.Field[matchField]; ok {
+			if cmpType == C_UPDATE {
+				return strings.Split(retField, ".")[1], nil
+			}
 			return retField, nil
 		}
 		alias := cmp.dict.TableAlias[cmp.dict.Tables[0]]
+		if cmpType == C_UPDATE {
+			return cmp.dialect.Quote(expr.Name.String()), nil
+		}
 		return cmp.dialect.Quote(alias) + "." + cmp.dialect.Quote(expr.Name.String()), nil
 	} else {
 		if expr.Qualifier.IsEmpty() {
@@ -26,10 +32,16 @@ func (cmp *compiler) colName(expr *sqlparser.ColName, cmpType COMPILER) (string,
 			fieldName := expr.Name.String()
 			fieldMatch := strings.ToLower(fmt.Sprintf("%s.%s", tableName, fieldName))
 			if ret, ok := cmp.dict.Field[fieldMatch]; ok {
+				if cmpType == C_UPDATE {
+					return strings.Split(ret, ".")[1], nil
+				}
 				return ret, nil
 			} else {
 				if tableAlias, ok := cmp.dict.TableAlias[strings.ToLower(tableName)]; ok {
 					return cmp.dialect.Quote(tableAlias, fieldName), nil
+				}
+				if cmpType == C_UPDATE {
+					return cmp.dialect.Quote(fieldName), nil
 				}
 				return cmp.dialect.Quote(tableName, fieldName), nil
 			}

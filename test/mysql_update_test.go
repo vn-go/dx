@@ -1,0 +1,50 @@
+package test
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/vn-go/dx"
+	dxErr "github.com/vn-go/dx/errors"
+	"github.com/vn-go/dx/test/models"
+)
+
+func TestUpdatetUserMysql(t *testing.T) {
+
+	db, err := dx.Open("mysql", mySqlDsn)
+	//dx.SetManagerDb("mysql", "a001")
+	assert.NoError(t, err)
+	user := &models.User{}
+	err = db.First(user, "username!=?", "admin")
+	assert.NoError(t, err)
+	user.Phone = dx.Ptr("12345667")
+	err = db.Update(user).Error
+	if dxError, ok := err.(*dxErr.DbErr); ok {
+		if dxError.ErrorType != dxErr.ERR_DUPLICATE {
+			t.Fail()
+		}
+	} else {
+		assert.NoError(t, err)
+	}
+}
+func TestUpdatetUserWithWhereMysql(t *testing.T) {
+
+	db, err := dx.Open("mysql", mySqlDsn)
+	//dx.SetManagerDb("mysql", "a001")
+	assert.NoError(t, err)
+	// user := &models.User{}
+	// err = db.First(user, "username!=?", "admin")
+	assert.NoError(t, err)
+	// user.Phone = dx.Ptr("12345667")
+	// db.Model(&models.User{}).Select()
+	err = db.Model(&models.User{}).Where("username!=?", "admin").Update(map[string]interface{}{
+		"Phone": "123456",
+	}).Error
+	if dxError, ok := err.(*dxErr.DbErr); ok {
+		if dxError.ErrorType != dxErr.ERR_DUPLICATE {
+			t.Fail()
+		}
+	} else {
+		assert.NoError(t, err)
+	}
+}

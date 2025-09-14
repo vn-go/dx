@@ -33,6 +33,7 @@ func (d *postgresDialect) ToParam(index int) string {
 	return fmt.Sprintf("$%d", index)
 }
 func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
+
 	switch strings.ToLower(delegator.FuncName) {
 	case "len":
 		delegator.FuncName = "LENGTH"

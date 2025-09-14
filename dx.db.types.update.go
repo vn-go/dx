@@ -5,8 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/compiler"
+	"github.com/vn-go/dx/dialect/factory"
 	dxErrors "github.com/vn-go/dx/errors"
-	"github.com/vn-go/dx/expr"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
 )
@@ -77,29 +78,16 @@ func (m *selectorTypes) buildUpdateSql() (string, []any, error) {
 			strWhere = strings.Join(whereItems, " AND ")
 		}
 
-		compiler, err := expr.NewExprCompiler(m.db.DB)
+		sql := "update " + ent.Entity.TableName + " set " + strings.Join(setterItems, ",") + " Where " + strWhere
+		sqlInfo, err := compiler.Compile(sql, m.db.DriverName)
 		if err != nil {
 			return "", err
 		}
-
-		compiler.Context.Purpose = expr.BUILD_UPDATE
-
-		err = compiler.BuildSetter(strings.Join(setterItems, ","))
+		sqlParse, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
 		if err != nil {
 			return "", err
 		}
-
-		sql := "update " + compiler.Context.Dialect.Quote(ent.Entity.TableName) + " set " + compiler.Content
-		compiler.Context.Purpose = expr.BUILD_UPDATE
-		err = compiler.BuildWhere(strWhere)
-		if err != nil {
-			if err != nil {
-				return "", err
-			}
-		}
-		sql += " WHERE " + compiler.Content
-
-		return sql, nil
+		return sqlParse.Sql, nil
 	})
 	if err != nil {
 		return "", nil, err

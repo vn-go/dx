@@ -3,6 +3,7 @@ package dx
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
@@ -179,5 +180,49 @@ func (m *modelType) Offset(num uint64) *modelTypeWhere {
 	return ret
 }
 
-//db.Limit(pageSize).Offset(offset).Find(&users)
-//SELECT * FROM [users] ORDER BY (SELECT NULL) OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
+	ent, err := model.ModelRegister.GetModelByType(m.typEle)
+	if err != nil {
+		return UpdateResult{
+			Error: err,
+		}
+	}
+	fields := []string{}
+	setterArsg := []interface{}{}
+	for k, v := range data {
+		fields = append(fields, fmt.Sprintf("%s=?", k))
+		setterArsg = append(setterArsg, v)
+	}
+
+	strWhere, argWhere := m.getFilter()
+	setterArsg = append(setterArsg, argWhere...)
+	sql := "Update " + ent.Entity.TableName + " set " + strings.Join(fields, ",") + " where " + strWhere
+	sqlInfo, err := compiler.Compile(sql, m.db.DriverName)
+	if err != nil {
+		return UpdateResult{
+			Error: err,
+		}
+	}
+	sqlParser, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
+	if err != nil {
+		return UpdateResult{
+			Error: err,
+		}
+	}
+	rs, err := m.db.Exec(sqlParser.Sql, setterArsg...)
+	if err != nil {
+		return UpdateResult{
+			Error: m.db.parseError(err),
+		}
+	}
+	rn, err := rs.RowsAffected()
+	if err != nil {
+		return UpdateResult{
+			Error: m.db.parseError(err),
+		}
+	}
+	return UpdateResult{
+		RowsAffected: rn,
+	}
+
+}

@@ -23,6 +23,7 @@ type selectorTypesArgs struct {
 	ArgGroup   []any
 	ArgHaving  []any
 	ArgOrder   []any
+	ArgSetter  []any
 }
 
 func (a *selectorTypesArgs) getArgs(fields []reflect.StructField) []any {

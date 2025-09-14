@@ -8,18 +8,32 @@ import (
 	"github.com/vn-go/dx/test/models"
 )
 
-func TestFirstMysql(t *testing.T) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func TestFirstPg(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
 	defer db.Close()
-	user := &models.User{}
+	err = db.Delete(&models.User{}, "username=?", "admin").Error
+	assert.NoError(t, err)
+	user, err := dx.NewThenSetDefaultValues(func() (*models.User, error) {
+		return &models.User{
+			Username:     "admin",
+			Email:        dx.Ptr("test.test.com"),
+			HashPassword: dx.Ptr("test.test.com"),
+		}, nil
+	})
+	assert.NoError(t, err)
+
+	err = db.Insert(user)
+	assert.NoError(t, err)
+	//user := &models.User{}
 	err = db.First(user)
 	assert.NoError(t, err)
 }
-func BenchmarkFirstMysql(t *testing.B) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func BenchmarkFirstPg(t *testing.B) {
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
@@ -33,8 +47,8 @@ func BenchmarkFirstMysql(t *testing.B) {
 	}
 
 }
-func TestFirstFilterMysql(t *testing.T) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func TestFirstFilterPg(t *testing.T) {
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
@@ -43,8 +57,8 @@ func TestFirstFilterMysql(t *testing.T) {
 	err = db.First(user, "username=?", "admin")
 	assert.NoError(t, err)
 }
-func BenchmarkFirstFilterMysql(t *testing.B) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func BenchmarkFirstFilterPg(t *testing.B) {
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
@@ -55,8 +69,8 @@ func BenchmarkFirstFilterMysql(t *testing.B) {
 	}
 
 }
-func TestFirstbyWhereMysql(t *testing.T) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func TestFirstbyWherePg(t *testing.T) {
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
@@ -67,8 +81,8 @@ func TestFirstbyWhereMysql(t *testing.T) {
 
 	assert.NoError(t, err)
 }
-func BenchmarkFirstbyWhereMysql(t *testing.B) {
-	db, err := dx.Open("mysql", mySqlDsn)
+func BenchmarkFirstbyWherePg(t *testing.B) {
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}

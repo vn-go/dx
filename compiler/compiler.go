@@ -31,10 +31,11 @@ const (
 )
 
 type Dictionary struct {
-	TableAlias  map[string]string
-	Field       map[string]string
-	StructField map[string]reflect.StructField
-	Tables      []string
+	TableAlias   map[string]string
+	Field        map[string]string
+	StructField  map[string]reflect.StructField
+	Tables       []string
+	SourceUpdate []string
 }
 type compiler struct {
 	dict       *Dictionary
@@ -49,7 +50,6 @@ type initCreateDictionary struct {
 }
 
 var cacheCreateDictionary sync.Map
-
 
 func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
 	key := reflect.TypeFor[compiler]().String() + "/" + reflect.TypeFor[compiler]().PkgPath() + "://CreateDictionary" + strings.Join(tables, ",")
@@ -98,6 +98,22 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, err
 		ret.dict = ret.CreateDictionary(tableList)
 		return ret, nil
 	}
+	if stmDelete, ok := stm.(*sqlparser.Delete); ok {
+		tableList := tabelExtractor.getTables(stmDelete.TableExprs, make(map[string]bool))
+		ret.dict = ret.CreateDictionary(tableList)
+		return ret, nil
+	}
+	if stmUpdate, ok := stm.(*sqlparser.Update); ok {
+		visited := make(map[string]bool)
+		tableList := tabelExtractor.getTables(stmUpdate.TableExprs, visited)
+		updateTables := tableList
+		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Where, visited)...)
+		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Exprs, visited)...)
+		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Where.Expr, visited)...)
+		ret.dict = ret.CreateDictionary(tableList)
+		ret.dict.SourceUpdate = updateTables
+		return ret, nil
+	}
 	return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
 
 }
@@ -132,8 +148,55 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 		}
 		return ret, nil
 	}
-
+	if stmDelete, ok := cmp.node.(*sqlparser.Delete); ok {
+		return cmp.getSqlInfoByDelete(stmDelete)
+	}
+	if stmUpdate, ok := cmp.node.(*sqlparser.Update); ok {
+		return cmp.getSqlInfoByUpdate(stmUpdate)
+	}
 	panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", cmp.node))
+}
+func (cmp *compiler) getSqlInfoByUpdate(stmUpdate *sqlparser.Update) (*types.SqlInfo, error) {
+	var err error
+	ret := &types.SqlInfo{
+		SqlType: types.SQL_UPDATE,
+	}
+	if stmUpdate.Where != nil {
+		ret.StrWhere, err = cmp.resolve(stmUpdate.Where, C_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+		//alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
+		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
+	}
+	settors := []string{}
+	for _, x := range stmUpdate.Exprs {
+		strExpr, err := cmp.resolve(x, C_UPDATE)
+		if err != nil {
+			return nil, err
+		}
+		settors = append(settors, strExpr)
+
+	}
+	ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
+	ret.StrSetter = strings.Join(settors, ",")
+	return ret, nil
+}
+func (cmp *compiler) getSqlInfoByDelete(stmDelete *sqlparser.Delete) (*types.SqlInfo, error) {
+	var err error
+	ret := &types.SqlInfo{
+		SqlType: types.SQL_DELETE,
+	}
+	if stmDelete.Where != nil {
+		ret.StrWhere, err = cmp.resolveWhere(stmDelete.Where)
+		if err != nil {
+			return nil, err
+		}
+		alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
+		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0]) + " " + cmp.dialect.Quote(alias)
+	}
+
+	return ret, nil
 }
 func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.SqlInfo, error) {
 
@@ -317,7 +380,7 @@ func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE)
 }
 func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
-	return internal.OnceCall("compiler"+sql, func() (*types.SqlInfo, error) {
+	return internal.OnceCall("compiler/"+dbDriver+"/"+sql, func() (*types.SqlInfo, error) {
 		cmp, err := newCompiler(sql, dbDriver, false)
 		if err != nil {
 			return nil, err

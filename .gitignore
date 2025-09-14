@@ -1,0 +1,58 @@
+**/*bagger*/
+# Ignore OS / IDE files
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Ignore Go build
+/bin/
+/pkg/
+/*.exe
+/*.test
+# -----------------------------
+# Environment / Secret files
+# -----------------------------
+*.env
+.env.*
+secrets.yaml
+*.key
+*.pem
+
+# -----------------------------
+# Go build / binaries / cache
+# -----------------------------
+/bin/
+/pkg/
+*.exe
+*.test
+*.out
+
+# -----------------------------
+# IDE / Editor files
+# -----------------------------
+.idea/
+.vscode/
+*.swp
+*.DS_Store
+
+# -----------------------------
+# Logs and temp files
+# -----------------------------
+*.log
+/tmp/
+/*.tmp
+*.temp
+
+# -----------------------------
+# Docker / container
+# -----------------------------
+docker-compose.override.yml
+*.env.docker
+*.docker
+
+# -----------------------------
+# Cache dirs (including bagger)
+# -----------------------------
+**/*bagger*/
+.cache/

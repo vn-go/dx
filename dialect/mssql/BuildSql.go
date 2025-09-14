@@ -9,7 +9,40 @@ import (
 	"github.com/vn-go/dx/internal"
 )
 
-func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
+func mssqlBuilSql(info types.SqlInfo) (*types.SqlParse, error) {
+	if info.SqlType == types.SQL_SELECT {
+		return mssqlBuilSqlSelect(info)
+	}
+	if info.SqlType == types.SQL_DELETE {
+		return mssqlBuilSqlDelete(info)
+	}
+	panic(fmt.Sprintf("not support %s, see file %s", info.SqlType, `dialect\mysql\BuildSql.go`))
+}
+func mssqlBuilSqlDelete(info types.SqlInfo) (*types.SqlParse, error) {
+	var sb strings.Builder
+	ret := &types.SqlParse{
+		ArgIndex: []reflect.StructField{},
+	}
+	if strFrom, ok := info.From.(string); ok {
+		_, err := sb.WriteString("DELETE FROM " + strFrom)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		panic(fmt.Sprintf("not support %s with from %T, see file %s", info.SqlType, info.From, `dialect\mysql\BuildSql.go`))
+	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgWhere)
+	if info.StrWhere != "" {
+		_, err := sb.WriteString(" WHERE " + info.StrWhere)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ret.Sql = sb.String()
+	return ret, nil
+
+}
+func mssqlBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
 	ret := &types.SqlParse{
 		ArgIndex: []reflect.StructField{},
@@ -39,7 +72,7 @@ func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
 		}
 
 	case types.SqlInfo:
-		inner, err := buildSQLmssql(v)
+		inner, err := mssqlBuilSqlSelect(v)
 		if err != nil {
 			return nil, err
 
@@ -97,13 +130,27 @@ func buildSQLmssql(info types.SqlInfo) (*types.SqlParse, error) {
 		}
 		sb.WriteString(fmt.Sprintf(" OFFSET %d ROWS FETCH NEXT %d ROWS ONLY", *info.Offset, limit))
 	}
-
+	if info.UnionNext != nil {
+		sqlParse, err := mssqlBuilSqlSelect(*info.UnionNext)
+		if err != nil {
+			return nil, err
+		}
+		_, err = sb.WriteString(" " + info.UnionType + " ")
+		if err != nil {
+			return nil, err
+		}
+		_, err = sb.WriteString(sqlParse.Sql)
+		if err != nil {
+			return nil, err
+		}
+		ret.ArgIndex = append(ret.ArgIndex, sqlParse.ArgIndex...)
+	}
 	ret.Sql = sb.String()
 	return ret, nil
 }
 func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
 
 	return internal.OnceCall(info.GetKey(), func() (*types.SqlParse, error) {
-		return buildSQLmssql(*info)
+		return mssqlBuilSql(*info)
 	})
 }

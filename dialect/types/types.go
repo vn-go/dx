@@ -106,16 +106,43 @@ type SqlInfoArgs struct {
 	ArgGroup   reflect.StructField
 	ArgHaving  reflect.StructField
 	ArgOrder   reflect.StructField
+	ArgSetter  reflect.StructField
 }
+type SQL_TYPE int
+
+func (sqlType SQL_TYPE) String() string { // chữ S viết hoa
+	switch sqlType {
+	case SQL_SELECT:
+		return "SELECT"
+	case SQL_DELETE:
+		return "DELETE"
+	case SQL_UPDATE:
+		return "UPDATE"
+	case SQL_INSERT:
+		return "INSERT"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+const (
+	SQL_SELECT SQL_TYPE = iota
+	SQL_DELETE
+	SQL_UPDATE
+	SQL_INSERT // ✅ refrences_violation
+
+)
+
 type SqlInfo struct {
+	SqlType   SQL_TYPE
 	FieldArs  SqlInfoArgs
 	StrSelect string
 
-	StrWhere string
-
-	Limit    *uint64
-	Offset   *uint64
-	StrOrder string
+	StrWhere  string
+	StrSetter string
+	Limit     *uint64
+	Offset    *uint64
+	StrOrder  string
 
 	From interface{} //<--string or SqlInfo
 
@@ -128,13 +155,15 @@ type SqlInfo struct {
 }
 
 func (info *SqlInfo) GetKey() string {
-	ret := fmt.Sprintf("%s/%s/%s/%s/%s",
+	ret := fmt.Sprintf("%s,%s/%s/%s/%s/%s",
+		info.SqlType,
 		info.StrSelect,
 		info.StrWhere,
 		info.StrOrder,
 		info.StrHaving,
 		info.StrGroupBy,
 	)
+
 	if info.Limit != nil {
 		ret += fmt.Sprintf("/%d", *info.Limit)
 	}
