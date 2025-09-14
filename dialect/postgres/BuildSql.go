@@ -16,7 +16,38 @@ func postgresBuilSql(info types.SqlInfo) (*types.SqlParse, error) {
 	if info.SqlType == types.SQL_DELETE {
 		return postgresBuilSqlDelete(info)
 	}
-	panic(fmt.Sprintf("not support %s, see file %s", info.SqlType, `dialect\postgres\BuildSql.go`))
+	if info.SqlType == types.SQL_UPDATE {
+		return postresBuildSqlUpdate(info)
+	}
+	panic(fmt.Sprintf("not support %s, see 'postgresBuilSql' file %s", info.SqlType, `dialect\postgres\BuildSql.go`))
+}
+func postresBuildSqlUpdate(info types.SqlInfo) (*types.SqlParse, error) {
+	var sb strings.Builder
+	ret := &types.SqlParse{
+		ArgIndex: []reflect.StructField{},
+	}
+	if strFrom, ok := info.From.(string); ok {
+		_, err := sb.WriteString("UPDATE " + strFrom)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		panic(fmt.Sprintf("not support %s with from %T, see file %s", info.SqlType, info.From, `dialect\mysql\BuildSql.go`))
+	}
+	_, err := sb.WriteString(" SET  " + info.StrSetter)
+	if err != nil {
+		return nil, err
+	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgWhere)
+	if info.StrWhere != "" {
+		_, err := sb.WriteString(" WHERE " + info.StrWhere)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ret.Sql = sb.String()
+	return ret, nil
+
 }
 func postgresBuilSqlDelete(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
