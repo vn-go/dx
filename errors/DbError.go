@@ -13,6 +13,7 @@ const (
 	ERR_REFERENCES // ✅ refrences_violation
 	ERR_REQUIRED
 	ERR_SYSTEM
+	ERR_NOT_FOUND
 )
 
 func ErrorMessage(t DB_ERR) string {

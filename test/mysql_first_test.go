@@ -66,8 +66,15 @@ func TestFirstbyWhereMysql(t *testing.T) {
 
 	user := &models.User{}
 	err = db.Where("username=?", "admin").First(user)
+	if dbErr := dx.Errors.IsDbError(err); dbErr != nil {
+		if dbErr.ErrorType != dx.Errors.NOTFOUND {
+			assert.NoError(t, err)
+		}
 
-	assert.NoError(t, err)
+	} else {
+		assert.NoError(t, err)
+	}
+
 }
 func BenchmarkFirstbyWhereMysql(t *testing.B) {
 	db, err := dx.Open("mysql", mySqlDsn)

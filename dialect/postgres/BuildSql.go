@@ -90,6 +90,7 @@ func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	case string:
 		if v != "" {
 			sb.WriteString(" FROM " + v)
+			ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgJoin)
 		}
 	case types.SqlInfo:
 		inner, err := postgresBuilSqlSelect(v)
@@ -121,7 +122,7 @@ func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	if info.StrOrder != "" {
 		sb.WriteString(" ORDER BY " + info.StrOrder)
 	}
-	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgGroup)
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgOrder)
 	// LIMIT + OFFSET (chuẩn MySQL)
 	if info.Limit != nil {
 		sb.WriteString(fmt.Sprintf(" LIMIT %d", *info.Limit))

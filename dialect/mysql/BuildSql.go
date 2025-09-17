@@ -100,6 +100,7 @@ func mySqlbuildSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 			if err != nil {
 				return nil, err
 			}
+			ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgJoin)
 		}
 	case types.SqlInfo:
 		inner, err := mySqlbuildSqlSelect(v)
@@ -146,7 +147,7 @@ func mySqlbuildSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 			return nil, err
 		}
 	}
-	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgGroup)
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgOrder)
 	// LIMIT + OFFSET (chuẩn MySQL)
 	if info.Limit != nil {
 		_, err := sb.WriteString(fmt.Sprintf(" LIMIT %d", *info.Limit))

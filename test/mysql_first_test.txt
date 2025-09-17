@@ -17,3 +17,23 @@ cpu: 12th Gen Intel(R) Core(TM) i7-12650H
 BenchmarkFirstFilterMysql-16    	   11346	     98913 ns/op	    2825 B/op	      41 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	1.452s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstFilterMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstFilterMysql-16    	    9585	    105868 ns/op	    2713 B/op	      40 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.691s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstFilterMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstFilterMysql-16    	   12045	     99947 ns/op	    2713 B/op	      40 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.804s

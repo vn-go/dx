@@ -5,6 +5,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
+	"github.com/vn-go/dx/errors"
 	dxErrors "github.com/vn-go/dx/errors"
 	migrateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/migate/migrator"
@@ -106,6 +107,7 @@ type errorTypes struct {
 	REFERENCES dbErrType // database return error foreign key constraint value
 	REQUIRED   dbErrType // database return error field require value
 	SYSTEM     dbErrType // database return error
+	NOTFOUND   dbErrType
 }
 
 /*
@@ -132,6 +134,7 @@ var Errors = &errorTypes{
 	REFERENCES: dbErrType(dxErrors.ERR_REFERENCES),
 	REQUIRED:   dbErrType(dxErrors.ERR_REQUIRED),
 	SYSTEM:     dbErrType(dxErrors.ERR_SYSTEM),
+	NOTFOUND:   dbErrType(dxErrors.ERR_NOT_FOUND),
 }
 
 type DbError struct {
@@ -146,6 +149,12 @@ func (er *errorTypes) IsDbError(err error) *DbError {
 			DbErr:     *ret,
 		}
 		return retErr
+	} else if _, ok := err.(*errors.NotFoundErr); ok {
+		retErr := &DbError{
+			ErrorType: Errors.NOTFOUND,
+		}
+		return retErr
+
 	}
 	return nil
 }

@@ -101,7 +101,7 @@ func mssqlBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 		if v != "" {
 			sb.WriteString(" FROM " + v)
 		}
-
+		ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgJoin)
 	case types.SqlInfo:
 		inner, err := mssqlBuilSqlSelect(v)
 		if err != nil {
@@ -136,6 +136,7 @@ func mssqlBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	if info.StrOrder != "" {
 		sb.WriteString(" ORDER BY " + info.StrOrder)
 	}
+	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgOrder)
 	/*
 				SELECT [T1].[id] [ID],
 		       [T1].[user_id] [UserId],

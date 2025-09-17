@@ -152,13 +152,19 @@ func (db *DB) Select(args ...any) *selectorTypes {
 	} else {
 		strFields = strArgs
 	}
+	if len(params) == 0 {
+		params = nil
+	}
 	ret := &selectorTypes{
 		db:     db,
 		orders: []string{},
-		args: selectorTypesArgs{
-			ArgsSelect: params,
-		},
+
 		selectFields: strFields,
+	}
+	if len(params) > 0 {
+		ret.args = selectorTypesArgs{
+			ArgsSelect: params,
+		}
 	}
 	return ret
 }

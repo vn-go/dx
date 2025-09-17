@@ -140,14 +140,15 @@ func (db *DB) execToItemOptimized(
 
 type getFieldEncoderKey struct {
 	typ  reflect.Type
-	cols []string
+	cols string
 }
 
 func (db *DB) getFieldEncoder(typ reflect.Type, cols []string, mapIndex *map[string][]int) ([][]int, error) {
 	//key := typ.String() + "://" + strings.Join(cols, ",")
+
 	key := getFieldEncoderKey{
 		typ:  typ,
-		cols: cols,
+		cols: strings.Join(cols, ","),
 	}
 	return internal.OnceCall(key, func() ([][]int, error) {
 		fields := make([][]int, len(cols))
