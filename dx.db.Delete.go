@@ -17,6 +17,12 @@ type DeleteResult struct {
 	RowsAffected int64
 	Error        error
 }
+type deleteKey struct {
+	//typ        reflect.Type
+	tableName  string
+	filter     string
+	driverName string
+}
 
 func (db *DB) Delete(item interface{}, filter string, args ...interface{}) DeleteResult {
 	typ := reflect.TypeOf(item)
@@ -30,7 +36,12 @@ func (db *DB) Delete(item interface{}, filter string, args ...interface{}) Delet
 	if filter == "" {
 		return DeleteResult{Error: fmt.Errorf("filter is empty")}
 	}
-	key := "Delete/" + "/" + db.DriverName + "/" + model.Entity.TableName + "/" + filter
+	key := deleteKey{
+		tableName:  model.Entity.TableName,
+		filter:     filter,
+		driverName: db.DriverName,
+	}
+	//key := "Delete/" + "/" + db.DriverName + "/" + model.Entity.TableName + "/" + filter
 	sqlExec, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 		sql := "DELETE FROM " + model.Entity.TableName + " WHERE " + filter
 		sqlInfo, err := compiler.Compile(sql, db.DriverName)

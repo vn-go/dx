@@ -1,0 +1,19 @@
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstFilterMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstFilterMysql-16    	   10794	     99559 ns/op	    2841 B/op	      42 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.673s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkFirstFilterMysql$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkFirstFilterMysql-16    	   11346	     98913 ns/op	    2825 B/op	      41 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.452s

@@ -80,9 +80,16 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 	}
 	return ret.sql, ret.sqlCompiler, ret.keyFieldIndex, nil
 }
+
+type buildBasicSqlFirstItemNoFilterV2Key struct {
+	typ reflect.Type
+}
+
 func (db *DB) buildBasicSqlFirstItemNoFilterV2(typ reflect.Type) (string, string, [][]int, error) {
 	retType := reflect.TypeOf(basicSqlFirstItemNoFilterResult{})
-	key := retType.String() + "@" + retType.PkgPath()
+	key := buildBasicSqlFirstItemNoFilterV2Key{
+		typ: retType,
+	}
 
 	//key := typ.String() + "://" + db.DbName + "://" + db.DriverName
 	ret, err := internal.OnceCall(key, func() (*basicSqlFirstItemNoFilterResult, error) {

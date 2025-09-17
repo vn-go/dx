@@ -29,6 +29,17 @@ func (w *whereTypes) Find(item any) error {
 
 	return w.db.findtWithFilterV2(item, w.ctx, w.sqlTx, whereStr, orderStr, w.limit, w.offset, true, ars...)
 }
+
+type findtWithFilterV2Key struct {
+	DriverName string
+	DbName     string
+	eleType    reflect.Type
+	filter     string
+	order      string
+	limit      uint64
+	offset     uint64
+}
+
 func (db *DB) findtWithFilterV2(
 	entity interface{},
 	ctx context.Context,
@@ -47,15 +58,23 @@ func (db *DB) findtWithFilterV2(
 		return fmt.Errorf("%s is not slice", reflect.TypeOf(entity).String())
 	}
 	eleType := typ.Elem()
-
+	key := findtWithFilterV2Key{
+		eleType:    eleType,
+		filter:     filter,
+		order:      orderStr,
+		DriverName: db.DriverName,
+		DbName:     db.DbName,
+	}
 	//sql, err := db.buildBasicSqlFindItem(eleType, filter, order) //OnBuildSQLFirstItem(typ, db, filter)
 
-	key := db.DriverName + "://" + db.DbName + "/" + eleType.String() + "/buildBasicSqlFindItem/" + filter + "/" + orderStr
+	//key := db.DriverName + "://" + db.DbName + "/" + eleType.String() + "/buildBasicSqlFindItem/" + filter + "/" + orderStr
 	if limit != nil {
-		key += fmt.Sprintf("/%d", *limit)
+		key.limit = *limit
+		// key += fmt.Sprintf("/%d", *limit)
 	}
 	if offset != nil {
-		key += fmt.Sprintf("/%d", *offset)
+		key.offset = *offset
+		//key += fmt.Sprintf("/%d", *offset)
 	}
 	sql, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 

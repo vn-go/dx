@@ -13,7 +13,13 @@ import (
 )
 
 func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, error) {
-	key := db.DriverName + "://" + db.DbName + "/" + typ.String() + "/buildBasicSqlFirstItem/" + filter
+	//key := db.DriverName + "://" + db.DbName + "/" + typ.String() + "/buildBasicSqlFirstItem/" + filter
+	key := buildBasicSqlFirstItemKey{
+
+		DriverName: db.DriverName,
+		typ:        typ,
+		filter:     filter,
+	}
 	return internal.OnceCall(key, func() (string, error) {
 		dialect := factory.DialectFactory.Create(db.DriverName)
 
@@ -46,8 +52,20 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 	})
 
 }
+
+type buildBasicSqlFirstItemKey struct {
+	DriverName string
+	typ        reflect.Type
+	filter     string
+}
+
 func (db *DB) buildBasicSqlFirstItemV2(typ reflect.Type, filter string) (*types.SqlParse, error) {
-	key := db.DriverName + "://" + db.DbName + "/" + typ.String() + "/buildBasicSqlFirstItem/" + filter
+	key := buildBasicSqlFirstItemKey{
+
+		DriverName: db.DriverName,
+		typ:        typ,
+		filter:     filter,
+	}
 	return internal.OnceCall(key, func() (*types.SqlParse, error) {
 
 		ent, err := model.ModelRegister.GetModelByType(typ)

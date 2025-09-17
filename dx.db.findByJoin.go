@@ -11,6 +11,11 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
+type findByJoinKey struct {
+	modelType    reflect.Type
+	selectorsKey string
+}
+
 func (selectors *selectorTypes) findByJoin(item any) error {
 
 	modelType := reflect.TypeOf(item)
@@ -26,7 +31,11 @@ func (selectors *selectorTypes) findByJoin(item any) error {
 		return err
 	}
 	selectors.strJoin = ent.Entity.TableName + " " + selectors.strJoin
-	key := modelType.String() + "://selectorTypes/findByJoin/" + selectors.getKey()
+	key := findByJoinKey{
+		modelType:    modelType,
+		selectorsKey: selectors.getKey(),
+	}
+	// key := modelType.String() + "://selectorTypes/findByJoin/" + selectors.getKey()
 	sqlQuery, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 		if len(selectors.selectFields) == 0 {
 			for _, x := range ent.Entity.Cols {

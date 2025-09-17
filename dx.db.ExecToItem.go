@@ -51,10 +51,19 @@ var scanArgsPool = sync.Pool{
 	},
 }
 
-func (db *DB) execToItemOptimized(context context.Context, sqlTx *sql.Tx, result interface{}, mapIndex *map[string][]int, query string, args ...interface{}) error {
+func (db *DB) execToItemOptimized(
+	ctx context.Context,
+	sqlTx *sql.Tx,
+	result interface{},
+	mapIndex *map[string][]int,
+	query string,
+	args ...interface{},
+) (err error) { // dùng named return
+
 	if Options.ShowSql {
 		fmt.Println(query)
 	}
+
 	ptrVal := reflect.ValueOf(result)
 	if ptrVal.Kind() != reflect.Ptr {
 		return fmt.Errorf("result must be a pointer to slice")
@@ -67,67 +76,79 @@ func (db *DB) execToItemOptimized(context context.Context, sqlTx *sql.Tx, result
 	typ = typ.Elem()
 
 	var rows *sql.Rows
-	var err error
+	var stm *sql.Stmt
+
 	if sqlTx != nil {
-		stm, err := sqlTx.Prepare(query)
+		stm, err = sqlTx.Prepare(query)
 		if err != nil {
-			return err
-		}
-		rows, err = stm.QueryContext(context, args...)
-		if err != nil {
-			return err
+			return
 		}
 	} else {
-		stm, err := db.DB.Prepare(query)
+		stm, err = db.DB.Prepare(query)
 		if err != nil {
-			return err
-		}
-		rows, err = stm.QueryContext(context, args...)
-		if err != nil {
-			return err
+			return
 		}
 	}
 
-	defer rows.Close()
+	defer func() {
+		if cerr := stm.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+
+	rows, err = stm.QueryContext(ctx, args...)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	cols, err := rows.Columns()
 	if err != nil {
-		return err
+		return
 	}
 
 	fieldIndexes, err := db.getFieldEncoder(typ, cols, mapIndex)
 	if err != nil {
-		return err
+		return
 	}
-	row := reflect.ValueOf(result).Elem()
 
+	row := reflect.ValueOf(result).Elem()
 	rowCount := 0
 
 	for rows.Next() {
-
 		scanArgs := scanArgsPool.Get().([]interface{})[:0]
 		for _, idx := range fieldIndexes {
 			scanArgs = append(scanArgs, row.FieldByIndex(idx).Addr().Interface())
 		}
 
-		if err := rows.Scan(scanArgs...); err != nil {
-			return err
+		if err = rows.Scan(scanArgs...); err != nil {
+			return
 		}
 		rowCount++
-		// Gán row vào slice
-
 	}
+
 	if rowCount == 0 {
 		return dbErrors.NewNotFoundErr()
 	}
 
-	// Gán lại vào `*result`
+	return
+}
 
-	return nil
+type getFieldEncoderKey struct {
+	typ  reflect.Type
+	cols []string
 }
 
 func (db *DB) getFieldEncoder(typ reflect.Type, cols []string, mapIndex *map[string][]int) ([][]int, error) {
-	key := typ.String() + "://" + strings.Join(cols, ",")
+	//key := typ.String() + "://" + strings.Join(cols, ",")
+	key := getFieldEncoderKey{
+		typ:  typ,
+		cols: cols,
+	}
 	return internal.OnceCall(key, func() ([][]int, error) {
 		fields := make([][]int, len(cols))
 		for i, col := range cols {
