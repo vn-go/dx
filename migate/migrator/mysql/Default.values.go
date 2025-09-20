@@ -37,6 +37,7 @@ In this case, the function GetGetDefaultValueByFromDbTag() will return a map con
 */
 func (m *MigratorMySql) GetGetDefaultValueByFromDbTag() map[string]string {
 	return map[string]string{
+		"''":                 "''",
 		"now()":              "CURRENT_TIMESTAMP", // tương đương GETDATE() trong MySQL
 		"true":               "TRUE",
 		"false":              "FALSE",

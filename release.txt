@@ -160,3 +160,9 @@ git commit -m "release"
 git tag -a v1.0.24 -m "PG fix default value for uint64"
 git push origin v1.0.24
 git push origin --tags
+---
+git add .
+git commit -m "release"
+git tag -a v1.0.25 -m "PG fix default value for uint64"
+git push origin v1.0.25
+git push origin --tags
