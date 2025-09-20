@@ -98,6 +98,13 @@ func NewThenSetDefaultValues[T any](fn func() (*T, error)) (*T, error) {
 func Ptr[T any](val T) *T {
 	return &val
 }
+func IsNull[T any](val *T, defVal T) T {
+	if val != nil {
+		return *val
+	} else {
+		return defVal
+	}
+}
 
 type dbErrType int
 
@@ -160,4 +167,5 @@ func (er *errorTypes) IsDbError(err error) *DbError {
 }
 func SkipLoadSchemOnMigrate(ok bool) {
 	migrateLoaderTypes.SkipLoadSchemaOnMigrate = ok
+
 }
