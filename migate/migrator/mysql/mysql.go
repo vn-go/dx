@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 
@@ -39,9 +38,18 @@ type mysqlInitDoMigrates struct {
 
 var cacheMigratorMySqlDoMigrates sync.Map
 
+type dbKey struct {
+	DbName     string
+	DriverName string
+}
+
 func (m *MigratorMySql) DoMigrates(db *db.DB) error {
 
-	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
+	//key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
+	key := dbKey{
+		DbName:     db.DbName,
+		DriverName: db.DriverName,
+	}
 	actual, _ := cacheMigratorMySqlDoMigrates.LoadOrStore(key, &mysqlInitDoMigrates{})
 
 	mi := actual.(*mysqlInitDoMigrates)
@@ -61,7 +69,7 @@ func (m *MigratorMySql) DoMigrates(db *db.DB) error {
 						mysqlErr.Number != 1060 &&
 						mysqlErr.Number != 1061 &&
 						mysqlErr.Number != 1050 {
-						mi.err = mysqlErr
+						mi.err = errors.NewMigrationError(script, mysqlErr)
 						break
 					}
 

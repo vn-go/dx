@@ -179,3 +179,10 @@ git commit -m "fix Customize table name "
 git tag -a v1.0.27 -m "fix Customize table name"
 git push origin v1.0.27
 git push origin --tags
+//github.com/vn-go/dx@v1.0.27
+git add .
+git commit -m "support show deial error when migrate "
+git tag -a v1.0.28 -m "support show deial error when migrate"
+git push origin v1.0.28
+git push origin --tags
+//github.com/vn-go/dx@v1.0.2

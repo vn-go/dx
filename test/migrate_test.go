@@ -1,7 +1,9 @@
 package test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
@@ -11,9 +13,23 @@ import (
 var pgDsn = "postgres://postgres:123456@localhost:5432/a001?sslmode=disable"
 var mySqlDsn = "root:123456@tcp(127.0.0.1:3306)/a001"
 
-func TestMigrateMysql(t *testing.T) {
+type App struct {
+	Name        string    `db:"pk"`
+	ShareSecret string    `db:"size:500"`
+	CreatedOn   time.Time `db:"ix;default:now()"`
+	ModifiedOn  *time.Time
+}
 
-	db, err := dx.Open("postgres", pgDsn)
+func (r *App) Table() string {
+	return "sys_apps"
+}
+func TestMigrateMysql(t *testing.T) {
+	dx.AddModels(&App{})
+
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 	dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
 	assert.NotEmpty(t, db)
