@@ -113,7 +113,7 @@ func (db *DB) execToItemOptimized(
 	}
 	var fieldIndexes [][]int
 	row = row.Elem()
-	if row.IsNil() {
+	if row.Kind() == reflect.Ptr && row.IsNil() {
 		// lấy type T
 		typ := row.Type().Elem()
 		fieldIndexes, err = db.getFieldEncoder(typ, cols, mapIndex)
