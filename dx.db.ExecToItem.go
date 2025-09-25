@@ -108,8 +108,8 @@ func (db *DB) execToItemOptimized(
 
 	row := reflect.ValueOf(result) // result chac chan 100% la ptr
 	if row.Kind() != reflect.Ptr || row.IsNil() {
-		return fmt.Errorf("%s is nil pointer to a pointer, please call with &(%s)", row.Type().String(), row.Type().String())
-
+		err := fmt.Errorf("%s is nil pointer to a pointer, please call with &(%s)", row.Type().String(), row.Type().String())
+		panic(err)
 	}
 	var fieldIndexes [][]int
 	row = row.Elem()

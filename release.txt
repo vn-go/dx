@@ -192,4 +192,10 @@ git commit -m "support show deial error when migrate "
 git tag -a v1.0.29 -m "support show deial error when migrate"
 git push origin v1.0.29
 git push origin --tags
-//github.com/vn-go/dx@v1.0.28
+//go get github.com/vn-go/dx@v1.0.29
+git add .
+git commit -m "support show deial error when migrate "
+git tag -a v1.0.30 -m "support show deial error when migrate"
+git push origin v1.0.30
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.30
