@@ -101,6 +101,13 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 	if x, ok := node.(*sqlparser.Where); ok {
 		return cmp.resolve(x.Expr, cmpType)
 	}
+	if x, ok := node.(*sqlparser.ParenExpr); ok {
+		ret, err := cmp.resolve(x.Expr, cmpType)
+		if err != nil {
+			return "", err
+		}
+		return "( " + ret + " )", nil
+	}
 	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 
@@ -180,5 +187,5 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 
 	}
 
-	panic(fmt.Sprintf("compiler.selectExpr:Not support %T", expr, `compiler\cmp.resolve.go`))
+	panic(fmt.Sprintf("%s Not support %T", expr, `compiler\cmp.resolve.go`))
 }

@@ -266,7 +266,10 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		ret = append(ret, next...)
 		return ret
 	}
+	if s, ok := node.(*sqlparser.ParenExpr); ok {
+		return t.getTables(s.Expr, visited)
+	}
 	//sqlparser.Expr
-	panic(fmt.Sprintf("not implement ,%s", `compiler\tabelExtractorTypes.go`))
+	panic(fmt.Sprintf("not implement node type %s ,%s", node, `compiler\tabelExtractorTypes.go`))
 
 }

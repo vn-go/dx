@@ -205,3 +205,10 @@ git tag -a v1.0.31 -m "support show detail error when migrate"
 git push origin v1.0.31
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.31
+----
+git add .
+git commit -m "support sql compiler with parent expr "
+git tag -a v1.0.32 -m "support sql compiler with parent expr"
+git push origin v1.0.32
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.32
