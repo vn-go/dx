@@ -15,7 +15,7 @@ func (d *postgresDialect) NewDataBase(db *db.DB, dbName string) (string, error) 
 		return "", err
 	}
 	if !exists {
-		_, err := db.Exec(`CREATE DATABASE ` + dbName + ``)
+		_, err := db.Exec(`CREATE DATABASE "` + dbName + `"`)
 		if err != nil {
 			return "", err
 		}

@@ -212,3 +212,10 @@ git tag -a v1.0.32 -m "support sql compiler with parent expr"
 git push origin v1.0.32
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.32
+---
+git add .
+git commit -m "fix bug new tenant"
+git tag -a v1.0.33 -m "fix bug new tenant"
+git push origin v1.0.33
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.33

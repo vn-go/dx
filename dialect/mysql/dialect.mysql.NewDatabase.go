@@ -9,7 +9,7 @@ import (
 )
 
 func (d *mySqlDialect) NewDataBase(db *db.DB, dbName string) (string, error) {
-	cmd := "CREATE DATABASE IF NOT EXISTS %s;"
+	cmd := "CREATE DATABASE IF NOT EXISTS `%s`;"
 	cmd = fmt.Sprintf(cmd, dbName)
 	_, err := db.Exec(cmd)
 	if err != nil {
