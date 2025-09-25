@@ -100,33 +100,49 @@ func (db *DB) execToItemOptimized(
 	if err != nil {
 		return
 	}
-	defer func() {
-		if cerr := rows.Close(); cerr != nil && err == nil {
-			err = cerr
-		}
-	}()
 
 	cols, err := rows.Columns()
 	if err != nil {
 		return
 	}
 
-	fieldIndexes, err := db.getFieldEncoder(typ, cols, mapIndex)
-	if err != nil {
-		return
+	row := reflect.ValueOf(result) // result chac chan 100% la ptr
+	if row.Kind() != reflect.Ptr || row.IsNil() {
+		return fmt.Errorf("%s is nil pointer to a pointer, please call with &(%s)", row.Type().String(), row.Type().String())
+
+	}
+	var fieldIndexes [][]int
+	row = row.Elem()
+	if row.IsNil() {
+		// lấy type T
+		typ := row.Type().Elem()
+		fieldIndexes, err = db.getFieldEncoder(typ, cols, mapIndex)
+		if err != nil {
+			return
+		}
+		// tạo *T mới
+		newVal := reflect.New(typ)
+		// gán vào *T (elem)
+		row.Set(newVal)
+		row = row.Elem()
+	} else {
+		fieldIndexes, err = db.getFieldEncoder(typ, cols, mapIndex)
+		if err != nil {
+			return
+		}
 	}
 
-	row := reflect.ValueOf(result).Elem()
 	rowCount := 0
 
 	for rows.Next() {
+
 		scanArgs := scanArgsPool.Get().([]interface{})[:0]
 		for _, idx := range fieldIndexes {
 			scanArgs = append(scanArgs, row.FieldByIndex(idx).Addr().Interface())
 		}
 
 		if err = rows.Scan(scanArgs...); err != nil {
-			return
+			return err
 		}
 		rowCount++
 	}
