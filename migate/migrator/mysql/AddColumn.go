@@ -69,6 +69,9 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 				} else if internal.Helper.IsNumber(col.Default) {
 					colDef += fmt.Sprintf(" DEFAULT %s", col.Default)
 
+				} else if internal.Helper.IsString(col.Default) {
+					colDef += fmt.Sprintf(" DEFAULT %s", col.Default)
+
 				} else if val, ok := defaultValueByFromDbTag[col.Default]; ok {
 					if val != internal.Helper.SkipDefaulValue {
 						colDef += fmt.Sprintf(" DEFAULT %s", val)

@@ -28,6 +28,9 @@ type helperType struct {
 func (m *helperType) IsBool(s string) bool {
 	return strings.ToLower(s) == "true" || strings.ToLower(s) == "false"
 }
+func (m *helperType) IsString(s string) bool {
+	return s[0] == '\'' && s[len(s)-1] == '\''
+}
 func (m *helperType) IsNumber(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
