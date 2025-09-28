@@ -12,7 +12,6 @@ import (
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/dialect/types"
-	"github.com/vn-go/dx/errors"
 	dxErrors "github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
 )
@@ -75,9 +74,11 @@ func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx
 		typ = typ.Elem()
 	}
 	sliceVal := reflect.ValueOf(items).Elem()
-	if typ.Kind() != reflect.Slice {
-		return errors.NewSysError(fmt.Sprintf("%s is not slice", typ.String()))
-	}
+	return db.fecthItemsBySliceVal(sliceVal, queryStmt, ctx, sqlTx, resetLen, args...)
+
+}
+func (db *DB) fecthItemsBySliceVal(sliceVal reflect.Value, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
+	typ := sliceVal.Type()
 	if resetLen {
 		sliceVal.SetLen(0)
 	}
@@ -159,8 +160,24 @@ func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx
 	if err != nil {
 		return err
 	}
+	if sliceVal.CanAddr() {
+		return fetchUnsafe(rows, sliceVal.Addr().Interface(), cols, fectInfo)
+	} else {
+		return fetchUnsafeValue(rows, sliceVal, cols, fectInfo)
+	}
 
-	return fetchUnsafe(rows, items, cols, fectInfo)
+}
+func (db *DB) fecthItemsOfType(typ reflect.Type, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) (reflect.Value, error) {
+	sliceType := reflect.SliceOf(typ)
+
+	sliceTypeValPtr := reflect.New(sliceType)
+	err := db.fecthItemsBySliceVal(sliceTypeValPtr.Elem(), queryStmt, ctx, nil, false, args...)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+
+	return sliceTypeValPtr.Elem().Addr(), nil
+
 }
 
 type fieldInfo struct {
@@ -176,6 +193,35 @@ func fetchUnsafe(rows *sql.Rows, items any, cols []string, fieldMap map[string]f
 	}
 
 	sliceVal := v.Elem()
+	elemType := sliceVal.Type().Elem()
+
+	ptrs := make([]any, len(cols))
+	var dummy interface{}
+
+	for rows.Next() {
+		newElem := reflect.New(elemType).Elem()
+		basePtr := unsafe.Pointer(newElem.UnsafeAddr())
+
+		for i, col := range cols {
+			if info, ok := fieldMap[col]; ok {
+				fieldPtr := unsafe.Add(basePtr, info.offset)
+				ptrs[i] = reflect.NewAt(info.typ, fieldPtr).Interface()
+			} else {
+				ptrs[i] = &dummy
+			}
+		}
+
+		if err := rows.Scan(ptrs...); err != nil {
+			return err
+		}
+		sliceVal.Set(reflect.Append(sliceVal, newElem))
+	}
+
+	return rows.Err()
+}
+func fetchUnsafeValue(rows *sql.Rows, sliceVal reflect.Value, cols []string, fieldMap map[string]fieldInfo) error {
+	defer rows.Close()
+
 	elemType := sliceVal.Type().Elem()
 
 	ptrs := make([]any, len(cols))

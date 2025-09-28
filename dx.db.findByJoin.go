@@ -17,22 +17,26 @@ type findByJoinKey struct {
 }
 
 func (selectors *selectorTypes) findByJoin(item any) error {
+	modelType := selectors.GetModelType()
+	if modelType == nil {
+		mType := reflect.TypeOf(item)
+		if mType.Kind() == reflect.Ptr {
+			mType = mType.Elem()
+		}
+		if mType.Kind() != reflect.Slice {
+			return fmt.Errorf("%s is not slice", reflect.ValueOf(item).String())
+		}
+		mType = mType.Elem()
+		modelType = &mType
+	}
 
-	modelType := reflect.TypeOf(item)
-	if modelType.Kind() == reflect.Ptr {
-		modelType = modelType.Elem()
-	}
-	if modelType.Kind() != reflect.Slice {
-		return fmt.Errorf("%s is not slice", reflect.ValueOf(item).String())
-	}
-	modelType = modelType.Elem()
-	ent, err := model.ModelRegister.GetModelByType(modelType)
+	ent, err := model.ModelRegister.GetModelByType(*modelType)
 	if err != nil {
 		return err
 	}
 	selectors.strJoin = ent.Entity.TableName + " " + selectors.strJoin
 	key := findByJoinKey{
-		modelType:    modelType,
+		modelType:    *modelType,
 		selectorsKey: selectors.getKey(),
 	}
 	// key := modelType.String() + "://selectorTypes/findByJoin/" + selectors.getKey()

@@ -25,8 +25,8 @@ func (m *modelType) Select(args ...any) *selectorTypes {
 	return ret
 }
 func (s *selectorTypes) Joins(join string, args ...any) *selectorTypes {
-	s.args.ArgJoin = args
-	s.strJoin = join
+	s.args.ArgJoin = append(s.args.ArgJoin, args...)
+	s.strJoin += " " + join
 
 	return s
 }

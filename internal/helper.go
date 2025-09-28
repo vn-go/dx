@@ -195,6 +195,7 @@ func (c *helperType) AddrssertSinglePointerToSlice(obj interface{}) error {
 	actually, _ := cacheAddrssertSinglePointerToSlice.LoadOrStore(key, &initAddrssertSinglePointerToStruct{})
 	init := actually.(*initAddrssertSinglePointerToStruct)
 	init.once.Do(func() {
+
 		depth := 0
 		for t.Kind() == reflect.Ptr {
 			t = t.Elem()

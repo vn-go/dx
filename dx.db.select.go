@@ -119,7 +119,7 @@ func (db *DB) Select(args ...any) *selectorTypes {
 		}
 	}
 	params := []any{}
-	strFields := []string{}
+	var strFields []string
 	if len(args) > 1 {
 
 		// Tìm tất cả các kết quả khớp pattern
@@ -279,7 +279,10 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 		if err != nil {
 			return nil, err
 		}
-
+		tblExpr := ent.Entity.TableName
+		if selectors.strJoin != "" {
+			tblExpr = tblExpr + " " + selectors.strJoin
+		}
 		sqlInfo := &types.SqlInfo{
 			Limit:      selectors.limit,
 			Offset:     selectors.offset,
@@ -288,7 +291,7 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 			StrHaving:  selectors.strHaving,
 			StrOrder:   selectors.strSort,
 			StrGroupBy: selectors.strGroup,
-			From:       ent.Entity.TableName,
+			From:       tblExpr,
 			FieldArs:   *selectors.args.getFields(),
 		}
 
@@ -300,6 +303,9 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 		return sql, nil
 
 	})
+	if err != nil {
+		return "", nil, err
+	}
 	retArgs := selectors.args.getArgs(selectSql.ArgIndex)
 	return selectSql.Sql, retArgs, err
 }

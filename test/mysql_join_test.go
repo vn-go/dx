@@ -47,3 +47,59 @@ func TestJoin2ModelThenGetFirst(t *testing.T) {
 	assert.NoError(t, err)
 
 }
+func TestJoinFormModel(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	qr := db.From(&models.Employee{}).Joins(
+		" e left join department d on e.id=d.id",
+	).Joins(
+		"left join contract c on e.contractId= c.id",
+	).Select(
+		"e.id EmployeeId",
+		"d.id DepartmentId",
+	)
+	sql, args, err := qr.GetSQL(*qr.GetModelType())
+	t.Log(sql)
+	t.Log(args)
+	t.Log(err)
+	items := []struct {
+		EmployeeId   *int
+		DepartmentId *int
+	}{}
+	err = qr.Find(&items)
+	t.Log(err)
+	t.Log(items)
+
+}
+func TestJoinFormModelAndContext(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", mySqlDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	qr := db.WithContext(t.Context()).From(&models.Employee{}).Joins(
+		" e left join department d on e.id=d.id",
+	).Joins(
+		"left join contract c on e.id= c.id",
+	).Select(
+		"e.id EmployeeId",
+		"d.id DepartmentId",
+	)
+	sql, args, err := qr.GetSQL(*qr.GetModelType())
+	t.Log(sql)
+	t.Log(args)
+	t.Log(err)
+	items := []struct {
+		EmployeeId   *int
+		DepartmentId *int
+	}{}
+	err = qr.Find(&items)
+	assert.NoError(t, err)
+	t.Log(items)
+
+}

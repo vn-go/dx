@@ -226,3 +226,10 @@ git tag -a v1.0.34 -m "Support text defaukt column"
 git push origin v1.0.34
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.34
+---
+git add .
+git commit -m "Support from join many time"
+git tag -a v1.0.35 -m "Support join many time"
+git push origin v1.0.35
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.35

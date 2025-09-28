@@ -19,7 +19,10 @@ type modelTypeWhere struct {
 	lastWhere *whereTypesItem
 	limit     *uint64
 	offset    *uint64
-	arg       selectorTypesArgs
+	args      selectorTypesArgs
+	strWhere  string
+	orders    []string
+	strSort   string
 }
 
 func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
@@ -40,7 +43,7 @@ func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
 			filter: args[0].(string),
 			args:   args[1:],
 		},
-		arg: selectorTypesArgs{},
+		args: selectorTypesArgs{},
 	}
 	ret.lastWhere = ret.whereExpr
 	return ret
@@ -113,7 +116,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		return m.err
 	}
 	wherStr, args := m.getFilter()
-	m.arg.ArgWhere = args
+	m.args.ArgWhere = args
 	key := m.typEle.String() + "/modelTypeWhere/Count//modelTypeWhere/Count" + "/" + wherStr
 
 	query, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
@@ -138,7 +141,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs := m.arg.getFields()
+		sqlArgs := m.args.getFields()
 		sqlInfo.FieldArs = *sqlArgs
 		ret := factory.DialectFactory.Create(m.db.DriverName)
 		return ret.BuildSql(sqlInfo)
@@ -147,7 +150,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 	if err != nil {
 		return err
 	}
-	argsExec := m.arg.getArgs(query.ArgIndex)
+	argsExec := m.args.getArgs(query.ArgIndex)
 	// Thực thi câu lệnh SQL và quét kết quả vào biến 'count'
 	err = m.db.QueryRow(query.Sql, argsExec...).Scan(ret)
 	if err != nil {
@@ -162,6 +165,72 @@ func (m *modelTypeWhere) Limit(num uint64) *modelTypeWhere {
 func (m *modelTypeWhere) Offset(num uint64) *modelTypeWhere {
 	m.offset = &num
 	return m
+}
+func (m *modelTypeWhere) GetSQL() (string, []any, error) {
+	key := m.typEle
+	m.strWhere, m.args.ArgWhere = m.getFilter()
+
+	selectSql, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
+		var err error
+		ent, err := model.ModelRegister.GetModelByType(m.typEle)
+		if err != nil {
+			return nil, err
+		}
+		fields := []string{}
+		for _, f := range ent.Entity.Cols {
+			fields = append(fields, f.Name+" "+f.Field.Name)
+		}
+		sqlInfo := &types.SqlInfo{
+			StrSelect: strings.Join(fields, ","),
+			From:      ent.Entity.TableName,
+			Limit:     m.limit,
+			StrWhere:  m.strWhere,
+			Offset:    m.offset,
+		}
+
+		sql, err := compiler.GetSql(sqlInfo, m.db.DriverName)
+		if err != nil {
+			return nil, err
+		}
+
+		return sql, nil
+
+	})
+
+	return selectSql.Sql, nil, err
+}
+
+// func (s *modelTypeWhere) getKey() string {
+
+// 	s.strWhere, s.args.ArgWhere = s.getFilter()
+// 	if s.orders != nil {
+// 		s.strSort = strings.Join(s.orders, ",")
+// 	}
+
+// 	key := s.strSelect + "+/" + s.strSort + "/" + s.strWhere + "/" + s.strGroup + "/" + s.strHaving + "/" + s.strJoin + "/" + s.strHaving + "/"
+// 	if s.limit != nil {
+// 		key += "/" + fmt.Sprintf("%d", *s.limit)
+// 	}
+// 	if s.offset != nil {
+// 		key += "/" + fmt.Sprintf("%d", *s.offset)
+// 	}
+
+// 	return key
+
+// }
+func (m *modelTypeWhere) Find() (any, error) {
+	sql, _, err := m.GetSQL()
+	if err != nil {
+		return nil, err
+	}
+
+	ret, err := m.db.fecthItemsOfType(m.typEle, sql, m.ctx, nil, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret.Elem().Interface(), err
+
 }
 func (m *modelType) Limit(num uint64) *modelTypeWhere {
 	ret := &modelTypeWhere{
