@@ -31,7 +31,7 @@ func (db *DB) buildBasicSqlFirstItemNoCache(typ reflect.Type, filter string) (st
 
 		sql += " WHERE " + filter
 	}
-	sqlInfo, err := compiler.Compile(sql, db.DriverName)
+	sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
 	if err != nil {
 		return "", err
 	}

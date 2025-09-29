@@ -280,6 +280,13 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 			return nil, err
 		}
 		tblExpr := ent.Entity.TableName
+		if selectors.strSelect == "" {
+			strColms := []string{}
+			for _, col := range ent.Entity.Cols {
+				strColms = append(strColms, tblExpr+"."+col.Name+" "+col.Field.Name)
+			}
+			selectors.strSelect = strings.Join(strColms, ",")
+		}
 		if selectors.strJoin != "" {
 			tblExpr = tblExpr + " " + selectors.strJoin
 		}

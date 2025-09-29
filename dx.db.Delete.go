@@ -44,7 +44,7 @@ func (db *DB) Delete(item interface{}, filter string, args ...interface{}) Delet
 	//key := "Delete/" + "/" + db.DriverName + "/" + model.Entity.TableName + "/" + filter
 	sqlExec, err := internal.OnceCall(key, func() (*types.SqlParse, error) {
 		sql := "DELETE FROM " + model.Entity.TableName + " WHERE " + filter
-		sqlInfo, err := compiler.Compile(sql, db.DriverName)
+		sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
 
 		if err != nil {
 			return nil, err

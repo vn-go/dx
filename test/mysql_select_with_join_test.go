@@ -17,7 +17,7 @@ func TestSelecJoinMySql(t *testing.T) {
 	users := []models.User{}
 	a := db.Model(&models.User{})
 	b := a.Select("User.userId,user.Email, user.UserName,contract.id")
-	c := b.Joins("LEFT JOIN Contract c ON users.id = c.ID and c.id=?", 12)
+	c := b.Joins("LEFT JOIN Contract c ON user.id = c.ID and c.id=?", 12)
 	e := c.Group("user.UserName", "user.Email", "User.userId", "concat(user.Email,?,user.Username)", " ")
 	err = e.Find(&users)
 	assert.NoError(t, err)

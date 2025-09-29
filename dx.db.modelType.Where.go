@@ -125,19 +125,9 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		if err != nil {
 			return nil, err
 		}
-		// compiler, err := expr.CompileJoin(ent.Entity.TableName, m.db.DB)
-		// if err != nil {
-		// 	return "", err
-		// }
-		// //compiler.Context.Tables = append(compiler.Context.Tables, ent.Entity.TableName)
-		// compiler.Context.Purpose = expr.BUILD_WHERE
-		// err = compiler.BuildWhere(wherStr)
-		// if err != nil {
-		// 	return "", err
-		// }
-		// dialect := factory.DialectFactory.Create(m.db.DriverName)
+
 		retSql := "select count(*) from " + ent.Entity.TableName + " where " + wherStr
-		sqlInfo, err := compiler.Compile(retSql, m.db.DriverName)
+		sqlInfo, err := compiler.Compile(retSql, m.db.DriverName, false)
 		if err != nil {
 			return nil, err
 		}
@@ -267,7 +257,7 @@ func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
 	setterArsg = append(setterArsg, argWhere...)
 	sql := "Update " + ent.Entity.TableName + " set " + strings.Join(fields, ",") + " where " + strWhere
 	sql, err = internal.OnceCall("modelTypeWhere/"+m.db.DriverName+"/"+sql, func() (string, error) {
-		sqlInfo, err := compiler.Compile(sql, m.db.DriverName)
+		sqlInfo, err := compiler.Compile(sql, m.db.DriverName, false)
 		if err != nil {
 			return "", err
 		}

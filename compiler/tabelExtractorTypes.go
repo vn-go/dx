@@ -10,7 +10,7 @@ import (
 type tabelExtractorTypes struct {
 }
 
-var tabelExtractor = &tabelExtractorTypes{}
+var tableExtractor = &tabelExtractorTypes{}
 
 func (t *tabelExtractorTypes) getTablesFromSql(sql string, node sqlparser.SQLNode) []string {
 	ret, _ := internal.OnceCall("tabelExtractorTypes/getTablesFromSql/"+sql, func() ([]string, error) {

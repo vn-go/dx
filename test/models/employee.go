@@ -10,7 +10,7 @@ type Employee struct {
 	LastName     string `json:"lastName" db:"size(50);idx"`
 	DepartmentID int    `json:"departmentId"`
 	PositionID   int    `json:"positionId"`
-	UserID       int    `json:"userId"`
+	UserID       uint64 `json:"userId"`
 	BaseModel
 }
 
@@ -25,10 +25,10 @@ func init() {
 		"PositionID",
 		&Position{},
 		"ID", nil)
-	dx.AddForeignKey[Employee](
-		"UserID",
-		&User{},
-		"ID", nil,
-	)
+	// dx.AddForeignKey[Employee](
+	// 	"UserID",
+	// 	&User{},
+	// 	"ID", nil,
+	// )
 
 }

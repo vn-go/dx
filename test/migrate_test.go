@@ -11,7 +11,7 @@ import (
 )
 
 var pgDsn = "postgres://postgres:123456@localhost:5432/a001?sslmode=disable"
-var mySqlDsn = "root:123456@tcp(127.0.0.1:3306)/a001"
+var mySqlDsn = "root:123456@tcp(127.0.0.1:3306)/hrm"
 
 type App struct {
 	Name        string    `db:"pk"`

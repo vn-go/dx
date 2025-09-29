@@ -40,8 +40,8 @@ func TestUpdatetUserWithWhereMysql(t *testing.T) {
 	err = db.Model(&models.User{}).Where("username!=?", "admin").Update(map[string]interface{}{
 		"Phone": "123456",
 	}).Error
-	if dxError, ok := err.(*dxErr.DbErr); ok {
-		if dxError.ErrorType != dxErr.ERR_DUPLICATE {
+	if dxError := dx.Errors.IsDbError(err); dxError != nil {
+		if dxError.ErrorType != dx.Errors.DUPLICATE {
 			t.Fail()
 		}
 	} else {

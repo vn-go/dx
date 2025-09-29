@@ -38,11 +38,12 @@ type Dictionary struct {
 	SourceUpdate []string
 }
 type compiler struct {
-	dict       *Dictionary
-	sql        string
-	node       sqlparser.SQLNode
-	dialect    types.Dialect
-	paramIndex int
+	returnField []string
+	dict        *Dictionary
+	sql         string
+	node        sqlparser.SQLNode
+	dialect     types.Dialect
+	paramIndex  int
 }
 type initCreateDictionary struct {
 	val  *Dictionary
@@ -71,7 +72,7 @@ type sqlCompilerError struct {
 func (sqlErr *sqlCompilerError) Error() string {
 	return fmt.Sprintf("syntax error %s\n%s", sqlErr.err, sqlErr.sql)
 }
-func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, error) {
+func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField bool) (*compiler, error) {
 	var err error
 	originalSql := sql
 	if !skipQuoteExpression {
@@ -100,30 +101,33 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool) (*compiler, err
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
 
-		tableList := tabelExtractor.getTablesFromSql(sql, stmSelect)
+		tableList := tableExtractor.getTablesFromSql(sql, stmSelect)
+		if getReturnField {
+			ret.returnField = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{})
+		}
 
 		ret.dict = ret.CreateDictionary(tableList)
 		return ret, nil
 
 	}
 	if stmUnion, ok := stm.(*sqlparser.Union); ok {
-		tableList := tabelExtractor.getTables(stmUnion.Left, make(map[string]bool))
-		tableList = append(tableList, tabelExtractor.getTables(stmUnion.Right, make(map[string]bool))...)
+		tableList := tableExtractor.getTables(stmUnion.Left, make(map[string]bool))
+		tableList = append(tableList, tableExtractor.getTables(stmUnion.Right, make(map[string]bool))...)
 		ret.dict = ret.CreateDictionary(tableList)
 		return ret, nil
 	}
 	if stmDelete, ok := stm.(*sqlparser.Delete); ok {
-		tableList := tabelExtractor.getTables(stmDelete.TableExprs, make(map[string]bool))
+		tableList := tableExtractor.getTables(stmDelete.TableExprs, make(map[string]bool))
 		ret.dict = ret.CreateDictionary(tableList)
 		return ret, nil
 	}
 	if stmUpdate, ok := stm.(*sqlparser.Update); ok {
 		visited := make(map[string]bool)
-		tableList := tabelExtractor.getTables(stmUpdate.TableExprs, visited)
+		tableList := tableExtractor.getTables(stmUpdate.TableExprs, visited)
 		updateTables := tableList
-		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Where, visited)...)
-		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Exprs, visited)...)
-		tableList = append(tableList, tabelExtractor.getTables(stmUpdate.Where.Expr, visited)...)
+		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Where, visited)...)
+		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Exprs, visited)...)
+		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Where.Expr, visited)...)
 		ret.dict = ret.CreateDictionary(tableList)
 		ret.dict.SourceUpdate = updateTables
 		return ret, nil
@@ -372,11 +376,15 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, e
 				}
 
 			} else {
-				for key, fieldStr := range cmp.dict.Field {
-					exprField := fieldStr + " " + cmp.dialect.Quote(cmp.dict.StructField[key].Name)
-					fields = append(fields, exprField)
+				if len(cmp.dict.Field) > 0 {
+					for key, fieldStr := range cmp.dict.Field {
+						exprField := fieldStr + " " + cmp.dialect.Quote(cmp.dict.StructField[key].Name)
+						fields = append(fields, exprField)
+					}
+					return strings.Join(fields, ","), nil
+				} else {
+					return "*", nil
 				}
-				return strings.Join(fields, ","), nil
 			}
 
 		} else {
@@ -394,9 +402,9 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, e
 func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE)
 }
-func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
+func Compile(sql, dbDriver string, getReturnField bool) (*types.SqlInfo, error) {
 	return internal.OnceCall("compiler/"+dbDriver+"/"+sql, func() (*types.SqlInfo, error) {
-		cmp, err := newCompiler(sql, dbDriver, false)
+		cmp, err := newCompiler(sql, dbDriver, false, getReturnField)
 		if err != nil {
 			return nil, err
 		}
@@ -405,7 +413,7 @@ func Compile(sql, dbDriver string) (*types.SqlInfo, error) {
 
 }
 func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
-	cmp, err := newCompiler(sql, dbDriver, true)
+	cmp, err := newCompiler(sql, dbDriver, true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +440,7 @@ func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
 	return ret, nil
 }
 func (cmp *compiler) initDict(node sqlparser.SQLNode) {
-	tableList := tabelExtractor.getTables(node, make(map[string]bool))
+	tableList := tableExtractor.getTables(node, make(map[string]bool))
 	cmp.dict = cmp.CreateDictionary(tableList)
 }
 func CompileJoin(JoinExpr, dbDriver string) (string, error) {
@@ -475,6 +483,7 @@ func CompileSelect(Selecttor, dbDriver string) (string, error) {
 	return init.val, init.err
 
 }
+
 func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 
 	return internal.OnceCall("compiler/GetSql"+sqlInfo.GetKey(), func() (*types.SqlParse, error) {
@@ -483,7 +492,7 @@ func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 			return nil, err
 		}
 
-		sqlInfo, err = Compile(retSql.Sql, dbDriver)
+		sqlInfo, err = Compile(retSql.Sql, dbDriver, true)
 		if err != nil {
 			return nil, err
 		}

@@ -32,7 +32,7 @@ func (db *DB) Sql(sqlStatement string, args ...any) *sqlStatementType {
 func (sql *sqlStatementType) GetExecSql() (*types.SqlParse, error) {
 	key := "sqlStatementType/GetExecSql/" + sql.sql
 	return internal.OnceCall(key, func() (*types.SqlParse, error) {
-		info, err := compiler.Compile(sql.sql, sql.db.DriverName)
+		info, err := compiler.Compile(sql.sql, sql.db.DriverName, false)
 		if err != nil {
 			return nil, err
 		}

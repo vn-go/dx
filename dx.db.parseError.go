@@ -8,15 +8,12 @@ import (
 func (db *DB) parseError(err error) error {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
-	if err != nil {
+	imgrate, errGetMigator := migrator.GetMigator(db.DB)
+	if errGetMigator != nil {
 		return err
 	}
-	imgrate, err := migrator.GetMigator(db.DB)
-	if err != nil {
-		return err
-	}
-	schema, err := imgrate.GetLoader().LoadFullSchema(db.DB)
-	if err != nil {
+	schema, errLoadFullSchema := imgrate.GetLoader().LoadFullSchema(db.DB)
+	if errLoadFullSchema != nil {
 		return err
 	}
 

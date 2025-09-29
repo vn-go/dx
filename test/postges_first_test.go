@@ -21,7 +21,7 @@ func TestFirstPg(t *testing.T) {
 		return &models.User{
 			Username:     "admin",
 			Email:        dx.Ptr("test.test.com"),
-			HashPassword: dx.Ptr("test.test.com"),
+			HashPassword: "test.test.com",
 		}, nil
 	})
 	assert.NoError(t, err)

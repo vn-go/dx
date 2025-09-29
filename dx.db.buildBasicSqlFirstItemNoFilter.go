@@ -61,7 +61,7 @@ func (db *DB) buildBasicSqlFirstItemNoFilter(typ reflect.Type) (string, string, 
 
 			sql += " WHERE " + filter
 		}
-		sqlInfo, err := compiler.Compile(sql, db.DriverName)
+		sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
 		if err != nil {
 			return nil, err
 		}

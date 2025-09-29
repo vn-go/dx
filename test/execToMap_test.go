@@ -1,0 +1,51 @@
+package test
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/vn-go/dx"
+)
+
+var hrCnn string = "root:123456@tcp(127.0.0.1:3306)/hrm"
+
+func TestExecRawSqlSelect(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	users, err := db.ExecRawSqlSelectToDict(t.Context(), "select * from user,role")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, users)
+	n := len(users)
+	fmt.Println(n)
+}
+func BenchmarkExecRawSqlSelect(t *testing.B) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	for i := 0; i < t.N; i++ {
+		users, err := db.ExecRawSqlSelectToDict(t.Context(), "select * from user,role")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, users)
+	}
+
+}
+func TestExecDataSource(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	dsUser := db.NewDataSource("select user.id from user,role")
+	assert.NoError(t, err)
+	dsUser.Limit(10).Where("user.Id>?", 10)
+	users, err := dsUser.ToDict()
+	assert.NotEmpty(t, users)
+	n := len(users)
+	fmt.Println(n)
+}
