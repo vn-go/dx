@@ -191,3 +191,29 @@ func (db *DB) NewDataSource(source any, args ...any) *datasourceType {
 		args:    args,
 	}
 }
+func (db *DB) ModelDatasource(modleName string) *datasourceType {
+
+	var err error
+
+	ent := modelRegistry.FindEntityByName(modleName)
+	if ent == nil {
+		return &datasourceType{
+			err: fmt.Errorf("'%s' was not found"),
+		}
+	}
+	strField := []string{}
+	for _, c := range ent.Cols {
+		strField = append(strField, fmt.Sprintf(c.Name+" "+c.Field.Name))
+	}
+	sqlInfo, err := compiler.Compile("select "+strings.Join(strField, ",")+" from "+ent.TableName, db.DriverName, true)
+	if err != nil {
+		return &datasourceType{
+			err: err,
+		}
+	}
+	return &datasourceType{
+		cmpInfo: sqlInfo,
+		db:      db,
+		args:    []any{},
+	}
+}

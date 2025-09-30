@@ -97,3 +97,17 @@ func TestExecDataSourceUser(t *testing.T) {
 	n := len(users)
 	fmt.Println(n)
 }
+func TestExecDataSourceUserName(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	dsUser := db.ModelDatasource("user")
+	assert.NoError(t, err)
+	dsUser.Limit(10).Where("Id>?", 1)
+	users, err := dsUser.ToDict()
+	assert.NotEmpty(t, users)
+	n := len(users)
+	fmt.Println(n)
+}

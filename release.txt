@@ -247,3 +247,10 @@ git tag -a v1.0.37 -m "Support datasource by sql and dynamic filter"
 git push origin v1.0.37
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.37
+--
+git add .
+git commit -m "Support datasource by sql and dynamic filter"
+git tag -a v1.0.38 -m "Support datasource by sql and dynamic filter"
+git push origin v1.0.38
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.38
