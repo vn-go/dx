@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
+	"github.com/vn-go/dx/test/models"
 )
 
 var hrCnn string = "root:123456@tcp(127.0.0.1:3306)/hrm"
@@ -81,4 +82,18 @@ func BenchmarkDataSourceWithCallFuncExpr(t *testing.B) {
 	// assert.NotEmpty(t, users)
 	// n := len(users)
 	// fmt.Println(n)
+}
+func TestExecDataSourceUser(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	dsUser := db.NewDataSource(models.User{})
+	assert.NoError(t, err)
+	dsUser.Limit(10).Where("Id>?", 1)
+	users, err := dsUser.ToDict()
+	assert.NotEmpty(t, users)
+	n := len(users)
+	fmt.Println(n)
 }

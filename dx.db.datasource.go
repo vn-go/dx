@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
@@ -149,9 +151,35 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 
 	return results, nil
 }
-func (db *DB) NewDataSource(sqlSelect string, args ...any) *datasourceType {
+func (db *DB) NewDataSource(source any, args ...any) *datasourceType {
+	var sqlInfo *compiler.SqlCompilerInfo
+	var err error
 
-	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, true)
+	if sqlSelect, ok := source.(string); ok {
+		sqlInfo, err = compiler.Compile(sqlSelect, db.DriverName, true)
+	} else {
+		typ := reflect.TypeOf(source)
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
+		ent, err := modelRegistry.GetModelByType(typ)
+		if err != nil {
+			return &datasourceType{
+				err: err,
+			}
+		}
+		strField := []string{}
+		for _, c := range ent.Entity.Cols {
+			strField = append(strField, fmt.Sprintf(c.Name+" "+c.Field.Name))
+		}
+		sqlInfo, err = compiler.Compile("select "+strings.Join(strField, ",")+" from "+ent.Entity.TableName, db.DriverName, true)
+		if err != nil {
+			return &datasourceType{
+				err: err,
+			}
+		}
+	}
+
 	if err != nil {
 		return &datasourceType{
 			err: err,
