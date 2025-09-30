@@ -3,6 +3,7 @@ package dx
 import (
 	"reflect"
 
+	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
 	"github.com/vn-go/dx/errors"
@@ -164,6 +165,13 @@ func (er *errorTypes) IsDbError(err error) *DbError {
 
 	}
 	return nil
+}
+func (er *errorTypes) IsExpressionError(err error) *compiler.CompilerError {
+	if _, ok := err.(*compiler.CompilerError); ok {
+		return err.(*compiler.CompilerError)
+	} else {
+		return nil
+	}
 }
 func SkipLoadSchemOnMigrate(ok bool) {
 	migrateLoaderTypes.SkipLoadSchemaOnMigrate = ok
