@@ -1,8 +1,6 @@
 package mysql
 
 import (
-	"fmt"
-
 	"github.com/go-sql-driver/mysql"
 	"github.com/vn-go/dx/migate/loader/types"
 )
@@ -21,7 +19,9 @@ func (d *mySqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {
 			return d.ParseError1452(mysqlErr)
 
 		}
-		fmt.Println(mysqlErr.Number)
+		if mysqlErr.Number == 1064 {
+			return d.ParseError1064(mysqlErr)
+		}
 
 	}
 	return err

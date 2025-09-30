@@ -116,6 +116,7 @@ type errorTypes struct {
 	REQUIRED   dbErrType // database return error field require value
 	SYSTEM     dbErrType // database return error
 	NOTFOUND   dbErrType
+	ERR_SYNTAX dbErrType
 }
 
 /*
@@ -143,6 +144,7 @@ var Errors = &errorTypes{
 	REQUIRED:   dbErrType(dxErrors.ERR_REQUIRED),
 	SYSTEM:     dbErrType(dxErrors.ERR_SYSTEM),
 	NOTFOUND:   dbErrType(dxErrors.ERR_NOT_FOUND),
+	ERR_SYNTAX: dbErrType(dxErrors.ERR_SYNTAX),
 }
 
 type DbError struct {

@@ -14,6 +14,7 @@ const (
 	ERR_REQUIRED
 	ERR_SYSTEM
 	ERR_NOT_FOUND
+	ERR_SYNTAX
 )
 
 func ErrorMessage(t DB_ERR) string {

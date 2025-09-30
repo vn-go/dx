@@ -9,6 +9,7 @@ import (
 
 	"github.com/vn-go/dx/dialect/mssql"
 	"github.com/vn-go/dx/dialect/mysql"
+
 	"github.com/vn-go/dx/dialect/postgres"
 	"github.com/vn-go/dx/dialect/types"
 )

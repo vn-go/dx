@@ -84,7 +84,7 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 
 	sqlCompiled, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
 	if err != nil {
-		return nil, fmt.Errorf("build sql: %w", err)
+		return nil, compiler.NewCompilerError(err.Error())
 	}
 
 	// 2) Ensure context
@@ -99,6 +99,13 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	// 3) Execute query
 	rows, err := db.QueryContext(ctx, sqlCompiled.Sql, args...)
 	if err != nil {
+
+		errParse := factory.DialectFactory.Create(db.DriverName).ParseError(nil, err)
+		if dbErr := Errors.IsDbError(errParse); dbErr != nil {
+			if dbErr.ErrorType == Errors.ERR_SYNTAX {
+				return nil, compiler.NewCompilerError("Error syntax")
+			}
+		}
 		return nil, fmt.Errorf("query exec: %w", err)
 	}
 	defer rows.Close()
