@@ -41,7 +41,12 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 
 			sql += " WHERE " + filter
 		}
-		sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
+		cmpInfo, err := compiler.Compile(sql, db.DriverName, false)
+		if err != nil {
+			return "", err
+		}
+		sqlInfo := cmpInfo.Info
+
 		sqlInfo.Limit = Ptr[uint64](1)
 		sqlParse, err := dialect.BuildSql(sqlInfo)
 		if err != nil {
@@ -127,7 +132,7 @@ func (db *DB) buildBasicSqlFindItem(typ reflect.Type, filter string, orderStr st
 		if err != nil {
 			return "", err
 		}
-		sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+		sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo.Info)
 		if err != nil {
 			return "", err
 		}

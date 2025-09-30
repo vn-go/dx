@@ -132,9 +132,9 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 			return nil, err
 		}
 		sqlArgs := m.args.getFields()
-		sqlInfo.FieldArs = *sqlArgs
+		sqlInfo.Info.FieldArs = *sqlArgs
 		ret := factory.DialectFactory.Create(m.db.DriverName)
-		return ret.BuildSql(sqlInfo)
+		return ret.BuildSql(sqlInfo.Info)
 
 	})
 	if err != nil {
@@ -261,7 +261,7 @@ func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
 		if err != nil {
 			return "", err
 		}
-		sqlParser, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
+		sqlParser, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo.Info)
 		if err != nil {
 			return "", err
 		}

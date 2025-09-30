@@ -9,6 +9,7 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 // Certain functions are transformed during compilation based on the SQL dialect.
@@ -133,10 +134,15 @@ const (
 
 )
 
+type OutputExpr struct {
+	Expr      sqlparser.SQLNode
+	FieldName string
+}
 type SqlInfo struct {
-	SqlType   SQL_TYPE
-	FieldArs  SqlInfoArgs
-	StrSelect string
+	OutputFields map[string]OutputExpr
+	SqlType      SQL_TYPE
+	FieldArs     SqlInfoArgs
+	StrSelect    string
 
 	StrWhere  string
 	StrSetter string

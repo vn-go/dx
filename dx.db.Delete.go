@@ -50,7 +50,7 @@ func (db *DB) Delete(item interface{}, filter string, args ...interface{}) Delet
 			return nil, err
 		}
 		dialect := factory.DialectFactory.Create(db.DriverName)
-		return dialect.BuildSql(sqlInfo)
+		return dialect.BuildSql(sqlInfo.Info)
 
 	})
 

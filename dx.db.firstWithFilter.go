@@ -98,7 +98,7 @@ func (db *DB) findtWithFilter(
 		if err != nil {
 			return "", err
 		}
-		sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+		sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo.Info)
 		return sqlParse.Sql, nil
 	})
 	if err != nil {

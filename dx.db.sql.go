@@ -37,7 +37,7 @@ func (sql *sqlStatementType) GetExecSql() (*types.SqlParse, error) {
 			return nil, err
 		}
 
-		return factory.DialectFactory.Create(sql.db.DriverName).BuildSql(info)
+		return factory.DialectFactory.Create(sql.db.DriverName).BuildSql(info.Info)
 	})
 
 }

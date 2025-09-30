@@ -7,46 +7,55 @@ import (
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
-	"github.com/vn-go/dx/dialect/types"
 )
 
 type datasourceType struct {
-	sqlInfo *types.SqlInfo
-	db      *DB
-	args    []any
-	ctx     context.Context
-	err     error
+	cmpInfo *compiler.SqlCompilerInfo
+	// sqlInfo *types.SqlInfo
+	db   *DB
+	args []any
+	ctx  context.Context
+	err  error
 }
 
 func (ds *datasourceType) Sort(strSort string) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
-	ds.sqlInfo.StrOrder = strSort
+	ds.cmpInfo.Info.StrOrder = strSort
 	return ds
 }
 func (ds *datasourceType) Limit(limit uint64) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
-	ds.sqlInfo.Limit = &limit
+	ds.cmpInfo.Info.Limit = &limit
 	return ds
 }
 func (ds *datasourceType) Offset(offset uint64) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
-	ds.sqlInfo.Limit = &offset
+	ds.cmpInfo.Info.Limit = &offset
 	return ds
 }
 func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
-	if ds.sqlInfo.StrWhere != "" {
-		ds.sqlInfo.StrWhere += " AND (" + strWhere + ")"
+	dialect := factory.DialectFactory.Create(ds.db.DriverName)
+	var numOfWhereParams = 0
+	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, &numOfWhereParams)
+	if err != nil {
+		ds.err = err
+		return ds
+	}
+
+	if ds.cmpInfo.Info.StrWhere != "" {
+		ds.cmpInfo.Info.StrWhere += " AND (" + strWhereNew + ")"
 	} else {
-		ds.sqlInfo.StrWhere = strWhere
+		ds.cmpInfo.Info.StrWhere = strWhereNew
+
 	}
 	if ds.args == nil {
 		ds.args = []any{}
@@ -68,16 +77,9 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	}
 	var db = ds.db
 	var ctx = ds.ctx
-	var sqlInfo = ds.sqlInfo
+	var sqlInfo = ds.cmpInfo.Info
 	var args = ds.args
-	sqlParse, err := factory.DialectFactory.Create("mysql").BuildSql(sqlInfo)
-	if err != nil {
-		return nil, err
-	}
-	sqlInfo, err = compiler.Compile(sqlParse.Sql, db.DriverName, true)
-	if err != nil {
-		return nil, err
-	}
+
 	sqlCompiled, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
 	if err != nil {
 		return nil, fmt.Errorf("build sql: %w", err)
@@ -87,7 +89,11 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-
+	if Options.ShowSql {
+		fmt.Println("-------------")
+		fmt.Println(sqlCompiled.Sql)
+		fmt.Println("-------------")
+	}
 	// 3) Execute query
 	rows, err := db.QueryContext(ctx, sqlCompiled.Sql, args...)
 	if err != nil {
@@ -145,14 +151,14 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 }
 func (db *DB) NewDataSource(sqlSelect string, args ...any) *datasourceType {
 
-	sqlInfo, err := compiler.Compile(sqlSelect, "mysql", true)
+	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, true)
 	if err != nil {
 		return &datasourceType{
 			err: err,
 		}
 	}
 	return &datasourceType{
-		sqlInfo: sqlInfo,
+		cmpInfo: sqlInfo,
 		db:      db,
 		args:    args,
 	}

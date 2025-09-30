@@ -31,19 +31,26 @@ const (
 )
 
 type Dictionary struct {
-	TableAlias   map[string]string
-	Field        map[string]string
-	StructField  map[string]reflect.StructField
-	Tables       []string
-	SourceUpdate []string
+	TableAlias       map[string]string
+	Field            map[string]string
+	ExprAlias        map[string]string
+	StructField      map[string]reflect.StructField
+	FieldAlaisToExpr map[string]string
+	Tables           []string
+	SourceUpdate     []string
 }
+
+//	type OutputExpr struct {
+//		Expr      sqlparser.SQLNode
+//		FieldName string
+//	}
 type compiler struct {
-	returnField []string
+	returnField map[string]types.OutputExpr
 	dict        *Dictionary
 	sql         string
 	node        sqlparser.SQLNode
 	dialect     types.Dialect
-	paramIndex  int
+	ParamIndex  int
 }
 type initCreateDictionary struct {
 	val  *Dictionary
@@ -103,7 +110,10 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 
 		tableList := tableExtractor.getTablesFromSql(sql, stmSelect)
 		if getReturnField {
-			ret.returnField = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{})
+			ret.returnField, err = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{})
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		ret.dict = ret.CreateDictionary(tableList)
@@ -265,15 +275,19 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		}
 
 	}
+	if cmp.returnField == nil {
+		cmp.returnField = map[string]types.OutputExpr{}
+	}
 	ret := &types.SqlInfo{
-		StrSelect:  strSelect,
-		From:       strFrom,
-		StrWhere:   strWhere,
-		StrOrder:   strOrderBy,
-		Limit:      limit,
-		Offset:     offset,
-		StrGroupBy: strGroupBy,
-		StrHaving:  strHaving,
+		StrSelect:    strSelect,
+		From:         strFrom,
+		StrWhere:     strWhere,
+		StrOrder:     strOrderBy,
+		Limit:        limit,
+		Offset:       offset,
+		StrGroupBy:   strGroupBy,
+		StrHaving:    strHaving,
+		OutputFields: cmp.returnField,
 	}
 	return ret, nil
 
@@ -402,13 +416,31 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs) (string, e
 func (cmp *compiler) resolveWhere(node *sqlparser.Where) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE)
 }
-func Compile(sql, dbDriver string, getReturnField bool) (*types.SqlInfo, error) {
-	return internal.OnceCall("compiler/"+dbDriver+"/"+sql, func() (*types.SqlInfo, error) {
+
+type SqlCompilerInfo struct {
+	Info        *types.SqlInfo
+	Dict        *Dictionary
+	NumOfParams int
+}
+
+func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error) {
+	return internal.OnceCall("compiler/"+dbDriver+"/"+sql, func() (*SqlCompilerInfo, error) {
 		cmp, err := newCompiler(sql, dbDriver, false, getReturnField)
 		if err != nil {
 			return nil, err
 		}
-		return cmp.getSqlInfo()
+
+		info, err := cmp.getSqlInfo()
+		if err != nil {
+			return nil, err
+		}
+		// cmp.dict
+		// return cmp.getSqlInfo()
+		return &SqlCompilerInfo{
+			Info:        info,
+			Dict:        cmp.dict,
+			NumOfParams: cmp.ParamIndex,
+		}, nil
 	})
 
 }
@@ -492,11 +524,11 @@ func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 			return nil, err
 		}
 
-		sqlInfo, err = Compile(retSql.Sql, dbDriver, true)
+		info, err := Compile(retSql.Sql, dbDriver, true)
 		if err != nil {
 			return nil, err
 		}
-
+		sqlInfo = info.Info
 		retSql2, err := factory.DialectFactory.Create(dbDriver).BuildSql(sqlInfo)
 		if err != nil {
 			return nil, err

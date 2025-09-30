@@ -123,6 +123,9 @@ func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER) (s
 	return strLeft + expr.Operator + strRight, nil
 }
 func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (string, error) {
+	if cmp.dict.ExprAlias == nil {
+		cmp.dict.ExprAlias = make(map[string]string)
+	}
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
 		resStr, err := cmp.resolve(x.Expr, cmpType)
 		if err != nil {
@@ -130,8 +133,20 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 		}
 		if resStr != "" {
 			if !x.As.IsEmpty() && cmpType == C_SELECT {
+				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = resStr
+
 				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
 			} else {
+				if strings.Contains(resStr, ".") {
+					fieldName := strings.Split(resStr, ".")[1]
+					fieldName = fieldName[1 : len(fieldName)-1]
+					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = resStr
+				} else {
+					fieldName := resStr
+					fieldName = fieldName[1 : len(fieldName)-1]
+					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = resStr
+				}
+				//cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(resStr))] = resStr
 				return resStr, nil
 			}
 
@@ -153,11 +168,13 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 				if cmpType != C_SELECT {
 					return retField, nil
 				}
+				cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(cmp.dict.StructField[matchField].Name))] = retField
 				return retField + " " + cmp.dialect.Quote(cmp.dict.StructField[matchField].Name), nil
 			} else {
 				if cmpType != C_SELECT {
 					return cmp.dialect.Quote(tableAlias, field), nil
 				}
+				cmp.dict.ExprAlias[strings.ToLower(field)] = cmp.dialect.Quote(tableAlias, field)
 				return cmp.dialect.Quote(tableAlias, field) + " " + cmp.dialect.Quote(field), nil
 			}
 
@@ -172,6 +189,7 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 				if cmpType != C_SELECT {
 					return expr, nil
 				}
+				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = expr
 				return expr + " " + cmp.dialect.Quote(x.As.String()), nil
 			}
 

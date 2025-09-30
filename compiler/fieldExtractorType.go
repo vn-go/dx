@@ -3,15 +3,17 @@ package compiler
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/sqlparser"
 )
 
 type fieldExttractorType struct {
 }
 
-func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[string]bool) []string {
-	ret := []string{}
+func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[string]bool) (map[string]types.OutputExpr, error) {
+	ret := map[string]types.OutputExpr{}
 	if n, ok := node.(sqlparser.SelectExprs); ok {
 		for _, x := range n {
 			if _, ok := x.(*sqlparser.StarExpr); ok {
@@ -29,41 +31,83 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 				val := val.FieldByIndex(fx.Index).Interface()
 				if sqlIndent, ok := val.(sqlparser.ColIdent); ok {
 					if sqlIndent.String() != "" {
-						ret = append(ret, sqlIndent.String())
+						if _, ok := visited[strings.ToLower(sqlIndent.String())]; ok {
+							return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", sqlIndent.String()), ERR)
+						}
+						ret[strings.ToLower(sqlIndent.String())] = types.OutputExpr{
+							Expr:      x,
+							FieldName: sqlIndent.String(),
+						}
+
+						visited[strings.ToLower(sqlIndent.String())] = true
 						found = true
 					}
-					fmt.Println(val)
+
 				}
 
 				//
 			}
 			if !found {
-				r := f.GetFieldAlais(x, visited)
+				r, err := f.GetFieldAlais(x, visited)
+				if err != nil {
+					return nil, err
+				}
 				if r != nil {
-					ret = append(ret, r...)
+					for k, v := range r {
+						if _, ok := ret[k]; ok {
+							return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", v.FieldName), ERR)
+						}
+						ret[k] = v
+					}
+
 				}
 			}
 		}
-		return ret
+		return ret, nil
 	}
 	if n, ok := node.(*sqlparser.Select); ok {
 		return f.GetFieldAlais(n.SelectExprs, visited)
 	}
 	if n, ok := node.(*sqlparser.AliasedExpr); ok {
 		if !n.As.IsEmpty() {
-			ret = append(ret, n.As.String())
-		} else {
-			r := f.GetFieldAlais(n.Expr, visited)
-			if r != nil {
-				ret = append(ret, r...)
+			if _, ok := visited[strings.ToLower(n.As.String())]; ok {
+				return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", n.As.String()), ERR)
 			}
-			return ret
+			ret[strings.ToLower(n.As.String())] = types.OutputExpr{
+				Expr:      node,
+				FieldName: n.As.String(),
+			}
+
+			visited[strings.ToLower(n.As.String())] = true
+		} else {
+			r, err := f.GetFieldAlais(n.Expr, visited)
+			if err != nil {
+				return nil, err
+			}
+			if r != nil {
+
+				for k, v := range r {
+					if _, ok := ret[k]; ok {
+						return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", v.FieldName), ERR)
+					}
+					ret[k] = v
+				}
+			}
+			return ret, nil
 		}
-		return ret
+		return ret, nil
 	}
 	if n, ok := node.(*sqlparser.ColName); ok {
-		ret = append(ret, n.Name.String())
-		return ret
+		if _, ok := visited[strings.ToLower(n.Name.String())]; ok {
+			return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", n.Name.String()), ERR)
+		}
+		ret[strings.ToLower(n.Name.String())] = types.OutputExpr{
+			Expr:      node,
+			FieldName: n.Name.String(),
+		}
+
+		visited[strings.ToLower(n.Name.String())] = true
+		return ret, nil
 	}
 
 	panic(fmt.Sprintf("Not impletement %T,`%s`", node, `compiler\fieldExtractorType.go`))

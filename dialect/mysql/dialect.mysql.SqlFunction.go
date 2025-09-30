@@ -15,6 +15,14 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 	case "len":
 		delegator.FuncName = "LENGTH"
 		return delegator.FuncName, nil
+	case "concat":
+		newArs := []string{}
+		for _, x := range delegator.Args {
+			newArs = append(newArs, "IFNULL("+x+", '')")
+		}
+		delegator.Args = newArs
+		return "", nil
+
 	default:
 		return "", nil
 	}

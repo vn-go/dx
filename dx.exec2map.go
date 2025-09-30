@@ -28,7 +28,7 @@ func (db *DB) ExecRawSqlSelectToDict(ctx context.Context, sqlSelect string, args
 	if err != nil {
 		return nil, fmt.Errorf("compile select: %w", err)
 	}
-	sqlCompiled, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+	sqlCompiled, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo.Info)
 	if err != nil {
 		return nil, fmt.Errorf("build sql: %w", err)
 	}

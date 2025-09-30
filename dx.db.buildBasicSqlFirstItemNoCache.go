@@ -31,10 +31,11 @@ func (db *DB) buildBasicSqlFirstItemNoCache(typ reflect.Type, filter string) (st
 
 		sql += " WHERE " + filter
 	}
-	sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
+	info, err := compiler.Compile(sql, db.DriverName, false)
 	if err != nil {
 		return "", err
 	}
+	sqlInfo := info.Info
 	sqlInfo.Limit = Ptr[uint64](1)
 	// offset := uint64(1)
 	sqlParse, err := dialect.BuildSql(sqlInfo)

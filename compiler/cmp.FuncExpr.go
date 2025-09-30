@@ -14,7 +14,7 @@ func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER) (strin
 	for _, arg := range expr.Exprs {
 		strArg, err := cmp.resolve(arg, C_FUNC)
 		if err != nil {
-			if cErr, ok := err.(*compilerError); ok {
+			if cErr, ok := err.(*CompilerError); ok {
 				if cErr.errType == ERR_TABLE_NOT_FOUND {
 					return "", fmt.Errorf("can not determine table of %s in sql \n%s", arg, cmp.sql)
 				}

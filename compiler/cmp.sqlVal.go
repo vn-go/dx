@@ -15,16 +15,16 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER) (string, e
 	case sqlparser.FloatVal:
 		return string(expr.Val), nil
 	case sqlparser.ValArg:
-		if cmp.paramIndex == 0 {
-			cmp.paramIndex = 1
+		if cmp.ParamIndex == 0 {
+			cmp.ParamIndex = 1
 		}
 
 		strIndex := string(expr.Val[2:len(expr.Val)])
 		if _, err := strconv.Atoi(strIndex); err == nil {
 			defer func() {
-				cmp.paramIndex++
+				cmp.ParamIndex++
 			}()
-			return cmp.dialect.ToParam(cmp.paramIndex), nil
+			return cmp.dialect.ToParam(cmp.ParamIndex), nil
 		} else {
 			return string(expr.Val), nil
 		}

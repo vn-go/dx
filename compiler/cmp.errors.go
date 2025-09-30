@@ -2,7 +2,7 @@ package compiler
 
 import "fmt"
 
-type compilerError struct {
+type CompilerError struct {
 	msg     string
 	errType ERR_TYPE
 }
@@ -19,12 +19,12 @@ func (e ERR_TYPE) string() string {
 	}
 	return "compiler sql error"
 }
-func (c *compilerError) Error() string {
+func (c *CompilerError) Error() string {
 	return fmt.Sprintf("%s %d", c.msg, c.errType)
 
 }
 func newCompilerError(msg string, errType ERR_TYPE) error {
-	return &compilerError{
+	return &CompilerError{
 		msg:     msg,
 		errType: errType,
 	}

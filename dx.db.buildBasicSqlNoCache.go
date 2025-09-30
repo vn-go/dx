@@ -48,7 +48,7 @@ func (db *DB) buildBasicSqlNoCache(typ reflect.Type, filter string) (string, err
 	if err != nil {
 		return "", err
 	}
-	sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+	sqlParse, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo.Info)
 	if err != nil {
 		return "", err
 	}

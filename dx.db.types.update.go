@@ -83,7 +83,7 @@ func (m *selectorTypes) buildUpdateSql() (string, []any, error) {
 		if err != nil {
 			return "", err
 		}
-		sqlParse, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo)
+		sqlParse, err := factory.DialectFactory.Create(m.db.DriverName).BuildSql(sqlInfo.Info)
 		if err != nil {
 			return "", err
 		}
