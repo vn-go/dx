@@ -198,7 +198,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	ent := modelRegistry.FindEntityByName(modleName)
 	if ent == nil {
 		return &datasourceType{
-			err: fmt.Errorf("'%s' was not found"),
+			err: compiler.NewCompilerError(fmt.Sprintf("invalid datasource '%s'", modleName)),
 		}
 	}
 	strField := []string{}

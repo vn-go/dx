@@ -29,3 +29,9 @@ func newCompilerError(msg string, errType ERR_TYPE) error {
 		errType: errType,
 	}
 }
+func NewCompilerError(msg string) error {
+	return &CompilerError{
+		msg:     msg,
+		errType: ERR,
+	}
+}
