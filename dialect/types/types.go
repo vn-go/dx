@@ -83,6 +83,7 @@ type Dialect interface {
 	Quote(str ...string) string
 	GetTableAndColumnsDictionary(db *sql.DB) (map[string]string, error)
 	ToText(value string) string
+	ToBool(value string) string
 	ToParam(index int) string
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})

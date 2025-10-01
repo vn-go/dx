@@ -13,6 +13,19 @@ type mySqlDialect struct {
 	cacheMakeSqlInsert sync.Map
 }
 
+var mysqlBoolMap = map[string]string{
+	"yes":   "TRUE",
+	"true":  "TRUE",
+	"no":    "FALSE",
+	"false": "FALSE",
+}
+
+func (d *mySqlDialect) ToBool(val string) string {
+	if ret, ok := mysqlBoolMap[strings.ToLower(val)]; ok {
+		return ret
+	}
+	return val
+}
 func (d *mySqlDialect) LikeValue(val string) string {
 	return types.ReplaceStarWithCache("mysql", val, '*', '%')
 }

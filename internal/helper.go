@@ -26,7 +26,7 @@ type helperType struct {
 
 // if s is "true" or "false" retun true
 func (m *helperType) IsBool(s string) bool {
-	return strings.ToLower(s) == "true" || strings.ToLower(s) == "false"
+	return strings.ToLower(s) == "true" || strings.ToLower(s) == "false" || strings.ToLower(s) == "yes" || strings.ToLower(s) == "no"
 }
 func (m *helperType) IsString(s string) bool {
 	return s[0] == '\'' && s[len(s)-1] == '\''

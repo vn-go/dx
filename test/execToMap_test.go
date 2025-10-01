@@ -105,7 +105,7 @@ func TestExecDataSourceUserName(t *testing.T) {
 	}
 	dsUser := db.ModelDatasource("user")
 	assert.NoError(t, err)
-	dsUser.Limit(10).Where("Id>?", 1)
+	dsUser.Limit(10).Where("isActive=true")
 	users, err := dsUser.ToDict()
 	assert.NotEmpty(t, users)
 	n := len(users)

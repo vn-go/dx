@@ -13,6 +13,19 @@ type postgresDialect struct {
 	cacheMakeSqlInsert sync.Map
 }
 
+var pgBoolMap = map[string]string{
+	"yes":   "TRUE",
+	"true":  "TRUE",
+	"no":    "FALSE",
+	"false": "FALSE",
+}
+
+func (d *postgresDialect) ToBool(val string) string {
+	if ret, ok := pgBoolMap[strings.ToLower(val)]; ok {
+		return ret
+	}
+	return val
+}
 func (d *postgresDialect) LikeValue(val string) string {
 
 	return types.ReplaceStarWithCache("postgres", val, '*', '%')

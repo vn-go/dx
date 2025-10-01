@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -41,6 +42,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		return left + " " + x.Operator + " " + right, nil
 	}
 	if x, ok := n.(*sqlparser.ColName); ok {
+		if x.Name.String() == "yes" || x.Name.String() == "no" || x.Name.String() == "true" || x.Name.String() == "false" {
+			return dialect.ToBool(x.Name.String()), nil
+		}
 		if v, ok := fields[strings.ToLower(x.Name.String())]; ok {
 			return v, nil
 		} else {
@@ -61,7 +65,21 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return "?", nil
 
 		} else {
-			return v, nil
+			if x.Type == sqlparser.StrVal {
+				return dialect.ToText(v), nil
+			}
+			if internal.Helper.IsString(v) {
+				return dialect.ToText(v), nil
+			} else if internal.Helper.IsBool(v) {
+				return dialect.ToBool(v), nil
+			} else if internal.Helper.IsFloatNumber(v) {
+				return v, nil
+			} else if internal.Helper.IsNumber(v) {
+				return v, nil
+			} else {
+				return "", NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid value", v, strFilter))
+			}
+
 		}
 	}
 	if x, ok := n.(*sqlparser.AndExpr); ok {

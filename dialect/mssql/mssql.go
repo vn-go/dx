@@ -14,6 +14,19 @@ type mssqlDialect struct {
 	cacheMakeSqlInsert sync.Map
 }
 
+var mssqlBoolMap = map[string]string{
+	"yes":   "1",
+	"true":  "1",
+	"no":    "0",
+	"false": "0",
+}
+
+func (d *mssqlDialect) ToBool(val string) string {
+	if ret, ok := mssqlBoolMap[strings.ToLower(val)]; ok {
+		return ret
+	}
+	return val
+}
 func (d *mssqlDialect) LikeValue(val string) string {
 
 	return val
