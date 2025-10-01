@@ -118,8 +118,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 	if x, ok := n.(*sqlparser.AliasedExpr); ok {
 		return cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Expr)
 	}
+	if isDebugMode {
+		panic(fmt.Sprintf("not implement %T, see 'Resolve' in file '%s'", n, `compiler\compilerFilter.go`))
+	}
 	return "", newCompilerError(fmt.Sprintf("'%s' is invalid expression ", strFilter), ERR)
-	//panic(fmt.Sprintf("not implement %T, see 'Resolve' in file '%s'", n, `compiler\compilerFilter.go`))
+
 }
 func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, numOfParams *int, fields map[string]string, x *sqlparser.FuncExpr) (string, error) {
 	strArgs := []string{}

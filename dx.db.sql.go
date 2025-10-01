@@ -57,13 +57,17 @@ func (sql *sqlStatementType) ScanRow(items any) error {
 }
 
 type globalOptType struct {
-	ShowSql bool
+	ShowSql     bool
+	IsDebugMode bool
 }
 
 var Options = globalOptType{
 	ShowSql: false,
 }
 
+func CompilerMode(isDebug bool) {
+	compiler.Mode(isDebug)
+}
 func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
 	// items phải là pointer đến slice
 	if err := internal.Helper.AddrssertSinglePointerToSlice(items); err != nil {

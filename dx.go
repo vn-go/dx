@@ -33,6 +33,7 @@ type FkOpt struct {
 }
 
 func AddForeignKey[T any](foreignKey string, FkEntity interface{}, keys string, cascadeOption *FkOpt) error {
+	Options
 	if cascadeOption == nil {
 		return model.AddForeignKey[T](foreignKey, FkEntity, keys, nil)
 	} else {

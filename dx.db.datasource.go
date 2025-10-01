@@ -66,6 +66,14 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 
 	return ds
 }
+func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
+	if ds.err != nil {
+		return ds
+	}
+	dialect := factory.DialectFactory.Create(ds.db.DriverName)
+	var numOfWhereParams = 0
+	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, &numOfWhereParams)
+}
 func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
 	if ds.err != nil {
 		return ds
