@@ -266,7 +266,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 
 	var err error
 
-	ent := modelRegistry.FindEntityByName(modleName)
+	ent := modelRegistry.FindEntityByModelName(modleName)
 	if ent == nil {
 		return &datasourceType{
 			err: compiler.NewCompilerError(fmt.Sprintf("invalid datasource '%s'", modleName)),

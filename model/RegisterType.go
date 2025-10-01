@@ -62,7 +62,23 @@ type initModelRegisterFindEntityByName struct {
 }
 
 var cacheModelRegisterFindEntityByName sync.Map
+var cacheFindEntityByModelName sync.Map
 
+func (reg *modelRegister) FindEntityByModelName(name string) *entity.Entity {
+	actually, _ := cacheFindEntityByModelName.LoadOrStore(name, &initModelRegisterFindEntityByName{})
+	item := actually.(*initModelRegisterFindEntityByName)
+	item.once.Do(func() {
+		if ret, ok := reg.cacheTableNameAndEntity[strings.ToLower(name)]; ok {
+			item.val = ret
+			return
+		}
+
+	})
+	if item.val == nil {
+		cacheFindEntityByModelName.Delete(name)
+	}
+	return item.val
+}
 func (reg *modelRegister) FindEntityByName(name string) *entity.Entity {
 	actually, _ := cacheModelRegisterFindEntityByName.LoadOrStore(name, &initModelRegisterFindEntityByName{})
 	item := actually.(*initModelRegisterFindEntityByName)
@@ -78,10 +94,11 @@ func (reg *modelRegister) FindEntityByName(name string) *entity.Entity {
 			}
 
 		}
-		if item.val == nil {
-			cacheModelRegisterFindEntityByName.Delete(name)
-		}
+
 	})
+	if item.val == nil {
+		cacheModelRegisterFindEntityByName.Delete(name)
+	}
 	return item.val
 }
 func (reg *modelRegister) GetMapEntities(tables []string) map[string]*entity.Entity {
