@@ -137,10 +137,10 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	}
 	var db = ds.db
 	var ctx = ds.ctx
-	var sqlInfo = ds.cmpInfo.Info
+	//var sqlInfo = ds.cmpInfo.Info
 	var args = ds.args
 
-	sqlCompiled, err := factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+	sqlCompiled, err := ds.ToSql()
 	if err != nil {
 		return nil, compiler.NewCompilerError(err.Error())
 	}
