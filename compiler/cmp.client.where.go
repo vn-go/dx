@@ -84,6 +84,10 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	if i.err != nil {
 		initMakeFilterCache.Delete(key)
 	}
+	if i.val == "" {
+		initMakeSelectCache.Delete(key)
+		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid expression", filter))
+	}
 	return i.val, i.err
 }
 func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]string, filter string) (string, error) {

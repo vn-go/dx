@@ -33,6 +33,10 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 	if i.err != nil {
 		initMakeSelectCache.Delete(key)
 	}
+	if i.val == "" {
+		initMakeSelectCache.Delete(key)
+		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid expression", selectors))
+	}
 	return i.val, i.err
 }
 func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]string, selectors string) (string, error) {

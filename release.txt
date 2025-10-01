@@ -328,3 +328,10 @@ git tag -a v1.0.51 -m "Support select on datasource and optimze creating datasou
 git push origin v1.0.51
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.51
+--
+git add .
+git commit -m "Support select on datasource and optimze creating datasource"
+git tag -a v1.0.52 -m "Support select on datasource and optimze creating datasource"
+git push origin v1.0.52
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.52
