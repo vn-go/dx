@@ -106,7 +106,11 @@ func TestSimple(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	db.ModelDatasource("user").Select("upper(username) f,enail").ToSql()
+	sql1, err := db.ModelDatasource("user").Select("username").ToSql()
+	assert.NoError(t, err)
+	sql2, err := db.ModelDatasource("user").Select("username f,email").ToSql()
+	assert.NoError(t, err)
+	assert.NotEqual(t, sql1, sql2)
 }
 func TestExecDataSourceUserName(t *testing.T) {
 

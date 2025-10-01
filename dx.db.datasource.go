@@ -30,6 +30,7 @@ type datasourceType struct {
 	err       error
 	strWhere  string
 	strSelect string
+	key       string
 }
 
 func (ds *datasourceType) Sort(strSort string) *datasourceType {
@@ -60,7 +61,7 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
-	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.cmpInfo.Info.GetKey())
+	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
 	if err != nil {
 		ds.err = err
 		return ds
@@ -86,7 +87,7 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
-	strSelect, err := compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.cmpInfo.Info.GetKey())
+	strSelect, err := compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.key)
 
 	if err != nil {
 		ds.err = err
@@ -283,6 +284,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	}
 	return &datasourceType{
 		cmpInfo: sqlInfo,
+		key:     sqlInfo.Info.GetKey(),
 		db:      db,
 		args:    []any{},
 	}
