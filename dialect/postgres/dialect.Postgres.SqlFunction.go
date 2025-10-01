@@ -28,10 +28,7 @@ func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) 
 	default:
 
 		if !d.isReleaseMode {
-			defer func() {
-				panic(fmt.Sprintf("%s not implement at postgresDialect.SqlFunction, see %s", delegator.FuncName, `dialect\postgres\dialect.Postgres.SqlFunction.go`))
-			}()
-			return "", fmt.Errorf("%s is not function", delegator.FuncName)
+			panic(fmt.Sprintf("%s not implement at postgresDialect.SqlFunction, see %s", delegator.FuncName, `dialect\postgres\dialect.Postgres.SqlFunction.go`))
 		} else {
 			return "", fmt.Errorf("%s is not function", delegator.FuncName)
 		}

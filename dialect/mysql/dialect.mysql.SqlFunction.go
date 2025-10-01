@@ -7,18 +7,60 @@ import (
 	"github.com/vn-go/dx/dialect/types"
 )
 
-var castFunc map[string]string = map[string]string{
+var castFunc = map[string]string{
+	// Date & Time
 	"day":         "DAY",
 	"month":       "MONTH",
 	"year":        "YEAR",
 	"hour":        "HOUR",
-	"minutes":     "MINUTE",
+	"minute":      "MINUTE", // sửa "minutes" -> "minute" chuẩn hơn
 	"second":      "SECOND",
 	"microsecond": "MICROSECOND",
-	"len":         "LENGTH",
-	"isnull":      "IFNULL",
 	"date":        "DATE",
-	"concat":      "CONCAT",
+
+	// String
+	"len":       "LENGTH",
+	"isnull":    "IFNULL",
+	"concat":    "CONCAT",
+	"upper":     "UPPER",
+	"lower":     "LOWER",
+	"left":      "LEFT",
+	"right":     "RIGHT",
+	"substring": "SUBSTRING",
+
+	// Arithmetic / Numeric
+	"abs":      "ABS",
+	"ceil":     "CEIL", // hoặc CEILING
+	"ceiling":  "CEILING",
+	"floor":    "FLOOR",
+	"round":    "ROUND",
+	"truncate": "TRUNCATE",
+	"mod":      "MOD",
+	"sign":     "SIGN",
+	"pi":       "PI",
+
+	// Power & Logarithm
+	"pow":   "POW",
+	"power": "POWER",
+	"sqrt":  "SQRT",
+	"exp":   "EXP",
+	"ln":    "LN",
+	"log":   "LOG",
+	"log10": "LOG10",
+	"log2":  "LOG2",
+
+	// Random
+	"rand": "RAND",
+
+	// Trigonometric
+	"sin":   "SIN",
+	"cos":   "COS",
+	"tan":   "TAN",
+	"cot":   "COT",
+	"asin":  "ASIN",
+	"acos":  "ACOS",
+	"atan":  "ATAN",
+	"atan2": "ATAN2",
 }
 
 func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
@@ -34,10 +76,7 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 
 	default:
 		if !d.isReleaseMode {
-			defer func() {
-				panic(fmt.Sprintf("%s not implement at mySqlDialect.SqlFunction, see %s", delegator.FuncName, `dialect\mysql\dialect.mysql.SqlFunction.go`))
-			}()
-			return "", fmt.Errorf("%s is not function", delegator.FuncName)
+			panic(fmt.Sprintf("%s not implement at mySqlDialect.SqlFunction, see %s", delegator.FuncName, `dialect\mysql\dialect.mysql.SqlFunction.go`))
 		} else {
 			return "", fmt.Errorf("%s is not function", delegator.FuncName)
 		}
