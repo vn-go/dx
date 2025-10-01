@@ -100,7 +100,14 @@ func TestExecDataSourceUser(t *testing.T) {
 func clearMap(data *map[string]string) {
 	(*data)["X"] = "dsadsad"
 }
-
+func TestSimple(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	db.ModelDatasource("user").Select("upper(username) f,enail").ToSql()
+}
 func TestExecDataSourceUserName(t *testing.T) {
 
 	dx.Options.ShowSql = true

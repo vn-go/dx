@@ -34,7 +34,10 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 
 	default:
 		if !d.isReleaseMode {
-			panic(fmt.Sprintf("%s not implement at mySqlDialect.SqlFunction, see %s", delegator.FuncName, `dialect\mysql\dialect.mysql.SqlFunction.go`))
+			defer func() {
+				panic(fmt.Sprintf("%s not implement at mySqlDialect.SqlFunction, see %s", delegator.FuncName, `dialect\mysql\dialect.mysql.SqlFunction.go`))
+			}()
+
 		}
 		return "", nil
 	}
