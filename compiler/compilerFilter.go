@@ -13,6 +13,9 @@ type compilerFilterType struct {
 
 func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, numOfParams *int, fields map[string]string, n sqlparser.SQLNode) (string, error) {
 	if x, ok := n.(*sqlparser.ComparisonExpr); ok {
+		if _, ok := x.Left.(*sqlparser.SQLVal); ok {
+			return "", NewCompilerError(fmt.Sprintf("'%s' is vallid expression", strFilter))
+		}
 		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Left)
 		if err != nil {
 			return "", err
@@ -20,6 +23,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		right, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Right)
 		if err != nil {
 			return "", err
+		}
+		if left == right {
+			return "", NewCompilerError(fmt.Sprintf("'%s' is vallid expression", strFilter))
 		}
 		return left + " " + x.Operator + " " + right, nil
 	}
