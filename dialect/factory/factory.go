@@ -15,7 +15,8 @@ import (
 )
 
 type dialectFactoryReceiver struct {
-	cacheCreate sync.Map
+	cacheCreate   sync.Map
+	isReleaseMode bool
 }
 type DB_TYPE int
 
@@ -107,12 +108,16 @@ func (d *dialectFactoryReceiver) create(driverName string) types.Dialect {
 
 	return ret
 }
+func (d *dialectFactoryReceiver) Mode(isReleaseMode bool) {
+	d.isReleaseMode = isReleaseMode
+}
 func (d *dialectFactoryReceiver) Create(driverName string) types.Dialect {
 
 	actual, _ := d.cacheCreate.LoadOrStore(driverName, &dialectCreateInit{})
 	init := actual.(*dialectCreateInit)
 	init.once.Do(func() {
 		init.val = d.create(driverName)
+		init.val.ReleaseMode(d.isReleaseMode)
 	})
 	return init.val
 

@@ -76,6 +76,9 @@ type SqlParse struct {
 	ArgIndex []reflect.StructField
 }
 type Dialect interface {
+	// true debug mode, panic will raise instead returning error
+	ReleaseMode(bool)
+
 	LikeValue(val string) string
 
 	ParseError(dbSchema *types.DbSchema, err error) error

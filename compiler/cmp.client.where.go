@@ -2,6 +2,8 @@ package compiler
 
 import (
 	"fmt"
+	"reflect"
+	"sync"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
@@ -61,7 +63,31 @@ type cmpWhereType struct {
 
 var CmpWhere = &cmpWhereType{}
 
-func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]string, filter string, numOfParams *int) (string, error) {
+type initMakeFilter struct {
+	val  string
+	err  error
+	once sync.Once
+}
+
+var initMakeFilterCache sync.Map
+
+func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]string, filter string, sqlSource string) (string, error) {
+	key := filter + "://" + reflect.TypeFor[cmpWhereType]().String() + "/" + sqlSource
+	// for k, v := range outputFields {
+	// 	key += k + "@" + v
+	// }
+	a, _ := initMakeFilterCache.LoadOrStore(key, &initMakeFilter{})
+	i := a.(*initMakeFilter)
+	i.once.Do(func() {
+		i.val, i.err = cmp.makeFilterInternal(dialect, outputFields, filter)
+	})
+	if i.err != nil {
+		initMakeFilterCache.Delete(key)
+	}
+	return i.val, i.err
+}
+func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]string, filter string) (string, error) {
+
 	sql := "select * from tmp where " + filter
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 	if err != nil {
@@ -73,7 +99,7 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		return CompilerFilter.Resolve(dialect, filter, numOfParams, outputFields, selectExpr.Where.Expr)
+		return CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr)
 	} else {
 		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))
 	}

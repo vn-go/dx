@@ -12,16 +12,16 @@ import (
 type compilerFilterType struct {
 }
 
-func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, numOfParams *int, fields map[string]string, n sqlparser.SQLNode) (string, error) {
+func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]string, n sqlparser.SQLNode) (string, error) {
 	if x, ok := n.(*sqlparser.ComparisonExpr); ok {
 		if _, ok := x.Left.(*sqlparser.SQLVal); ok {
 			return "", NewCompilerError(fmt.Sprintf("'%s' is vallid expression", strFilter))
 		}
-		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Left)
+		left, err := cmp.Resolve(dialect, strFilter,  fields, x.Left)
 		if err != nil {
 			return "", err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Right)
+		right, err := cmp.Resolve(dialect, strFilter,  fields, x.Right)
 		if err != nil {
 			return "", err
 		}
@@ -31,11 +31,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		return left + " " + x.Operator + " " + right, nil
 	}
 	if x, ok := n.(*sqlparser.BinaryExpr); ok {
-		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Left)
+		left, err := cmp.Resolve(dialect, strFilter,  fields, x.Left)
 		if err != nil {
 			return "", err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Right)
+		right, err := cmp.Resolve(dialect, strFilter,  fields, x.Right)
 		if err != nil {
 			return "", err
 		}
@@ -58,8 +58,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 	if x, ok := n.(*sqlparser.SQLVal); ok {
 		v := string(x.Val)
 		if strings.HasPrefix(v, ":v") {
-			n := *numOfParams + 1
-			numOfParams = &n
+			
 			//n := *nextArgIndex + argIndex
 
 			return "?", nil
@@ -83,29 +82,29 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 	}
 	if x, ok := n.(*sqlparser.AndExpr); ok {
-		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Left)
+		left, err := cmp.Resolve(dialect, strFilter,  fields, x.Left)
 		if err != nil {
 			return "", err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Right)
+		right, err := cmp.Resolve(dialect, strFilter,  fields, x.Right)
 		if err != nil {
 			return "", err
 		}
 		return left + " AND " + right, nil
 	}
 	if x, ok := n.(*sqlparser.OrExpr); ok {
-		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Left)
+		left, err := cmp.Resolve(dialect, strFilter,  fields, x.Left)
 		if err != nil {
 			return "", err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Right)
+		right, err := cmp.Resolve(dialect, strFilter,  fields, x.Right)
 		if err != nil {
 			return "", err
 		}
 		return left + " OR" + right, nil
 	}
 	if x, ok := n.(*sqlparser.NotExpr); ok {
-		left, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Expr)
+		left, err := cmp.Resolve(dialect, strFilter,  fields, x.Expr)
 		if err != nil {
 			return "", err
 		}
@@ -113,10 +112,10 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		return "NOT " + left, nil
 	}
 	if x, ok := n.(*sqlparser.FuncExpr); ok {
-		return cmp.ResolveFunc(dialect, strFilter, numOfParams, fields, x)
+		return cmp.ResolveFunc(dialect, strFilter,  fields, x)
 	}
 	if x, ok := n.(*sqlparser.AliasedExpr); ok {
-		return cmp.Resolve(dialect, strFilter, numOfParams, fields, x.Expr)
+		return cmp.Resolve(dialect, strFilter,  fields, x.Expr)
 	}
 	if isDebugMode {
 		panic(fmt.Sprintf("not implement %T, see 'Resolve' in file '%s'", n, `compiler\compilerFilter.go`))
@@ -124,7 +123,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 	return "", newCompilerError(fmt.Sprintf("'%s' is invalid expression ", strFilter), ERR)
 
 }
-func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, numOfParams *int, fields map[string]string, x *sqlparser.FuncExpr) (string, error) {
+func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string,  fields map[string]string, x *sqlparser.FuncExpr) (string, error) {
 	strArgs := []string{}
 	if x.Name.Lowered() == "contains" {
 		if len(x.Exprs) != 2 {
@@ -132,7 +131,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		}
 
 		for _, e := range x.Exprs {
-			ex, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, e)
+			ex, err := cmp.Resolve(dialect, strFilter,  fields, e)
 			if err != nil {
 				return "", err
 			}
@@ -155,7 +154,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		return strArgs[0] + " LIKE " + dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")", nil
 	}
 	for _, e := range x.Exprs {
-		ex, err := cmp.Resolve(dialect, strFilter, numOfParams, fields, e)
+		ex, err := cmp.Resolve(dialect, strFilter,  fields, e)
 		if err != nil {
 			return "", err
 		}
@@ -179,7 +178,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 	if x.Name.Lowered() == "concat" {
 		newArgs := []string{}
 		for _, x := range dialectDelegateFunction.Args {
-			newArgs = append(newArgs, "COALESCE("+x+",''")
+			newArgs = append(newArgs, "COALESCE("+x+",'')")
 		}
 		return dialectDelegateFunction.FuncName + "(" + strings.Join(newArgs, ", ") + ")", nil
 	}

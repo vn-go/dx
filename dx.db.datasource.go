@@ -9,15 +9,27 @@ import (
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/dialect/types"
 )
 
+type dataSourceArg struct {
+	ArgWhere   []any
+	ArgsSelect []any
+	ArgJoin    []any
+	ArgGroup   []any
+	ArgHaving  []any
+	ArgOrder   []any
+	ArgSetter  []any
+}
 type datasourceType struct {
 	cmpInfo *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
-	db   *DB
-	args []any
-	ctx  context.Context
-	err  error
+	db        *DB
+	args      []any
+	ctx       context.Context
+	err       error
+	strWhere  string
+	strSelect string
 }
 
 func (ds *datasourceType) Sort(strSort string) *datasourceType {
@@ -45,20 +57,21 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
+
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
-	var numOfWhereParams = 0
-	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, &numOfWhereParams)
+
+	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.cmpInfo.Info.GetKey())
 	if err != nil {
 		ds.err = err
 		return ds
 	}
+	ds.strWhere = strWhereNew
+	// if ds.cmpInfo.Info.StrWhere != "" {
+	// 	ds.cmpInfo.Info.StrWhere += " AND (" + strWhereNew + ")"
+	// } else {
+	// 	ds.cmpInfo.Info.StrWhere = strWhereNew
 
-	if ds.cmpInfo.Info.StrWhere != "" {
-		ds.cmpInfo.Info.StrWhere += " AND (" + strWhereNew + ")"
-	} else {
-		ds.cmpInfo.Info.StrWhere = strWhereNew
-
-	}
+	// }
 	if ds.args == nil {
 		ds.args = []any{}
 	}
@@ -66,13 +79,23 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 
 	return ds
 }
+
 func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 	if ds.err != nil {
 		return ds
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
-	var numOfWhereParams = 0
-	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, &numOfWhereParams)
+
+	strSelect, err := compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.cmpInfo.Info.GetKey())
+
+	if err != nil {
+		ds.err = err
+		return ds
+	}
+	//ds.cmpInfo.Info.StrSelect = strSelect
+	ds.strSelect = strSelect
+	ds.args = append(ds.args, args...)
+	return ds
 }
 func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
 	if ds.err != nil {
@@ -80,6 +103,33 @@ func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
 	}
 	ds.ctx = ctx
 	return ds
+}
+
+func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
+	if ds.err != nil {
+		return nil, ds.err
+	}
+	var db = ds.db
+	// var ctx = ds.ctx
+	var sqlInfo = ds.cmpInfo.Info
+	oldStrWhere := ds.cmpInfo.Info.StrWhere
+	oldStrSelect := ds.cmpInfo.Info.StrSelect
+	defer func() {
+		ds.cmpInfo.Info.StrWhere = oldStrWhere
+		ds.cmpInfo.Info.StrSelect = oldStrSelect
+	}()
+	// var args = ds.args
+	if ds.strWhere != "" {
+		ds.cmpInfo.Info.StrSelect += " AND (" + ds.strWhere + ")"
+	}
+	if ds.strSelect != "" {
+		ds.cmpInfo.Info.StrSelect = ds.strSelect
+	}
+
+	return factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+	// if err != nil {
+	// 	return nil, compiler.NewCompilerError(err.Error())
+	// }
 }
 func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	if ds.err != nil {

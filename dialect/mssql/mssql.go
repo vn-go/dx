@@ -12,6 +12,7 @@ import (
 
 type mssqlDialect struct {
 	cacheMakeSqlInsert sync.Map
+	isReleaseMode      bool
 }
 
 var mssqlBoolMap = map[string]string{
@@ -21,6 +22,9 @@ var mssqlBoolMap = map[string]string{
 	"false": "0",
 }
 
+func (d *mssqlDialect) ReleaseMode(v bool) {
+	d.isReleaseMode = v
+}
 func (d *mssqlDialect) ToBool(val string) string {
 	if ret, ok := mssqlBoolMap[strings.ToLower(val)]; ok {
 		return ret
@@ -46,11 +50,7 @@ func (d *mssqlDialect) ToText(value string) string {
 func (d *mssqlDialect) ToParam(index int) string {
 	return fmt.Sprintf("@p%d", index)
 }
-func (d *mssqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
-	//delegator.Approved = true
-	delegator.FuncName = strings.ToUpper(delegator.FuncName)
-	return "", nil
-}
+
 
 var mssqlDialectIntance = &mssqlDialect{
 	cacheMakeSqlInsert: sync.Map{},

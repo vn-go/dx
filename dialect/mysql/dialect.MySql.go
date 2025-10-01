@@ -11,6 +11,7 @@ import (
 
 type mySqlDialect struct {
 	cacheMakeSqlInsert sync.Map
+	isReleaseMode      bool
 }
 
 var mysqlBoolMap = map[string]string{
@@ -20,6 +21,9 @@ var mysqlBoolMap = map[string]string{
 	"false": "FALSE",
 }
 
+func (d *mySqlDialect) ReleaseMode(v bool) {
+	d.isReleaseMode = v
+}
 func (d *mySqlDialect) ToBool(val string) string {
 	if ret, ok := mysqlBoolMap[strings.ToLower(val)]; ok {
 		return ret

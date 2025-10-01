@@ -67,6 +67,7 @@ var Options = globalOptType{
 
 func CompilerMode(isDebug bool) {
 	compiler.Mode(isDebug)
+	factory.DialectFactory.Mode(!isDebug)
 }
 func (db *DB) fecthItems(items any, queryStmt string, ctx context.Context, sqlTx *sql.Tx, resetLen bool, args ...any) error {
 	// items phải là pointer đến slice

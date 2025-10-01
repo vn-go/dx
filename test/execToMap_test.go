@@ -97,7 +97,12 @@ func TestExecDataSourceUser(t *testing.T) {
 	n := len(users)
 	fmt.Println(n)
 }
+func clearMap(data *map[string]string) {
+	(*data)["X"] = "dsadsad"
+}
+
 func TestExecDataSourceUserName(t *testing.T) {
+
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", hrCnn)
 	if err != nil {
@@ -105,10 +110,105 @@ func TestExecDataSourceUserName(t *testing.T) {
 	}
 	dsUser := db.ModelDatasource("user")
 	assert.NoError(t, err)
-	dsUser.Limit(10).Where("isActive=true")
+	dsUser.Limit(10).Select(
+		`id,
+		username,
+		isnull(email,'') email,
+		concat(username,' ',email) fullName,
+		day(createdOn) day`,
+	).Where("isActive=true and day>10")
 	users, err := dsUser.ToDict()
 	assert.NotEmpty(t, users)
 	n := len(users)
 	fmt.Println(n)
 
 }
+func BenchmarkExecDataSourceUserName(t *testing.B) {
+
+	//dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	for i := 0; i < t.N; i++ {
+		dsUser := db.ModelDatasource("user")
+		assert.NoError(t, err)
+		dsUser.Limit(10).Select(
+			`id,
+			username,
+			isnull(email,'') email,
+			concat(username,' ',email) fullName,
+			day(createdOn) day`,
+		).Where("isActive=true and day>10")
+		users, err := dsUser.ToDict()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, users)
+
+	}
+
+}
+
+func BenchmarkDataSourceUserName(t *testing.B) {
+
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	dsUser := db.ModelDatasource("user")
+	assert.NoError(t, err)
+	qlTest := dsUser.Limit(10).Select(
+		`id,
+		username,
+		isnull(email,'') email,
+		concat(username,' ',email) fullName,
+		day(createdOn) day`,
+	)
+	for i := 0; i < t.N; i++ {
+		qlTest.Where("isActive=true and day>10")
+		dsUser.ToSql()
+	}
+
+}
+
+/*
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkDataSourceUserName$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkDataSourceUserName-16    	    3742	    487157 ns/op	 1611334 B/op	     220 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.790s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkDataSourceUserName$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkDataSourceUserName-16    	    3866	    992752 ns/op	 4075444 B/op	     245 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	5.457s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkDataSourceUserName$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkDataSourceUserName-16    	  521468	      2503 ns/op	    4363 B/op	      20 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.692s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkDataSourceUserName$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkDataSourceUserName-16    	  398685	      2535 ns/op	    3962 B/op	      20 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.813s
+*/

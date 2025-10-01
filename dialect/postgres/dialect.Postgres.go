@@ -11,6 +11,7 @@ import (
 
 type postgresDialect struct {
 	cacheMakeSqlInsert sync.Map
+	isReleaseMode      bool
 }
 
 var pgBoolMap = map[string]string{
@@ -18,6 +19,10 @@ var pgBoolMap = map[string]string{
 	"true":  "TRUE",
 	"no":    "FALSE",
 	"false": "FALSE",
+}
+
+func (d *postgresDialect) ReleaseMode(v bool) {
+	d.isReleaseMode = v
 }
 
 func (d *postgresDialect) ToBool(val string) string {
@@ -45,29 +50,7 @@ func (d *postgresDialect) ToText(value string) string {
 func (d *postgresDialect) ToParam(index int) string {
 	return fmt.Sprintf("$%d", index)
 }
-func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 
-	switch strings.ToLower(delegator.FuncName) {
-	case "len":
-		delegator.FuncName = "LENGTH"
-		delegator.HandledByDialect = true
-		return "LENGTH" + "(" + strings.Join(delegator.Args, ", ") + ")", nil
-	case "concat":
-		delegator.HandledByDialect = true
-		castArgs := make([]string, len(delegator.Args))
-		for i, x := range delegator.Args {
-			if x[0] == '$' {
-				castArgs[i] = x + "::text"
-			} else {
-				castArgs[i] = x
-			}
-		}
-		return "CONCAT" + "(" + strings.Join(castArgs, ", ") + ")", nil
-	default:
-
-		return "", nil
-	}
-}
 
 var postgresDialectInstance = &postgresDialect{
 	cacheMakeSqlInsert: sync.Map{},
