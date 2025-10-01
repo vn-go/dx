@@ -72,6 +72,10 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 		return "", newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", filter, err.Error()), ERR)
 	}
 	//*sqlparser.Select
+	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
+		return CompilerFilter.Resolve(dialect, filter, numOfParams, outputFields, selectExpr.Where.Expr)
+	} else {
+		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))
+	}
 
-	return CompilerFilter.Resolve(dialect, filter, numOfParams, outputFields, sqlExpr.(*sqlparser.Select).Where.Expr)
 }
