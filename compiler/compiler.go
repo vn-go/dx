@@ -539,6 +539,8 @@ func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 
 }
 
+// True panic if compiler error
+// False return error in compiler error
 var isDebugMode = true
 
 func Mode(isDebug bool) {
