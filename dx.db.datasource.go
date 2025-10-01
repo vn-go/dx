@@ -120,7 +120,7 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 	}()
 	// var args = ds.args
 	if ds.strWhere != "" {
-		ds.cmpInfo.Info.StrSelect += " AND (" + ds.strWhere + ")"
+		ds.cmpInfo.Info.StrWhere += " AND (" + ds.strWhere + ")"
 	}
 	if ds.strSelect != "" {
 		ds.cmpInfo.Info.StrSelect = ds.strSelect
