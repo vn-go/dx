@@ -26,9 +26,14 @@ func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) 
 		}
 		return "CONCAT" + "(" + strings.Join(castArgs, ", ") + ")", nil
 	default:
+
 		if !d.isReleaseMode {
-			panic(fmt.Sprintf("%s not implement at postgresDialect.SqlFunction, see %s", delegator.FuncName, `dialect\postgres\dialect.Postgres.SqlFunction.go`))
+			defer func() {
+				panic(fmt.Sprintf("%s not implement at postgresDialect.SqlFunction, see %s", delegator.FuncName, `dialect\postgres\dialect.Postgres.SqlFunction.go`))
+			}()
+			return "", fmt.Errorf("%s is not function", delegator.FuncName)
+		} else {
+			return "", fmt.Errorf("%s is not function", delegator.FuncName)
 		}
-		return "", nil
 	}
 }

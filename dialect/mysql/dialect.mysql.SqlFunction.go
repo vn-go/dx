@@ -37,9 +37,11 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 			defer func() {
 				panic(fmt.Sprintf("%s not implement at mySqlDialect.SqlFunction, see %s", delegator.FuncName, `dialect\mysql\dialect.mysql.SqlFunction.go`))
 			}()
-
+			return "", fmt.Errorf("%s is not function", delegator.FuncName)
+		} else {
+			return "", fmt.Errorf("%s is not function", delegator.FuncName)
 		}
-		return "", nil
+		//return "", nil
 	}
 
 }
