@@ -106,6 +106,12 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 		delegator.IsAggregate = true
 		return ret, nil
 	}
+	if fnName == "countall" {
+		delegator.FuncName = "count(*)"
+		delegator.IsAggregate = true
+		delegator.HandledByDialect = true
+		return "count(*)", nil
+	}
 	switch fnName {
 	case "now":
 		delegator.HandledByDialect = true

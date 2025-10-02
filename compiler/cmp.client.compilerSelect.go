@@ -170,6 +170,10 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 
 		}
 	}
+	if _, ok := n.(*sqlparser.StarExpr); ok {
+		return nil, NewCompilerError(fmt.Sprintf("%s' in '%s' is invalid expression, use CountAll instead", "count(*)", selector))
+
+	}
 	if isDebugMode {
 		panic(fmt.Sprintf("Not implement %T, see 'resolve' in %s", n, `compiler\cmp.client.compilerSelect.go`))
 	} else {

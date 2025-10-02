@@ -71,7 +71,9 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	return ds
 }
 func (ds *datasourceType) buildWhere(strWhere string) {
-
+	if strWhere == "" {
+		return
+	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
 	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
@@ -122,7 +124,9 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 	return ds
 }
 func (ds *datasourceType) buildSelect(selector string) {
-
+	if selector == "" {
+		return
+	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
 	selectors, err := compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.key)

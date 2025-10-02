@@ -14,7 +14,7 @@ func TestSelectSum(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
+	ds := db.ModelDatasource("user").Select("CountAll() Total")
 	sql, err := ds.ToSql()
 	assert.NoError(t, err)
 	if err != nil {
@@ -26,19 +26,19 @@ func TestSelectSum(t *testing.T) {
 	fmt.Println(data)
 }
 func BenchmarkSelectSum(t *testing.B) {
-	dx.Options.ShowSql = true
+	//dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", hrCnn)
 	if err != nil {
 		t.Fail()
 	}
 	for i := 0; i < t.N; i++ {
 		ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
-		sql, err := ds.ToSql()
+		_, err := ds.ToDict()
 		assert.NoError(t, err)
 		if err != nil {
 			t.Fail()
 		}
-		assert.NotEmpty(t, sql)
+		//assert.NotEmpty(t, sql)
 		// fmt.Println(sql.Sql)
 		// data, err := ds.ToDict()
 		// assert.NoError(t, err)
