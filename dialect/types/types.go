@@ -16,8 +16,10 @@ import (
 // The dialect decides whether a function needs to be adapted for the target database driver.
 // If required, the function will be rewritten here.
 type DialectDelegateFunction struct {
-	FuncName         string
-	Args             []string
+	FuncName string
+	Args     []string
+	// is aggregate function
+	IsAggregate      bool
 	HandledByDialect bool // ✅ Indicates if this function is allowed to be delegated to the dialect
 }
 type DIALECT_DB_ERROR_TYPE = int
@@ -75,6 +77,11 @@ type SqlParse struct {
 	Sql      string
 	ArgIndex []reflect.StructField
 }
+type SqlFncType struct {
+	Expr        string
+	IsAggregate bool
+}
+
 type Dialect interface {
 	// true debug mode, panic will raise instead returning error
 	ReleaseMode(bool)

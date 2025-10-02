@@ -131,6 +131,7 @@ func mySqlbuildSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 			return nil, err
 		}
 	}
+
 	ret.ArgIndex = append(ret.ArgIndex, info.FieldArs.ArgGroup)
 	// HAVING
 	if info.StrHaving != "" {

@@ -9,14 +9,14 @@ import (
 
 var castFunc = map[string]string{
 	// Date & Time
-	"day":         "DAY",
-	"month":       "MONTH",
-	"year":        "YEAR",
-	"hour":        "HOUR",
-	"minute":      "MINUTE", // sửa "minutes" -> "minute" chuẩn hơn
-	"second":      "SECOND",
-	"microsecond": "MICROSECOND",
-	"date":        "DATE",
+	"day":    "DAY",
+	"month":  "MONTH",
+	"year":   "YEAR",
+	"hour":   "HOUR",
+	"minute": "MINUTE", // sửa "minutes" -> "minute" chuẩn hơn
+	"second": "SECOND",
+	//"microsecond": "MICROSECOND",
+	"date": "DATE",
 
 	// String
 	"len":       "LENGTH",
@@ -62,11 +62,48 @@ var castFunc = map[string]string{
 	"atan":  "ATAN",
 	"atan2": "ATAN2",
 }
+var aggregateFunc = map[string]string{
+	// Core
+	"count": "COUNT",
+	"sum":   "SUM",
+	"avg":   "AVG",
+	"min":   "MIN",
+	"max":   "MAX",
+
+	// Statistical
+	"std":         "STD",    // alias của STDDEV_POP
+	"stddev":      "STDDEV", // alias của STDDEV_POP
+	"stddev_pop":  "STDDEV_POP",
+	"stddev_samp": "STDDEV_SAMP",
+	"var_pop":     "VAR_POP",
+	"var_samp":    "VAR_SAMP",
+	"variance":    "VARIANCE", // alias của VAR_POP
+
+	// Bitwise
+	// "bit_and": "BIT_AND",
+	// "bit_or":  "BIT_OR",
+	// "bit_xor": "BIT_XOR",
+
+	// String aggregate
+	"group_concat": "GROUP_CONCAT",
+
+	// JSON aggregate
+	"json_arrayagg":  "JSON_ARRAYAGG",
+	"json_objectagg": "JSON_OBJECTAGG",
+
+	// // Special
+	// "any_value": "ANY_VALUE",
+}
 
 func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
 	if ret, ok := castFunc[fnName]; ok {
 		delegator.FuncName = ret
+		return ret, nil
+	}
+	if ret, ok := aggregateFunc[fnName]; ok {
+		delegator.FuncName = ret
+		delegator.IsAggregate = true
 		return ret, nil
 	}
 	switch fnName {

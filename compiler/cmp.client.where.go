@@ -64,14 +64,14 @@ type cmpWhereType struct {
 var CmpWhere = &cmpWhereType{}
 
 type initMakeFilter struct {
-	val  string
+	val  *CompilerFilterTypeResult
 	err  error
 	once sync.Once
 }
 
 var initMakeFilterCache sync.Map
 
-func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]string, filter string, sqlSource string) (string, error) {
+func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]string, filter string, sqlSource string) (*CompilerFilterTypeResult, error) {
 	key := filter + "://" + reflect.TypeFor[cmpWhereType]().String() + "/" + sqlSource
 	// for k, v := range outputFields {
 	// 	key += k + "@" + v
@@ -84,28 +84,28 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	if i.err != nil {
 		initMakeFilterCache.Delete(key)
 	}
-	if i.val == "" {
+	if i.val == nil {
 		initMakeSelectCache.Delete(key)
-		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid expression", filter))
+		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", filter))
 	}
 	return i.val, i.err
 }
-func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]string, filter string) (string, error) {
+func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]string, filter string) (*CompilerFilterTypeResult, error) {
 
 	sql := "select * from tmp where " + filter
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 	if err != nil {
-		return "", newCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter), ERR)
+		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter), ERR)
 	}
 	sqlExpr, err := sqlparser.Parse(sqlParse)
 	if err != nil {
-		return "", newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", filter, err.Error()), ERR)
+		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", filter, err.Error()), ERR)
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
 		return CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr)
 	} else {
-		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))
+		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))
 	}
 
 }

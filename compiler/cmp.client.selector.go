@@ -10,20 +10,21 @@ import (
 )
 
 type cmpSelectorType struct {
-	cmpType COMPILER
+	cmpType       COMPILER
+	aggregateExpr map[string]bool
 }
 
 var CompilerSelect = &cmpSelectorType{}
 
 type initMakeSelect struct {
-	val  string
+	val  *ResolevSelectorResult
 	err  error
 	once sync.Once
 }
 
 var initMakeSelectCache sync.Map
 
-func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]string, selectors, prefixKey string) (string, error) {
+func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]string, selectors, prefixKey string) (*ResolevSelectorResult, error) {
 	key := selectors + "://" + prefixKey
 	a, _ := initMakeSelectCache.LoadOrStore(key, &initMakeSelect{})
 	i := a.(*initMakeSelect)
@@ -33,29 +34,53 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 	if i.err != nil {
 		initMakeSelectCache.Delete(key)
 	}
-	if i.val == "" {
+	if i.val == nil {
 		initMakeSelectCache.Delete(key)
-		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid expression", selectors))
+		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", selectors))
 	}
 	return i.val, i.err
 }
-func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]string, selectors string) (string, error) {
+
+// type selectorResult struct {
+// 	Expr  string
+// 	GroupByFields map[string]string
+// }
+
+func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]string, selectors string) (*ResolevSelectorResult, error) {
 	sql := "select " + selectors + " from tmp"
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 	if err != nil {
-		return "", newCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors), ERR)
+		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors), ERR)
 	}
 	sqlExpr, err := sqlparser.Parse(sqlParse)
 	if err != nil {
-		return "", newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", selectors, err.Error()), ERR)
+		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", selectors, err.Error()), ERR)
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
+		return cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
+		//ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// if cmp.aggregateExpr != nil {
+		// 	groupByFields =map[string]string {}
+		// 	for k,_:=range cmp.aggregateExpr {
 
-		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
-		return ret, err
+		// 	}
+		// 	return &selectorResult{
+		// 		Expr: ret,
+		// 		Group: ,
+		// 	}, nil
+
+		// } else {
+		// 	return &selectorResult{
+		// 		Expr: ret,
+		// 	}, nil
+		// }
+
 	} else {
-		return "", NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors))
+		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors))
 	}
 
 }
