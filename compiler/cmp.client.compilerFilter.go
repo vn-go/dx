@@ -39,25 +39,25 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return nil, NewCompilerError(fmt.Sprintf("'%s' is vallid expression", strFilter))
 		}
 		expr := left.expr + " " + x.Operator + " " + right.expr
-		fields := map[string]string{}
+		fieldsSelected := map[string]string{}
 		if left.fields != nil {
 			for k, v := range left.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 
 			}
 		}
 		if right.fields != nil {
 			for k, v := range right.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 			}
 		}
 		return &CompilerFilterTypeResult{
 			expr:   expr,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 	}
 	if x, ok := n.(*sqlparser.BinaryExpr); ok {
@@ -70,11 +70,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return nil, err
 		}
 		expr := left.expr + " " + x.Operator + " " + right.expr
-		fields := map[string]string{}
+		fieldsSelected := map[string]string{}
 		if left.fields != nil {
 			for k, v := range left.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 
 			}
@@ -82,14 +82,14 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		if right.fields != nil {
 			for k, v := range right.fields {
 				if _, ok := fields[k]; !ok {
-					fields[k] = v
+					fieldsSelected[k] = v
 				}
 			}
 		}
 
 		return &CompilerFilterTypeResult{
 			expr:   expr,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 
 	}
@@ -167,26 +167,26 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return nil, err
 		}
 
-		fields := map[string]string{}
+		fieldsSelected := map[string]string{}
 		if left.fields != nil {
 			for k, v := range left.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 
 			}
 		}
 		if right.fields != nil {
 			for k, v := range right.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 			}
 		}
 
 		return &CompilerFilterTypeResult{
 			expr:   left.expr + " AND " + right.expr,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 
 	}
@@ -199,45 +199,46 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		if err != nil {
 			return nil, err
 		}
-		fields := map[string]string{}
+		fieldsSelected := map[string]string{}
 		if left.fields != nil {
 			for k, v := range left.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 
 			}
 		}
 		if right.fields != nil {
 			for k, v := range right.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 			}
 		}
 
 		return &CompilerFilterTypeResult{
 			expr:   left.expr + " OR " + right.expr,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 
 	}
 	if x, ok := n.(*sqlparser.NotExpr); ok {
+		fieldsSelected := map[string]string{}
 		left, err := cmp.Resolve(dialect, strFilter, fields, x.Expr)
 		if err != nil {
 			return nil, err
 		}
 		if left.fields != nil {
 			for k, v := range left.fields {
-				if _, ok := fields[k]; !ok {
-					fields[k] = v
+				if _, ok := fieldsSelected[k]; !ok {
+					fieldsSelected[k] = v
 				}
 			}
 		}
 
 		return &CompilerFilterTypeResult{
 			expr:   "NOT " + left.expr,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 
 	}
@@ -259,7 +260,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		if len(x.Exprs) != 2 {
 			return nil, newCompilerError(fmt.Sprintf("%s require 2 args. expression is '%s", x.Name.String(), strFilter), ERR)
 		}
-		fields := map[string]string{}
+		fieldsSelected := map[string]string{}
 		for _, e := range x.Exprs {
 			ex, err := cmp.Resolve(dialect, strFilter, fields, e)
 			if err != nil {
@@ -267,8 +268,8 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 			}
 			if ex.fields != nil {
 				for k, v := range ex.fields {
-					if _, ok := fields[k]; !ok {
-						fields[k] = v
+					if _, ok := fieldsSelected[k]; !ok {
+						fieldsSelected[k] = v
 					}
 
 				}
@@ -290,24 +291,25 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 
 			return &CompilerFilterTypeResult{
 				expr:   ret,
-				fields: fields,
+				fields: fieldsSelected,
 			}, nil
 		}
 		ret = strArgs[0] + " LIKE " + dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")"
 		return &CompilerFilterTypeResult{
 			expr:   ret,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 	}
+	fieldsSelected := map[string]string{}
 	for _, e := range x.Exprs {
-		fields := map[string]string{}
+		fieldsSelected = map[string]string{}
 		ex, err := cmp.Resolve(dialect, strFilter, fields, e)
 		if err != nil {
 			return nil, err
 		}
 		if ex.fields != nil {
 			for k, v := range ex.fields {
-				if _, ok := fields[k]; !ok {
+				if _, ok := fieldsSelected[k]; !ok {
 					fields[k] = v
 				}
 			}
@@ -330,7 +332,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 
 		return &CompilerFilterTypeResult{
 			expr:   ret,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 	}
 	if x.Name.Lowered() == "concat" {
@@ -341,13 +343,13 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		ret := dialectDelegateFunction.FuncName + "(" + strings.Join(newArgs, ", ") + ")"
 		return &CompilerFilterTypeResult{
 			expr:   ret,
-			fields: fields,
+			fields: fieldsSelected,
 		}, nil
 	}
 	ret = dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")"
 	return &CompilerFilterTypeResult{
 		expr:   ret,
-		fields: fields,
+		fields: fieldsSelected,
 	}, nil
 }
 

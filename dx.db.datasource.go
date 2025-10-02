@@ -22,7 +22,8 @@ type dataSourceArg struct {
 	ArgSetter  []any
 }
 type datasourceType struct {
-	cmpInfo *compiler.SqlCompilerInfo
+	defaultSelector string
+	cmpInfo         *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
 	db             *DB
 	args           datasourceTypeArgs
@@ -79,6 +80,7 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
 	if err != nil {
 		ds.err = err
+		return
 
 	}
 	strWhere = strWhereNew.GetExpr()
@@ -125,7 +127,7 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 }
 func (ds *datasourceType) buildSelect(selector string) {
 	if selector == "" {
-		return
+		selector = ds.defaultSelector
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
@@ -364,18 +366,22 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 		}
 	}
 	strField := []string{}
+	defaultItems := []string{}
 	for _, c := range ent.Cols {
 		strField = append(strField, fmt.Sprintf(c.Name+" "+c.Field.Name))
+		defaultItems = append(defaultItems, fmt.Sprintf(c.Field.Name))
 	}
-	sqlInfo, err := compiler.Compile("select "+strings.Join(strField, ",")+" from "+ent.TableName, db.DriverName, true)
+	strDefaultSelect := strings.Join(strField, ",")
+	sqlInfo, err := compiler.Compile("select "+strDefaultSelect+" from "+ent.TableName, db.DriverName, true)
 	if err != nil {
 		return &datasourceType{
 			err: err,
 		}
 	}
 	return &datasourceType{
-		cmpInfo: sqlInfo,
-		key:     sqlInfo.Info.GetKey(),
-		db:      db,
+		defaultSelector: strings.Join(defaultItems, ","),
+		cmpInfo:         sqlInfo,
+		key:             sqlInfo.Info.GetKey(),
+		db:              db,
 	}
 }

@@ -14,7 +14,7 @@ func TestSelectSum(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ds := db.ModelDatasource("user").Select("CountAll() Total")
+	ds := db.ModelDatasource("user").Where("day(CreatedOn)=27")
 	sql, err := ds.ToSql()
 	assert.NoError(t, err)
 	if err != nil {
@@ -32,6 +32,7 @@ func BenchmarkSelectSum(t *testing.B) {
 		t.Fail()
 	}
 	for i := 0; i < t.N; i++ {
+
 		ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
 		_, err := ds.ToDict()
 		assert.NoError(t, err)

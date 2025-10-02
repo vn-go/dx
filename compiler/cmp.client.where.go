@@ -83,6 +83,7 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	})
 	if i.err != nil {
 		initMakeFilterCache.Delete(key)
+		return nil, i.err
 	}
 	if i.val == nil {
 		initMakeSelectCache.Delete(key)

@@ -33,6 +33,7 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 	})
 	if i.err != nil {
 		initMakeSelectCache.Delete(key)
+		return nil, i.err
 	}
 	if i.val == nil {
 		initMakeSelectCache.Delete(key)
@@ -59,25 +60,6 @@ func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFiel
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
 		return cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
-		//ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// if cmp.aggregateExpr != nil {
-		// 	groupByFields =map[string]string {}
-		// 	for k,_:=range cmp.aggregateExpr {
-
-		// 	}
-		// 	return &selectorResult{
-		// 		Expr: ret,
-		// 		Group: ,
-		// 	}, nil
-
-		// } else {
-		// 	return &selectorResult{
-		// 		Expr: ret,
-		// 	}, nil
-		// }
 
 	} else {
 		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors))
