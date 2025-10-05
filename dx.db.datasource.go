@@ -87,7 +87,6 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 		return
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
-	fmt.Println(ds.key)
 
 	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
 	if err != nil {

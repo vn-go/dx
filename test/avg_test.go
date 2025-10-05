@@ -31,20 +31,32 @@ func BenchmarkSelectSum(t *testing.B) {
 	if err != nil {
 		t.Fail()
 	}
-	for i := 0; i < t.N; i++ {
+	t.Run("parallel", func(t *testing.B) {
+		t.RunParallel(func(p *testing.PB) {
+			for p.Next() {
+				ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
 
-		ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
-		_, err := ds.ToDict()
-		assert.NoError(t, err)
-		if err != nil {
-			t.Fail()
+				ds.ToSql()
+			}
+		})
+	})
+	t.Run("No Parallel", func(t *testing.B) {
+		for i := 0; i < t.N; i++ {
+
+			ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
+			//_, err := ds.ToDict()
+			ds.ToSql()
+			assert.NoError(t, err)
+			if err != nil {
+				t.Fail()
+			}
+			//assert.NotEmpty(t, sql)
+			// fmt.Println(sql.Sql)
+			// data, err := ds.ToDict()
+			// assert.NoError(t, err)
+			// fmt.Println(data)
 		}
-		//assert.NotEmpty(t, sql)
-		// fmt.Println(sql.Sql)
-		// data, err := ds.ToDict()
-		// assert.NoError(t, err)
-		// fmt.Println(data)
-	}
+	})
 
 }
 
