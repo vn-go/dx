@@ -1,12 +1,16 @@
 package dx
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/vn-go/dx/internal"
+)
 
 func (db *DB) Joins(query string, args ...interface{}) *selectorTypes {
 	return &selectorTypes{
 		db:      db,
 		strJoin: query,
-		args: selectorTypesArgs{
+		args: internal.SelectorTypesArgs{
 			ArgJoin: args,
 		},
 	}

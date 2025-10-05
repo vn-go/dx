@@ -14,25 +14,29 @@ import (
 	"github.com/vn-go/dx/internal"
 )
 
-type dataSourceArg struct {
-	ArgWhere   []any
-	ArgsSelect []any
-	ArgJoin    []any
-	ArgGroup   []any
-	ArgHaving  []any
-	ArgOrder   []any
-	ArgSetter  []any
+//	type dataSourceArg struct {
+//		ArgWhere   []any
+//		ArgsSelect []any
+//		ArgJoin    []any
+//		ArgGroup   []any
+//		ArgHaving  []any
+//		ArgOrder   []any
+//		ArgSetter  []any
+//	}
+type exprWithArgs struct {
+	Expr string
+	Args []any
 }
 type datasourceType struct {
 	defaultSelector string
 	cmpInfo         *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
 	db                    *DB
-	args                  datasourceTypeArgs
+	args                  internal.SelectorTypesArgs
 	ctx                   context.Context
 	err                   error
 	strWhere              string
-	strWhereUseAliasField string
+	strWhereUseAliasField exprWithArgs
 	// serve for error message
 	strWhereOrigin string
 	// tell SQL generate that strWhere must place at "HAVING"
@@ -45,7 +49,7 @@ type datasourceType struct {
 
 	key string
 	// autoGroupbyField map[string]string
-	aggExpr map[string]string
+	aggExpr map[string]exprWithArgs
 	// aggExprRevert    map[string]string
 }
 
@@ -77,17 +81,7 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	return ds
 }
 func (ds *datasourceType) buildWhere(strWhere string) {
-	// oldStrWhere := ds.cmpInfo.Info.StrWhere
-	// oldStrSelect := ds.cmpInfo.Info.StrSelect
-	// StrGroupBy := ds.cmpInfo.Info.StrGroupBy
-	// StrHaving := ds.cmpInfo.Info.StrHaving
-	// defer func() {
-	// 	// reset before return result, very important avoid accumulate
-	// 	ds.cmpInfo.Info.StrWhere = oldStrWhere
-	// 	ds.cmpInfo.Info.StrSelect = oldStrSelect
-	// 	ds.cmpInfo.Info.StrHaving = StrHaving
-	// 	ds.cmpInfo.Info.StrGroupBy = StrGroupBy
-	// }()
+
 	if strWhere == "" {
 		return
 	}
@@ -99,11 +93,13 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 		return
 
 	}
-	strWhere = strWhereNew.GetExpr()
-	fields := strWhereNew.GetFields()
+
+	strWhere = strWhereNew.Expr
+	fields := strWhereNew.Fields
 	//check if field in fields is agg func expr
 	ds.strWhere = strWhere
-	ds.strWhereUseAliasField = strWhereNew.GetFieldExpr()
+	ds.strWhereUseAliasField.Expr = strWhereNew.FieldExpr
+	ds.strWhereUseAliasField.Args = strWhereNew.Args
 	ok := false
 	for k := range fields {
 		if _, ok = ds.aggExpr[k]; ok {
@@ -112,6 +108,7 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 	}
 	ds.whereIsInHaving = ok
 	if ds.whereIsInHaving {
+
 		for k := range fields {
 			if _, ok = ds.aggExpr[strings.ToLower(k)]; !ok {
 				if _, ok := ds.selector[strings.ToLower(k)]; !ok {
@@ -121,39 +118,35 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 
 			}
 		}
+		ds.args.ArgHaving = append(ds.args.ArgHaving, strWhereNew.Args...)
+	} else {
+		ds.args.ArgWhere = append(ds.args.ArgWhere, strWhereNew.Args...)
 	}
 
 }
 
-type datasourceTypeArgs struct {
-	ArgWhere   []any
-	ArgsSelect []any
-	ArgJoin    []any
-	ArgGroup   []any
-	ArgHaving  []any
-	ArgOrder   []any
-	ArgSetter  []any
-}
+// type datasourceTypeArgs struct {
+// 	ArgWhere   []any
+// 	ArgsSelect []any
+// 	ArgJoin    []any
+// 	ArgGroup   []any
+// 	ArgHaving  []any
+// 	ArgOrder   []any
+// 	ArgSetter  []any
+// }
 
 func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 
 	ds.strSelect = selector
 	ds.strSelectOrigin = selector
-	ds.args.ArgsSelect = append(ds.args.ArgsSelect, args)
+	if len(args) > 0 {
+		ds.args.ArgsSelect = append(ds.args.ArgsSelect, args)
+	}
+
 	return ds
 }
 func (ds *datasourceType) buildSelect(selector string) {
-	// oldStrWhere := ds.cmpInfo.Info.StrWhere
-	// oldStrSelect := ds.cmpInfo.Info.StrSelect
-	// StrGroupBy := ds.cmpInfo.Info.StrGroupBy
-	// StrHaving := ds.cmpInfo.Info.StrHaving
-	// defer func() {
-	// 	// reset before return result, very important avoid accumulate
-	// 	ds.cmpInfo.Info.StrWhere = oldStrWhere
-	// 	ds.cmpInfo.Info.StrSelect = oldStrSelect
-	// 	ds.cmpInfo.Info.StrHaving = StrHaving
-	// 	ds.cmpInfo.Info.StrGroupBy = StrGroupBy
-	// }()
+
 	if selector == "" {
 		selector = ds.defaultSelector
 	}
@@ -169,18 +162,25 @@ func (ds *datasourceType) buildSelect(selector string) {
 	ds.selector = map[string]bool{}
 	for _, x := range selectors.Selectors {
 		if !x.IsAggFuncCall {
+			// if current selector is agg function call
 			groupByItems = append(groupByItems, x.Expr)
+			ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args...) // add agrs group by
 		} else {
 			if ds.aggExpr == nil {
-				ds.aggExpr = map[string]string{}
+				ds.aggExpr = map[string]exprWithArgs{}
 			}
-			ds.aggExpr[strings.ToLower(x.Alias)] = x.Expr
+			ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
+				Expr: x.Expr,
+				Args: x.Args,
+			}
+
 		}
 		ds.selector[strings.ToLower(x.Alias)] = true
 	}
 	ds.strGroupBy = strings.Join(groupByItems, ",")
 
 	ds.strSelect = selectors.StrSelectors
+	ds.args.ArgsSelect = append(ds.args.ArgsSelect, selectors.Args.ArgsSelect...)
 
 }
 func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
@@ -191,11 +191,16 @@ func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
 	return ds
 }
 
-func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
+type datasourceTypeSql struct {
+	Sql  string
+	Args []any
+}
+
+func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 	if ds.err != nil {
 		return nil, ds.err
 	}
-	return internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*types.SqlParse, error) {
+	sqlParse, err := internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*types.SqlParse, error) {
 		var db = ds.db
 		// var ctx = ds.ctx
 		var sqlInfo = ds.cmpInfo.Info.Clone()
@@ -212,11 +217,14 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 		// var args = ds.args
 		if ds.whereIsInHaving {
 			if ds.db.DriverName == "mysql" {
-				if ds.strWhereUseAliasField != "" {
+				if ds.strWhereUseAliasField.Expr != "" {
 					if sqlInfo.StrHaving != "" {
-						sqlInfo.StrHaving += " AND (" + ds.strWhereUseAliasField + ")"
+						sqlInfo.StrHaving += " AND (" + ds.strWhereUseAliasField.Expr + ")"
+						//ds.args.ArgHaving = append(ds.args.ArgHaving, ds.strWhereUseAliasField.Args...)
+
 					} else {
-						sqlInfo.StrHaving = ds.strWhereUseAliasField
+						sqlInfo.StrHaving = ds.strWhereUseAliasField.Expr
+						//ds.args.ArgHaving = ds.strWhereUseAliasField.Args
 					}
 
 				}
@@ -226,6 +234,7 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 						sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
 					} else {
 						sqlInfo.StrHaving = ds.strWhere
+
 					}
 
 				}
@@ -246,23 +255,33 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 			sqlInfo.StrSelect = ds.strSelect
 		}
 		if ds.strGroupBy != "" {
-			// groupByFields := []string{}
-			// for _, v := range ds.autoGroupbyField {
-			// 	groupByFields = append(groupByFields, v)
-			// }
+
 			if sqlInfo.StrGroupBy == "" {
 				sqlInfo.StrGroupBy = ds.strGroupBy
 			} else {
 				sqlInfo.StrGroupBy += "," + ds.strGroupBy
+
 			}
 
 		}
 		return factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
 	})
-
-	// if err != nil {
-	// 	return nil, compiler.NewCompilerError(err.Error())
+	if err != nil {
+		return nil, err
+	}
+	ret := &datasourceTypeSql{
+		Sql:  sqlParse.Sql,
+		Args: ds.args.GetArgs(sqlParse.ArgIndex),
+	}
+	// v := reflect.ValueOf(ds.args)
+	//args := ds.args.getArgs(sqlParse.ArgIndex)
+	// params := []any{}
+	// for _, x := range sqlParse.ArgIndex {
+	// 	args := v.FieldByIndex(x.Index).Interface().([]any)
+	// 	params = append(params, args)
 	// }
+	return ret, nil
+
 }
 func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	if ds.err != nil {
@@ -288,7 +307,7 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 		fmt.Println("-------------")
 	}
 	// 3) Execute query
-	rows, err := db.QueryContext(ctx, sqlCompiled.Sql)
+	rows, err := db.QueryContext(ctx, sqlCompiled.Sql, sqlCompiled.Args...)
 	if err != nil {
 
 		errParse := factory.DialectFactory.Create(db.DriverName).ParseError(nil, err)
@@ -432,6 +451,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	}
 
 	sqlInfo, err := compiler.Compile("select "+defaultInfo.strDefaultSelect+" from "+defaultInfo.ent.TableName, db.DriverName, true)
+
 	if err != nil {
 		return &datasourceType{
 			err: err,
@@ -439,10 +459,13 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	}
 	key := sqlInfo.Info.GetKey()
 
-	return &datasourceType{
+	ret := &datasourceType{
 		defaultSelector: strings.Join(defaultInfo.defaultItems, ","),
 		cmpInfo:         sqlInfo,
 		key:             key,
 		db:              db,
+		args:            internal.SelectorTypesArgs{},
 	}
+	sqlInfo.Info.FieldArs = *ret.args.GetFields()
+	return ret
 }

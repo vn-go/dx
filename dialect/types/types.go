@@ -9,6 +9,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -116,15 +117,7 @@ type Dialect interface {
 	*/
 	BuildSqlNoCache(info *SqlInfo) (*SqlParse, error)
 }
-type SqlInfoArgs struct {
-	ArgWhere   reflect.StructField
-	ArgsSelect reflect.StructField
-	ArgJoin    reflect.StructField
-	ArgGroup   reflect.StructField
-	ArgHaving  reflect.StructField
-	ArgOrder   reflect.StructField
-	ArgSetter  reflect.StructField
-}
+
 type SQL_TYPE int
 
 func (sqlType SQL_TYPE) String() string { // chữ S viết hoa
@@ -157,7 +150,7 @@ type OutputExpr struct {
 type SqlInfo struct {
 	OutputFields map[string]OutputExpr
 	SqlType      SQL_TYPE
-	FieldArs     SqlInfoArgs
+	FieldArs     internal.SqlInfoArgs
 	StrSelect    string
 
 	StrWhere  string
@@ -228,7 +221,7 @@ func PutSqlInfo(s *SqlInfo) {
 	}
 	// Không cần set s.OutputFields = nil nếu muốn reuse map
 	s.SqlType = 0
-	s.FieldArs = SqlInfoArgs{}
+	s.FieldArs = internal.SqlInfoArgs{}
 	s.StrSelect = ""
 	s.StrWhere = ""
 	s.StrSetter = ""

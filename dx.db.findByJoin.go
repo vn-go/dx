@@ -52,7 +52,7 @@ func (selectors *selectorTypes) findByJoin(item any) error {
 			StrWhere:   selectors.strWhere,
 			StrSelect:  strSelect,
 			StrGroupBy: selectors.strGroup,
-			FieldArs:   *selectors.args.getFields(),
+			FieldArs:   *selectors.args.GetFields(),
 			Limit:      selectors.limit,
 			Offset:     selectors.offset,
 			StrHaving:  selectors.strHaving,
@@ -64,7 +64,7 @@ func (selectors *selectorTypes) findByJoin(item any) error {
 	if err != nil {
 		return err
 	}
-	args := selectors.args.getArgs(sqlQuery.ArgIndex)
+	args := selectors.args.GetArgs(sqlQuery.ArgIndex)
 	if Options.ShowSql {
 		fmt.Println(sqlQuery.Sql)
 	}

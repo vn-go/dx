@@ -7,63 +7,63 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, error) {
+func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *[]any) (string, error) {
 	if x, ok := node.(sqlparser.SelectExpr); ok {
-		return cmp.selectExpr(x, cmpType)
+		return cmp.selectExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.ColName); ok {
 		return cmp.colName(x, cmpType)
 	}
 	if x, ok := node.(*sqlparser.BinaryExpr); ok {
-		return cmp.binaryExpr(x, cmpType)
+		return cmp.binaryExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.FuncExpr); ok {
-		return cmp.funcExpr(x, cmpType)
+		return cmp.funcExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.SQLVal); ok {
 		return cmp.sqlVal(x, cmpType)
 	}
 	if x, ok := node.(*sqlparser.AliasedTableExpr); ok {
-		return cmp.aliasedTableExpr(x, cmpType)
+		return cmp.aliasedTableExpr(x, cmpType, args)
 	}
 	if x, ok := node.(sqlparser.TableName); ok {
 		return cmp.tableName(x, cmpType)
 	}
 	if x, ok := node.(*sqlparser.ComparisonExpr); ok {
-		return cmp.comparisonExpr(x, cmpType)
+		return cmp.comparisonExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.JoinTableExpr); ok {
-		return cmp.joinTableExpr(x, cmpType)
+		return cmp.joinTableExpr(x, cmpType, args)
 	}
 	if x, ok := node.(sqlparser.JoinCondition); ok {
-		return cmp.joinCondition(x, cmpType)
+		return cmp.joinCondition(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.AndExpr); ok {
-		return cmp.andExpr(x, cmpType)
+		return cmp.andExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.OrExpr); ok {
-		return cmp.orExpr(x, cmpType)
+		return cmp.orExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.NotExpr); ok {
-		return cmp.notExpr(x, cmpType)
+		return cmp.notExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.IsExpr); ok {
-		ret, err := cmp.resolve(x.Expr, cmpType)
+		ret, err := cmp.resolve(x.Expr, cmpType, args)
 		if err != nil {
 			return "", err
 		}
 		return ret + strings.ToUpper(x.Operator), nil
 	}
 	if x, ok := node.(*sqlparser.Subquery); ok {
-		ret, err := cmp.resolve(x.Select, C_SELECT)
+		ret, err := cmp.resolve(x.Select, C_SELECT, args)
 		return ret, err
 	}
 	if x, ok := node.(*sqlparser.Union); ok {
-		retLeft, err := cmp.resolve(x.Left, C_SELECT)
+		retLeft, err := cmp.resolve(x.Left, C_SELECT, args)
 		if err != nil {
 			return "", err
 		}
-		retRight, err := cmp.resolve(x.Right, C_SELECT)
+		retRight, err := cmp.resolve(x.Right, C_SELECT, args)
 		if err != nil {
 			return "", err
 		}
@@ -81,7 +81,7 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 		return ret.Sql, nil
 	}
 	if x, ok := node.(*sqlparser.UpdateExpr); ok {
-		strExpr, err := cmp.resolve(x.Expr, C_UPDATE)
+		strExpr, err := cmp.resolve(x.Expr, C_UPDATE, args)
 		if err != nil {
 			return "", err
 		}
@@ -99,10 +99,10 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 		//return "", nil
 	}
 	if x, ok := node.(*sqlparser.Where); ok {
-		return cmp.resolve(x.Expr, cmpType)
+		return cmp.resolve(x.Expr, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.ParenExpr); ok {
-		ret, err := cmp.resolve(x.Expr, cmpType)
+		ret, err := cmp.resolve(x.Expr, cmpType, args)
 		if err != nil {
 			return "", err
 		}
@@ -111,23 +111,23 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER) (string, 
 	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 
-func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER) (string, error) {
-	strLeft, err := cmp.resolve(expr.Left, C_EXPR)
+func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER, args *[]any) (string, error) {
+	strLeft, err := cmp.resolve(expr.Left, C_EXPR, args)
 	if err != nil {
 		return "", err
 	}
-	strRight, err := cmp.resolve(expr.Right, C_EXPR)
+	strRight, err := cmp.resolve(expr.Right, C_EXPR, args)
 	if err != nil {
 		return "", err
 	}
 	return strLeft + expr.Operator + strRight, nil
 }
-func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (string, error) {
+func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, args *[]any) (string, error) {
 	if cmp.dict.ExprAlias == nil {
 		cmp.dict.ExprAlias = make(map[string]string)
 	}
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
-		resStr, err := cmp.resolve(x.Expr, cmpType)
+		resStr, err := cmp.resolve(x.Expr, cmpType, args)
 		if err != nil {
 			return "", err
 		}
@@ -179,7 +179,7 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER) (st
 			}
 
 		} else {
-			expr, err := cmp.resolve(x.Expr, cmpType)
+			expr, err := cmp.resolve(x.Expr, cmpType, args)
 			if err != nil {
 				return "", err
 			}

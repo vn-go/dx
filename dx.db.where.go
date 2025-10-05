@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/vn-go/dx/internal"
 )
 
 type whereTypesItem struct {
@@ -24,7 +26,7 @@ type whereTypes struct {
 	offset    *uint64
 	ctx       context.Context
 	sqlTx     *sql.Tx
-	args      selectorTypesArgs
+	args      internal.SelectorTypesArgs
 }
 type dbContext struct {
 	ctx context.Context
@@ -198,7 +200,7 @@ func (db *DB) Offset(num uint64) *whereTypes {
 		db:     db,
 		orders: []string{},
 		offset: &num,
-		args:   selectorTypesArgs{},
+		args:   internal.SelectorTypesArgs{},
 	}
 	return ret
 }

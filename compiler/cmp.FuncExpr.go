@@ -8,11 +8,11 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER) (string, error) {
+func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *[]any) (string, error) {
 	strArgs := []string{}
 
 	for _, arg := range expr.Exprs {
-		strArg, err := cmp.resolve(arg, C_FUNC)
+		strArg, err := cmp.resolve(arg, C_FUNC, args)
 		if err != nil {
 			if cErr, ok := err.(*CompilerError); ok {
 				if cErr.errType == ERR_TABLE_NOT_FOUND {

@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/types"
@@ -16,54 +15,8 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-type selectorTypesArgs struct {
-	ArgWhere   []any
-	ArgsSelect []any
-	ArgJoin    []any
-	ArgGroup   []any
-	ArgHaving  []any
-	ArgOrder   []any
-	ArgSetter  []any
-}
-
-func (a *selectorTypesArgs) getArgs(fields []reflect.StructField) []any {
-	ret := []any{}
-	val := reflect.ValueOf(*a)
-	for _, f := range fields {
-		fv := val.FieldByIndex(f.Index)
-		if fv.IsValid() {
-			//"reflect.Value.Elem"
-			if fv.IsNil() {
-				continue
-			}
-
-			ret = append(ret, fv.Interface().([]any)...)
-		}
-
-	}
-	return ret
-}
-
-var selectorTypesArgsGetFields = &types.SqlInfoArgs{}
-var selectorTypesArgsGetFieldsOnce sync.Once
-
-func (a *selectorTypesArgs) getFields() *types.SqlInfoArgs {
-	selectorTypesArgsGetFieldsOnce.Do(func() {
-		v := reflect.ValueOf(selectorTypesArgsGetFields).Elem()
-		typ := reflect.TypeFor[selectorTypesArgs]()
-		for i := 0; i < typ.NumField(); i++ {
-			vf := v.FieldByName(typ.Field(i).Name)
-			if vf.IsValid() {
-				vf.Set(reflect.ValueOf(typ.Field(i)))
-			}
-		}
-
-	})
-	return selectorTypesArgsGetFields
-}
-
 type selectorTypes struct {
-	args      selectorTypesArgs
+	args      internal.SelectorTypesArgs
 	db        *DB
 	err       error
 	whereExpr *whereTypesItem
@@ -162,7 +115,7 @@ func (db *DB) Select(args ...any) *selectorTypes {
 		selectFields: strFields,
 	}
 	if len(params) > 0 {
-		ret.args = selectorTypesArgs{
+		ret.args = internal.SelectorTypesArgs{
 			ArgsSelect: params,
 		}
 	}
@@ -299,7 +252,7 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 			StrOrder:   selectors.strSort,
 			StrGroupBy: selectors.strGroup,
 			From:       tblExpr,
-			FieldArs:   *selectors.args.getFields(),
+			FieldArs:   *selectors.args.GetFields(),
 		}
 
 		sql, err := compiler.GetSql(sqlInfo, selectors.db.DriverName)
@@ -313,7 +266,7 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 	if err != nil {
 		return "", nil, err
 	}
-	retArgs := selectors.args.getArgs(selectSql.ArgIndex)
+	retArgs := selectors.args.GetArgs(selectSql.ArgIndex)
 	return selectSql.Sql, retArgs, err
 }
 

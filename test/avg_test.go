@@ -1,20 +1,30 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
 )
 
+func Add(a *[]int) {
+	*a = append(*a, 1)
+}
 func TestSelectSum(t *testing.T) {
+	a := []int{}
+	Add(&a)
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", hrCnn)
 	if err != nil {
 		t.Fail()
 	}
 	for i := 0; i < 5; i++ {
-		ds := db.ModelDatasource("role").Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m").Where("m=9 and total>0")
+		db.ModelDatasource("select * from role where active=?", true)
+		ds := db.ModelDatasource("role").Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m,name").Where("m=9 and total>0 and total <10 and name!='july''''nd'")
+		sql, err := ds.ToSql()
+		assert.NoError(t, err)
+		fmt.Println(sql.Sql)
 		ret, err := ds.ToDict()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, ret)

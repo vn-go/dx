@@ -19,7 +19,7 @@ type modelTypeWhere struct {
 	lastWhere *whereTypesItem
 	limit     *uint64
 	offset    *uint64
-	args      selectorTypesArgs
+	args      internal.SelectorTypesArgs
 	strWhere  string
 	orders    []string
 	strSort   string
@@ -43,7 +43,7 @@ func (m *modelType) Where(args ...interface{}) *modelTypeWhere {
 			filter: args[0].(string),
 			args:   args[1:],
 		},
-		args: selectorTypesArgs{},
+		args: internal.SelectorTypesArgs{},
 	}
 	ret.lastWhere = ret.whereExpr
 	return ret
@@ -131,7 +131,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs := m.args.getFields()
+		sqlArgs := m.args.GetFields()
 		sqlInfo.Info.FieldArs = *sqlArgs
 		ret := factory.DialectFactory.Create(m.db.DriverName)
 		return ret.BuildSql(sqlInfo.Info)
@@ -140,7 +140,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 	if err != nil {
 		return err
 	}
-	argsExec := m.args.getArgs(query.ArgIndex)
+	argsExec := m.args.GetArgs(query.ArgIndex)
 	// Thực thi câu lệnh SQL và quét kết quả vào biến 'count'
 	err = m.db.QueryRow(query.Sql, argsExec...).Scan(ret)
 	if err != nil {

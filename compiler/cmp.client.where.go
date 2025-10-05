@@ -104,7 +104,13 @@ func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields 
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		return CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr)
+		p := []any{}
+		ret, err := CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr, &p)
+		if err != nil {
+			return nil, err
+		}
+		ret.Args = p
+		return ret, nil
 	} else {
 		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))
 	}

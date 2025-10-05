@@ -12,6 +12,7 @@ import (
 type cmpSelectorType struct {
 	cmpType       COMPILER
 	aggregateExpr map[string]bool
+	args          internal.SelectorTypesArgs
 }
 
 var CompilerSelect = &cmpSelectorType{}
@@ -30,6 +31,7 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 	i := a.(*initMakeSelect)
 	i.once.Do(func() {
 		i.val, i.err = cmp.makeSelectInternal(dialect, outputFields, selectors)
+
 	})
 	if i.err != nil {
 		initMakeSelectCache.Delete(key)
@@ -59,7 +61,14 @@ func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFiel
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		return cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors)
+		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &cmp.args.ArgsSelect)
+		if err == nil {
+			//no error get all args after compiler
+			ret.Args = cmp.args
+			return ret, nil
+		} else {
+			return nil, err
+		}
 
 	} else {
 		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors))

@@ -28,6 +28,9 @@ func OnceCall[Tkey any, TResult any](key Tkey, fn func() (TResult, error)) (TRes
 		onceCall.Item = oneCallItem[TResult]{}
 		onceCall.Item.Val, onceCall.Item.Err = fn()
 	})
+	if onceCall.Item.Err != nil {
+		cacheOnceCall.Delete(key)
+	}
 	return onceCall.Item.Val, onceCall.Item.Err
 }
 

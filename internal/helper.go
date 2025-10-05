@@ -267,6 +267,33 @@ func (c *helperType) GetAlias(txt string) string {
 	}
 	return ""
 }
+func (c *helperType) TrimStringLiteral(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	if (s[0] == '\'' && s[len(s)-1] == '\'') || (s[0] == '"' && s[len(s)-1] == '"') {
+		s = s[1 : len(s)-1]
+	}
+	// Chuẩn hóa escape ký tự nháy đơn trong SQL
+	s = strings.ReplaceAll(s, "''", "'")
+	s = strings.ReplaceAll(s, `\"`, `"`)
+	return s
+}
+func (c *helperType) ToBool(v string) bool {
+	if v == "" {
+		return false
+	}
+
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "t", "true", "y", "yes", "on":
+		return true
+	case "0", "f", "false", "n", "no", "off":
+		return false
+	default:
+		// Nếu không nhận dạng được, có thể coi là false
+		return false
+	}
+}
 
 var Helper = newHelper()
 

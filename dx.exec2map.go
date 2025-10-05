@@ -9,7 +9,7 @@ import (
 	"github.com/vn-go/dx/dialect/factory"
 )
 
-func (db *DB) CompilerSqlSelect(sqlSelect string) (string, error) {
+func (db *DB) CompilerSqlSelect(sqlSelect string) (*compiler.CompileSelectResult, error) {
 	return compiler.CompileSelect(sqlSelect, db.DriverName)
 }
 

@@ -6,16 +6,16 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) joinTableExpr(node *sqlparser.JoinTableExpr, cmpType COMPILER) (string, error) {
-	strCon, err := cmp.resolve(node.Condition, cmpType)
+func (cmp *compiler) joinTableExpr(node *sqlparser.JoinTableExpr, cmpType COMPILER, args *[]any) (string, error) {
+	strCon, err := cmp.resolve(node.Condition, cmpType, args)
 	if err != nil {
 		return "", err
 	}
-	strLeft, err := cmp.resolve(node.LeftExpr, cmpType)
+	strLeft, err := cmp.resolve(node.LeftExpr, cmpType, args)
 	if err != nil {
 		return "", err
 	}
-	strRight, err := cmp.resolve(node.RightExpr, cmpType)
+	strRight, err := cmp.resolve(node.RightExpr, cmpType, args)
 	if err != nil {
 		return "", err
 	}
