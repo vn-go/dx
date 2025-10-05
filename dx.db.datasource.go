@@ -72,10 +72,22 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	return ds
 }
 func (ds *datasourceType) buildWhere(strWhere string) {
+	// oldStrWhere := ds.cmpInfo.Info.StrWhere
+	// oldStrSelect := ds.cmpInfo.Info.StrSelect
+	// StrGroupBy := ds.cmpInfo.Info.StrGroupBy
+	// StrHaving := ds.cmpInfo.Info.StrHaving
+	// defer func() {
+	// 	// reset before return result, very important avoid accumulate
+	// 	ds.cmpInfo.Info.StrWhere = oldStrWhere
+	// 	ds.cmpInfo.Info.StrSelect = oldStrSelect
+	// 	ds.cmpInfo.Info.StrHaving = StrHaving
+	// 	ds.cmpInfo.Info.StrGroupBy = StrGroupBy
+	// }()
 	if strWhere == "" {
 		return
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
+	fmt.Println(ds.key)
 
 	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
 	if err != nil {
@@ -126,6 +138,17 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 	return ds
 }
 func (ds *datasourceType) buildSelect(selector string) {
+	// oldStrWhere := ds.cmpInfo.Info.StrWhere
+	// oldStrSelect := ds.cmpInfo.Info.StrSelect
+	// StrGroupBy := ds.cmpInfo.Info.StrGroupBy
+	// StrHaving := ds.cmpInfo.Info.StrHaving
+	// defer func() {
+	// 	// reset before return result, very important avoid accumulate
+	// 	ds.cmpInfo.Info.StrWhere = oldStrWhere
+	// 	ds.cmpInfo.Info.StrSelect = oldStrSelect
+	// 	ds.cmpInfo.Info.StrHaving = StrHaving
+	// 	ds.cmpInfo.Info.StrGroupBy = StrGroupBy
+	// }()
 	if selector == "" {
 		selector = ds.defaultSelector
 	}
@@ -169,18 +192,9 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 	}
 	var db = ds.db
 	// var ctx = ds.ctx
-	var sqlInfo = ds.cmpInfo.Info
-	oldStrWhere := ds.cmpInfo.Info.StrWhere
-	oldStrSelect := ds.cmpInfo.Info.StrSelect
-	StrGroupBy := ds.cmpInfo.Info.StrGroupBy
-	StrHaving := ds.cmpInfo.Info.StrHaving
-	defer func() {
-		// reset before return result, very important avoid accumulate
-		ds.cmpInfo.Info.StrWhere = oldStrWhere
-		ds.cmpInfo.Info.StrSelect = oldStrSelect
-		ds.cmpInfo.Info.StrHaving = StrHaving
-		ds.cmpInfo.Info.StrGroupBy = StrGroupBy
-	}()
+	var sqlInfo = ds.cmpInfo.Info.Clone()
+	defer types.PutSqlInfo(sqlInfo)
+
 	ds.buildSelect(ds.strSelectOrigin)
 	if ds.err != nil {
 		return nil, ds.err
@@ -192,36 +206,36 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 	// var args = ds.args
 	if ds.whereIsInHaving {
 		if ds.strWhere != "" {
-			if ds.cmpInfo.Info.StrHaving != "" {
-				ds.cmpInfo.Info.StrHaving += " AND (" + ds.strWhere + ")"
+			if sqlInfo.StrHaving != "" {
+				sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
 			} else {
-				ds.cmpInfo.Info.StrHaving = ds.strWhere
+				sqlInfo.StrHaving = ds.strWhere
 			}
 
 		}
 	} else {
 		if ds.strWhere != "" {
-			if ds.cmpInfo.Info.StrWhere != "" {
-				ds.cmpInfo.Info.StrWhere += " AND (" + ds.strWhere + ")"
+			if sqlInfo.StrWhere != "" {
+				sqlInfo.StrWhere += " AND (" + ds.strWhere + ")"
 			} else {
-				ds.cmpInfo.Info.StrWhere = ds.strWhere
+				sqlInfo.StrWhere = ds.strWhere
 			}
 
 		}
 	}
 
 	if ds.strSelect != "" {
-		ds.cmpInfo.Info.StrSelect = ds.strSelect
+		sqlInfo.StrSelect = ds.strSelect
 	}
 	if ds.strGroupBy != "" {
 		// groupByFields := []string{}
 		// for _, v := range ds.autoGroupbyField {
 		// 	groupByFields = append(groupByFields, v)
 		// }
-		if ds.cmpInfo.Info.StrGroupBy == "" {
-			ds.cmpInfo.Info.StrGroupBy = ds.strGroupBy
+		if sqlInfo.StrGroupBy == "" {
+			sqlInfo.StrGroupBy = ds.strGroupBy
 		} else {
-			ds.cmpInfo.Info.StrGroupBy += "," + ds.strGroupBy
+			sqlInfo.StrGroupBy += "," + ds.strGroupBy
 		}
 
 	}
@@ -378,10 +392,12 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 			err: err,
 		}
 	}
+	key := sqlInfo.Info.GetKey()
+
 	return &datasourceType{
 		defaultSelector: strings.Join(defaultItems, ","),
 		cmpInfo:         sqlInfo,
-		key:             sqlInfo.Info.GetKey(),
+		key:             key,
 		db:              db,
 	}
 }

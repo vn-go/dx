@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
@@ -197,4 +198,110 @@ func (info *SqlInfo) GetKey() string {
 		ret += "/" + info.UnionNext.GetKey()
 	}
 	return ret
+}
+
+// Pool global
+var sqlInfoPool = sync.Pool{
+	New: func() interface{} {
+		return &SqlInfo{}
+	},
+}
+
+// Lấy SqlInfo từ pool
+func GetSqlInfo() *SqlInfo {
+	return sqlInfoPool.Get().(*SqlInfo)
+}
+
+// Trả SqlInfo về pool
+func PutSqlInfo(s *SqlInfo) {
+	if s == nil {
+		return
+	}
+
+	// Reset map
+	for k := range s.OutputFields {
+		delete(s.OutputFields, k)
+	}
+	// Không cần set s.OutputFields = nil nếu muốn reuse map
+	s.SqlType = 0
+	s.FieldArs = SqlInfoArgs{}
+	s.StrSelect = ""
+	s.StrWhere = ""
+	s.StrSetter = ""
+	s.Limit = nil
+	s.Offset = nil
+	s.StrOrder = ""
+	s.From = nil
+	s.StrGroupBy = ""
+	s.StrHaving = ""
+	s.UnionNext = nil
+	s.UnionType = ""
+
+	sqlInfoPool.Put(s)
+}
+
+// Clone dùng pool
+func (s *SqlInfo) Clone() *SqlInfo {
+	if s == nil {
+		return nil
+	}
+
+	clone := GetSqlInfo()
+
+	// Reset lại các field (đảm bảo sạch)
+	for k := range clone.OutputFields {
+		delete(clone.OutputFields, k)
+	}
+	if clone.OutputFields == nil && s.OutputFields != nil {
+		clone.OutputFields = make(map[string]OutputExpr, len(s.OutputFields))
+	}
+
+	// Copy các giá trị cơ bản
+	clone.SqlType = s.SqlType
+	clone.FieldArs = s.FieldArs
+	clone.StrSelect = s.StrSelect
+	clone.StrWhere = s.StrWhere
+	clone.StrSetter = s.StrSetter
+	clone.StrOrder = s.StrOrder
+	clone.StrGroupBy = s.StrGroupBy
+	clone.StrHaving = s.StrHaving
+	clone.UnionType = s.UnionType
+
+	// Copy Limit / Offset
+	if s.Limit != nil {
+		limit := *s.Limit
+		clone.Limit = &limit
+	} else {
+		clone.Limit = nil
+	}
+	if s.Offset != nil {
+		offset := *s.Offset
+		clone.Offset = &offset
+	} else {
+		clone.Offset = nil
+	}
+
+	// Deep copy OutputFields
+	for k, v := range s.OutputFields {
+		clone.OutputFields[k] = v
+	}
+
+	// Copy From
+	switch v := s.From.(type) {
+	case string:
+		clone.From = v
+	case *SqlInfo:
+		clone.From = v.Clone() // đệ quy dùng pool
+	default:
+		clone.From = nil
+	}
+
+	// Copy UnionNext
+	if s.UnionNext != nil {
+		clone.UnionNext = s.UnionNext.Clone()
+	} else {
+		clone.UnionNext = nil
+	}
+
+	return clone
 }
