@@ -147,3 +147,6 @@ func (mssql *postgresDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, er
 		return postgresBuilSql(*info)
 	})
 }
+func (mssql *postgresDialect) BuildSqlNoCache(info *types.SqlInfo) (*types.SqlParse, error) {
+	return postgresBuilSql(*info)
+}

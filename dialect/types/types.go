@@ -111,6 +111,10 @@ type Dialect interface {
 
 	*/
 	BuildSql(info *SqlInfo) (*SqlParse, error)
+	/*
+	 Serve for dynamic datasource compiler
+	*/
+	BuildSqlNoCache(info *SqlInfo) (*SqlParse, error)
 }
 type SqlInfoArgs struct {
 	ArgWhere   reflect.StructField

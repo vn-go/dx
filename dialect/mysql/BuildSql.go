@@ -185,3 +185,6 @@ func (mssql *mySqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error
 		return mySqlbuildSQL(*info)
 	})
 }
+func (mssql *mySqlDialect) BuildSqlNoCache(info *types.SqlInfo) (*types.SqlParse, error) {
+	return mySqlbuildSQL(*info)
+}

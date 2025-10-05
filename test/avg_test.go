@@ -37,6 +37,7 @@ func BenchmarkSelectSum(t *testing.B) {
 				ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
 
 				ds.ToSql()
+
 			}
 		})
 	})
@@ -60,6 +61,40 @@ func BenchmarkSelectSum(t *testing.B) {
 
 }
 
+/*
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkSelectSum$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkSelectSum/parallel-16         	  262911	      5038 ns/op	    8536 B/op	      85 allocs/op
+BenchmarkSelectSum/No_Parallel-16      	  142318	      8897 ns/op	    8443 B/op	      85 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	3.696s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkSelectSum$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkSelectSum/parallel-16         	  474136	      2484 ns/op	    6316 B/op	      61 allocs/op
+BenchmarkSelectSum/No_Parallel-16      	  211989	      5811 ns/op	    6311 B/op	      61 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	2.773s
+----
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkSelectSum$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkSelectSum/parallel-16         	 1326126	       916.3 ns/op	    3558 B/op	      20 allocs/op
+BenchmarkSelectSum/No_Parallel-16      	  561578	      2092 ns/op	    3557 B/op	      20 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	3.065s
+*/
 /*
 	SELECT COUNT(T1.id) AS Total,T1.id
 		YEAR(T1.created_on) AS year

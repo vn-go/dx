@@ -186,3 +186,7 @@ func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error
 		return mssqlBuilSql(*info)
 	})
 }
+func (mssql *mssqlDialect) BuildSqlNoCache(info *types.SqlInfo) (*types.SqlParse, error) {
+
+	return mssqlBuilSql(*info)
+}

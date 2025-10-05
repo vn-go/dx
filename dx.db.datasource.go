@@ -10,6 +10,8 @@ import (
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/internal"
 )
 
 type dataSourceArg struct {
@@ -25,16 +27,18 @@ type datasourceType struct {
 	defaultSelector string
 	cmpInfo         *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
-	db             *DB
-	args           datasourceTypeArgs
-	ctx            context.Context
-	err            error
-	strWhere       string
+	db       *DB
+	args     datasourceTypeArgs
+	ctx      context.Context
+	err      error
+	strWhere string
+	// serve for error message
 	strWhereOrigin string
 	// tell SQL generate that strWhere must place at "HAVING"
 	whereIsInHaving bool
 	strSelect       string
 	selector        map[string]bool
+	// serve for error message
 	strSelectOrigin string
 	strGroupBy      string
 
@@ -189,56 +193,59 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 	if ds.err != nil {
 		return nil, ds.err
 	}
-	var db = ds.db
-	// var ctx = ds.ctx
-	var sqlInfo = ds.cmpInfo.Info.Clone()
-	defer types.PutSqlInfo(sqlInfo)
+	return internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*types.SqlParse, error) {
+		var db = ds.db
+		// var ctx = ds.ctx
+		var sqlInfo = ds.cmpInfo.Info.Clone()
+		defer types.PutSqlInfo(sqlInfo)
 
-	ds.buildSelect(ds.strSelectOrigin)
-	if ds.err != nil {
-		return nil, ds.err
-	}
-	ds.buildWhere(ds.strWhereOrigin)
-	if ds.err != nil {
-		return nil, ds.err
-	}
-	// var args = ds.args
-	if ds.whereIsInHaving {
-		if ds.strWhere != "" {
-			if sqlInfo.StrHaving != "" {
-				sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
-			} else {
-				sqlInfo.StrHaving = ds.strWhere
-			}
-
+		ds.buildSelect(ds.strSelectOrigin)
+		if ds.err != nil {
+			return nil, ds.err
 		}
-	} else {
-		if ds.strWhere != "" {
-			if sqlInfo.StrWhere != "" {
-				sqlInfo.StrWhere += " AND (" + ds.strWhere + ")"
-			} else {
-				sqlInfo.StrWhere = ds.strWhere
-			}
-
+		ds.buildWhere(ds.strWhereOrigin)
+		if ds.err != nil {
+			return nil, ds.err
 		}
-	}
+		// var args = ds.args
+		if ds.whereIsInHaving {
+			if ds.strWhere != "" {
+				if sqlInfo.StrHaving != "" {
+					sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
+				} else {
+					sqlInfo.StrHaving = ds.strWhere
+				}
 
-	if ds.strSelect != "" {
-		sqlInfo.StrSelect = ds.strSelect
-	}
-	if ds.strGroupBy != "" {
-		// groupByFields := []string{}
-		// for _, v := range ds.autoGroupbyField {
-		// 	groupByFields = append(groupByFields, v)
-		// }
-		if sqlInfo.StrGroupBy == "" {
-			sqlInfo.StrGroupBy = ds.strGroupBy
+			}
 		} else {
-			sqlInfo.StrGroupBy += "," + ds.strGroupBy
+			if ds.strWhere != "" {
+				if sqlInfo.StrWhere != "" {
+					sqlInfo.StrWhere += " AND (" + ds.strWhere + ")"
+				} else {
+					sqlInfo.StrWhere = ds.strWhere
+				}
+
+			}
 		}
 
-	}
-	return factory.DialectFactory.Create(db.DriverName).BuildSql(sqlInfo)
+		if ds.strSelect != "" {
+			sqlInfo.StrSelect = ds.strSelect
+		}
+		if ds.strGroupBy != "" {
+			// groupByFields := []string{}
+			// for _, v := range ds.autoGroupbyField {
+			// 	groupByFields = append(groupByFields, v)
+			// }
+			if sqlInfo.StrGroupBy == "" {
+				sqlInfo.StrGroupBy = ds.strGroupBy
+			} else {
+				sqlInfo.StrGroupBy += "," + ds.strGroupBy
+			}
+
+		}
+		return factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
+	})
+
 	// if err != nil {
 	// 	return nil, compiler.NewCompilerError(err.Error())
 	// }
@@ -368,24 +375,49 @@ func (db *DB) NewDataSource(source any, args ...any) *datasourceType {
 		//args:    args,
 	}
 }
+
+var pkgPath = reflect.TypeFor[DB]().PkgPath()
+var dbTypeFullName = reflect.TypeFor[DB]().Name()
+
+type getDefaultSelectOfModelByModelNameResult struct {
+	strDefaultSelect string
+	defaultItems     []string
+	ent              *entity.Entity
+}
+
+func (db *DB) getDefaultSelectOfModelByModelName(modleName string) (*getDefaultSelectOfModelByModelNameResult, error) {
+	return internal.OnceCall(fmt.Sprintf("%s/$getDefaultSelectOfModelByModelName", dbTypeFullName), func() (*getDefaultSelectOfModelByModelNameResult, error) {
+
+		// var err error
+
+		ent := modelRegistry.FindEntityByModelName(modleName)
+		if ent == nil {
+			return nil, compiler.NewCompilerError(fmt.Sprintf("invalid datasource '%s'", modleName))
+		}
+		strField := []string{}
+		defaultItems := []string{}
+		for _, c := range ent.Cols {
+			strField = append(strField, fmt.Sprintf(c.Name+" "+c.Field.Name))
+			defaultItems = append(defaultItems, fmt.Sprintf(c.Field.Name))
+		}
+		strDefaultSelect := strings.Join(strField, ",")
+		return &getDefaultSelectOfModelByModelNameResult{
+			strDefaultSelect: strDefaultSelect,
+			defaultItems:     defaultItems,
+			ent:              ent,
+		}, nil
+	})
+}
 func (db *DB) ModelDatasource(modleName string) *datasourceType {
 
-	var err error
-
-	ent := modelRegistry.FindEntityByModelName(modleName)
-	if ent == nil {
+	defaultInfo, err := db.getDefaultSelectOfModelByModelName(modleName)
+	if err != nil {
 		return &datasourceType{
-			err: compiler.NewCompilerError(fmt.Sprintf("invalid datasource '%s'", modleName)),
+			err: err,
 		}
 	}
-	strField := []string{}
-	defaultItems := []string{}
-	for _, c := range ent.Cols {
-		strField = append(strField, fmt.Sprintf(c.Name+" "+c.Field.Name))
-		defaultItems = append(defaultItems, fmt.Sprintf(c.Field.Name))
-	}
-	strDefaultSelect := strings.Join(strField, ",")
-	sqlInfo, err := compiler.Compile("select "+strDefaultSelect+" from "+ent.TableName, db.DriverName, true)
+
+	sqlInfo, err := compiler.Compile("select "+defaultInfo.strDefaultSelect+" from "+defaultInfo.ent.TableName, db.DriverName, true)
 	if err != nil {
 		return &datasourceType{
 			err: err,
@@ -394,7 +426,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	key := sqlInfo.Info.GetKey()
 
 	return &datasourceType{
-		defaultSelector: strings.Join(defaultItems, ","),
+		defaultSelector: strings.Join(defaultInfo.defaultItems, ","),
 		cmpInfo:         sqlInfo,
 		key:             key,
 		db:              db,
