@@ -27,11 +27,12 @@ type datasourceType struct {
 	defaultSelector string
 	cmpInfo         *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
-	db       *DB
-	args     datasourceTypeArgs
-	ctx      context.Context
-	err      error
-	strWhere string
+	db                    *DB
+	args                  datasourceTypeArgs
+	ctx                   context.Context
+	err                   error
+	strWhere              string
+	strWhereUseAliasField string
 	// serve for error message
 	strWhereOrigin string
 	// tell SQL generate that strWhere must place at "HAVING"
@@ -102,6 +103,7 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 	fields := strWhereNew.GetFields()
 	//check if field in fields is agg func expr
 	ds.strWhere = strWhere
+	ds.strWhereUseAliasField = strWhereNew.GetFieldExpr()
 	ok := false
 	for k := range fields {
 		if _, ok = ds.aggExpr[k]; ok {
@@ -209,14 +211,26 @@ func (ds *datasourceType) ToSql() (*types.SqlParse, error) {
 		}
 		// var args = ds.args
 		if ds.whereIsInHaving {
-			if ds.strWhere != "" {
-				if sqlInfo.StrHaving != "" {
-					sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
-				} else {
-					sqlInfo.StrHaving = ds.strWhere
-				}
+			if ds.db.DriverName == "mysql" {
+				if ds.strWhereUseAliasField != "" {
+					if sqlInfo.StrHaving != "" {
+						sqlInfo.StrHaving += " AND (" + ds.strWhereUseAliasField + ")"
+					} else {
+						sqlInfo.StrHaving = ds.strWhereUseAliasField
+					}
 
+				}
+			} else {
+				if ds.strWhere != "" {
+					if sqlInfo.StrHaving != "" {
+						sqlInfo.StrHaving += " AND (" + ds.strWhere + ")"
+					} else {
+						sqlInfo.StrHaving = ds.strWhere
+					}
+
+				}
 			}
+
 		} else {
 			if ds.strWhere != "" {
 				if sqlInfo.StrWhere != "" {

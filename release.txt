@@ -384,3 +384,10 @@ git tag -a v1.0.59 -m "cache datasource sql after compile, decrease alloc"
 git push origin v1.0.59
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.59
+---
+git add .
+git commit -m "cache datasource sql after compile, decrease alloc"
+git tag -a v1.0.60 -m "cache datasource sql after compile, decrease alloc"
+git push origin v1.0.60
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.60

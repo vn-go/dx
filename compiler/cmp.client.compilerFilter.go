@@ -12,12 +12,16 @@ import (
 type compilerFilterType struct {
 }
 type CompilerFilterTypeResult struct {
-	expr   string
-	fields map[string]string
+	expr      string
+	fieldExpr string
+	fields    map[string]string
 }
 
 func (c *CompilerFilterTypeResult) GetExpr() string {
 	return c.expr
+}
+func (c *CompilerFilterTypeResult) GetFieldExpr() string {
+	return c.fieldExpr
 }
 func (c *CompilerFilterTypeResult) GetFields() map[string]string {
 	return c.fields
@@ -39,6 +43,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return nil, NewCompilerError(fmt.Sprintf("'%s' is vallid expression", strFilter))
 		}
 		expr := left.expr + " " + x.Operator + " " + right.expr
+		fieldExpr := left.fieldExpr + " " + x.Operator + " " + right.fieldExpr
 		fieldsSelected := map[string]string{}
 		if left.fields != nil {
 			for k, v := range left.fields {
@@ -56,8 +61,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			}
 		}
 		return &CompilerFilterTypeResult{
-			expr:   expr,
-			fields: fieldsSelected,
+			expr:      expr,
+			fieldExpr: fieldExpr,
+			fields:    fieldsSelected,
 		}, nil
 	}
 	if x, ok := n.(*sqlparser.BinaryExpr); ok {
@@ -102,8 +108,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 		if v, ok := fields[strings.ToLower(x.Name.String())]; ok {
 			return &CompilerFilterTypeResult{
-				expr:   v,
-				fields: map[string]string{strings.ToLower(x.Name.String()): x.Name.String()},
+				expr:      v,
+				fieldExpr: dialect.Quote(x.Name.String()),
+				fields:    map[string]string{strings.ToLower(x.Name.String()): x.Name.String()},
 			}, nil
 
 		} else {
@@ -121,34 +128,40 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 			//n := *nextArgIndex + argIndex
 			return &CompilerFilterTypeResult{
-				expr: "?",
+				expr:      "?",
+				fieldExpr: "?",
 			}, nil
 
 		} else {
 			if x.Type == sqlparser.StrVal {
 				return &CompilerFilterTypeResult{
-					expr: dialect.ToText(v),
+					expr:      dialect.ToText(v),
+					fieldExpr: dialect.ToText(v),
 				}, nil
 
 			}
 			if internal.Helper.IsString(v) {
 				return &CompilerFilterTypeResult{
-					expr: dialect.ToText(v),
+					expr:      dialect.ToText(v),
+					fieldExpr: dialect.ToText(v),
 				}, nil
 
 			} else if internal.Helper.IsBool(v) {
 				return &CompilerFilterTypeResult{
-					expr: dialect.ToBool(v),
+					expr:      dialect.ToBool(v),
+					fieldExpr: dialect.ToBool(v),
 				}, nil
 
 			} else if internal.Helper.IsFloatNumber(v) {
 				return &CompilerFilterTypeResult{
-					expr: v,
+					expr:      v,
+					fieldExpr: v,
 				}, nil
 
 			} else if internal.Helper.IsNumber(v) {
 				return &CompilerFilterTypeResult{
-					expr: v,
+					expr:      v,
+					fieldExpr: v,
 				}, nil
 
 			} else {
@@ -185,8 +198,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		return &CompilerFilterTypeResult{
-			expr:   left.expr + " AND " + right.expr,
-			fields: fieldsSelected,
+			expr:      left.expr + " AND " + right.expr,
+			fieldExpr: left.fieldExpr + " AND " + right.fieldExpr,
+			fields:    fieldsSelected,
 		}, nil
 
 	}
@@ -217,8 +231,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		return &CompilerFilterTypeResult{
-			expr:   left.expr + " OR " + right.expr,
-			fields: fieldsSelected,
+			expr:      left.expr + " OR " + right.expr,
+			fieldExpr: left.fieldExpr + " OR " + right.fieldExpr,
+			fields:    fieldsSelected,
 		}, nil
 
 	}
@@ -237,8 +252,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		return &CompilerFilterTypeResult{
-			expr:   "NOT " + left.expr,
-			fields: fieldsSelected,
+			expr:      "NOT " + left.expr,
+			fieldExpr: "NOT " + left.fieldExpr,
+			fields:    fieldsSelected,
 		}, nil
 
 	}

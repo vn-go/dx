@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,16 +13,14 @@ func TestSelectSum(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ds := db.ModelDatasource("user").Where("day(CreatedOn)=27")
-	sql, err := ds.ToSql()
-	assert.NoError(t, err)
-	if err != nil {
-		t.Fail()
+	for i := 0; i < 5; i++ {
+		ds := db.ModelDatasource("role").Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m").Where("m=9 and total>0")
+		ret, err := ds.ToDict()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, ret)
 	}
-	fmt.Println(sql.Sql)
-	data, err := ds.ToDict()
-	assert.NoError(t, err)
-	fmt.Println(data)
+	//ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and Year=2025")
+
 }
 func BenchmarkSelectSum(t *testing.B) {
 	//dx.Options.ShowSql = true
@@ -34,7 +31,7 @@ func BenchmarkSelectSum(t *testing.B) {
 	t.Run("parallel", func(t *testing.B) {
 		t.RunParallel(func(p *testing.PB) {
 			for p.Next() {
-				ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and createdBy='admin'")
+				ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and Year=2025")
 
 				ds.ToSql()
 
