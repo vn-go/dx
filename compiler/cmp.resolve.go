@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	if x, ok := node.(sqlparser.SelectExpr); ok {
 		return cmp.selectExpr(x, cmpType, args)
 	}
@@ -21,7 +22,7 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *[]a
 		return cmp.funcExpr(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.SQLVal); ok {
-		return cmp.sqlVal(x, cmpType)
+		return cmp.sqlVal(x, cmpType, args)
 	}
 	if x, ok := node.(*sqlparser.AliasedTableExpr); ok {
 		return cmp.aliasedTableExpr(x, cmpType, args)
@@ -111,7 +112,7 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *[]a
 	panic(fmt.Sprintf("Not support %T, %s", node, `compiler\cmp.resolve.go`))
 }
 
-func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	strLeft, err := cmp.resolve(expr.Left, C_EXPR, args)
 	if err != nil {
 		return "", err
@@ -122,14 +123,23 @@ func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER, ar
 	}
 	return strLeft + expr.Operator + strRight, nil
 }
-func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	if cmp.dict.ExprAlias == nil {
 		cmp.dict.ExprAlias = make(map[string]string)
 	}
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
 		resStr, err := cmp.resolve(x.Expr, cmpType, args)
+
 		if err != nil {
 			return "", err
+		}
+		if vx, ok := x.Expr.(*sqlparser.SQLVal); ok {
+			strVal := string(vx.Val)
+			if strings.HasPrefix(strVal, ":v") {
+				fmt.Println(strVal)
+			}
+
+			return resStr, nil
 		}
 		if resStr != "" {
 			if !x.As.IsEmpty() && cmpType == C_SELECT {

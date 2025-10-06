@@ -148,7 +148,8 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 func (ds *datasourceType) buildSelect(selector string) {
 
 	if selector == "" {
-		selector = ds.defaultSelector
+		return
+		//selector = ds.defaultSelector
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 
@@ -164,14 +165,14 @@ func (ds *datasourceType) buildSelect(selector string) {
 		if !x.IsAggFuncCall {
 			// if current selector is agg function call
 			groupByItems = append(groupByItems, x.Expr)
-			ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args...) // add agrs group by
+			ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.ExtractArgs()...) // add agrs group by
 		} else {
 			if ds.aggExpr == nil {
 				ds.aggExpr = map[string]exprWithArgs{}
 			}
 			ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
 				Expr: x.Expr,
-				Args: x.Args,
+				Args: x.Args.ExtractArgs(),
 			}
 
 		}
@@ -180,7 +181,7 @@ func (ds *datasourceType) buildSelect(selector string) {
 	ds.strGroupBy = strings.Join(groupByItems, ",")
 
 	ds.strSelect = selectors.StrSelectors
-	ds.args.ArgsSelect = append(ds.args.ArgsSelect, selectors.Args.ArgsSelect...)
+	ds.args.ArgsSelect = append(ds.args.ArgsSelect, selectors.Args.ArgsSelect.ExtractArgs()...)
 
 }
 func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
@@ -225,6 +226,12 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 					} else {
 						sqlInfo.StrHaving = ds.strWhereUseAliasField.Expr
 						//ds.args.ArgHaving = ds.strWhereUseAliasField.Args
+					}
+					if sqlInfo.StrWhere != "" {
+						sqlInfo.StrHaving = "(" + sqlInfo.StrWhere + ") AND (" + sqlInfo.StrHaving + ")"
+						ds.args.ArgHaving = append(ds.args.ArgWhere, ds.args.ArgHaving...)
+						sqlInfo.StrWhere = ""
+						ds.args.ArgWhere = []any{}
 					}
 
 				}
@@ -465,6 +472,41 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 		key:             key,
 		db:              db,
 		args:            internal.SelectorTypesArgs{},
+	}
+	sqlInfo.Info.FieldArs = *ret.args.GetFields()
+	return ret
+}
+func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
+
+	// defaultInfo, err := db.getDefaultSelectOfModelByModelName(modleName)
+	// if err != nil {
+	// 	return &datasourceType{
+	// 		err: err,
+	// 	}
+	// }
+
+	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, true)
+
+	if err != nil {
+		return &datasourceType{
+			err: err,
+		}
+	}
+	sqlInfo.Dict.ExprAlias = map[string]string{}
+	for k, x := range sqlInfo.Info.OutputFields {
+		sqlInfo.Dict.ExprAlias[k] = x.FieldName
+
+	}
+	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
+	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args)
+	key := sqlInfo.Info.GetKey()
+
+	ret := &datasourceType{
+		defaultSelector: sqlInfo.Info.StrSelect,
+		cmpInfo:         sqlInfo,
+		key:             key,
+		db:              db,
+		args:            argsCollected,
 	}
 	sqlInfo.Info.FieldArs = *ret.args.GetFields()
 	return ret

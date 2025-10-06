@@ -50,8 +50,8 @@ type compiler struct {
 	sql         string
 	node        sqlparser.SQLNode
 	dialect     types.Dialect
-	ParamIndex  int
-	args        internal.SelectorTypesArgs
+
+	args internal.CompilerArgs
 }
 type initCreateDictionary struct {
 	val  *Dictionary
@@ -106,7 +106,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 		sql:     sql,
 		node:    stm,
 		dialect: factory.DialectFactory.Create(dbDriver),
-		args:    internal.SelectorTypesArgs{},
+		args:    internal.CompilerArgs{},
 	}
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
@@ -151,7 +151,14 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 
 	if stmSelect, ok := cmp.node.(*sqlparser.Select); ok {
-		return cmp.getSqlInfoBySelect(stmSelect)
+		ret, err := cmp.getSqlInfoBySelect(stmSelect)
+		if err != nil {
+			return nil, err
+		}
+		//ret.Args.ExtracAllDynamicArgsFromSelectorTypesArgs(cmp.args)
+		ret.Args = cmp.args
+		//ret.QArg.ArgsSelect = internal.GetAllElemetsByType[internal.DynamicArg](cmp.args.ArgsSelect)
+		return ret, nil
 	}
 	if stmUnion, ok := cmp.node.(*sqlparser.Union); ok {
 		var ret *types.SqlInfo
@@ -194,7 +201,7 @@ func (cmp *compiler) getSqlInfoByUpdate(stmUpdate *sqlparser.Update) (*types.Sql
 	}
 
 	settors := []string{}
-	argsUpdate := []any{}
+	argsUpdate := internal.SqlArgs{}
 	for _, x := range stmUpdate.Exprs {
 		strExpr, err := cmp.resolve(x, C_UPDATE, &argsUpdate)
 		if err != nil {
@@ -232,22 +239,25 @@ func (cmp *compiler) getSqlInfoByDelete(stmDelete *sqlparser.Delete) (*types.Sql
 	return ret, nil
 }
 func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.SqlInfo, error) {
-
+	sqlArgs := internal.CompilerArgs{}
 	strSelect, err := cmp.resolveSelect(stmSelect.SelectExprs, &cmp.args.ArgsSelect)
 
 	if err != nil {
 		return nil, err
 	}
+	sqlArgs.ArgsSelect = append(sqlArgs.ArgsSelect, cmp.args.ArgsSelect...)
 	strFrom, err := cmp.resolveFrom(stmSelect.From, &cmp.args.ArgJoin)
 	if err != nil {
 		return nil, err
 	}
+	sqlArgs.ArgsSelect = append(sqlArgs.ArgJoin, cmp.args.ArgJoin...)
 	strWhere := ""
 	if stmSelect.Where != nil {
 		strWhere, err = cmp.resolveWhere(stmSelect.Where, &cmp.args.ArgWhere)
 		if err != nil {
 			return nil, err
 		}
+		sqlArgs.ArgWhere = append(sqlArgs.ArgWhere, cmp.args.ArgWhere...)
 	}
 	strOrderBy := ""
 	if stmSelect.OrderBy != nil {
@@ -255,6 +265,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
+		sqlArgs.ArgOrder = append(sqlArgs.ArgOrder, cmp.args.ArgOrder...)
 	}
 	var limit, offset *uint64
 	if stmSelect.Limit != nil {
@@ -269,7 +280,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
-
+		sqlArgs.ArgGroup = append(sqlArgs.ArgGroup, cmp.args.ArgGroup...)
 	}
 	strHaving := ""
 	if stmSelect.Having != nil {
@@ -277,7 +288,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
-
+		sqlArgs.ArgHaving = append(sqlArgs.ArgHaving, cmp.args.ArgHaving...)
 	}
 	if cmp.returnField == nil {
 		cmp.returnField = map[string]types.OutputExpr{}
@@ -292,12 +303,13 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		StrGroupBy:   strGroupBy,
 		StrHaving:    strHaving,
 		OutputFields: cmp.returnField,
+		Args:         sqlArgs,
 	}
 	return ret, nil
 
 }
 
-func (cmp *compiler) resolveGroupBy(group sqlparser.GroupBy, args *[]any) (string, error) {
+func (cmp *compiler) resolveGroupBy(group sqlparser.GroupBy, args *internal.SqlArgs) (string, error) {
 	groupItems := []string{}
 	for _, x := range group {
 		str, err := cmp.resolve(x, C_WHERE, args)
@@ -335,7 +347,7 @@ func (cmp *compiler) resolveLimit(limit *sqlparser.Limit) (*uint64, *uint64, err
 	}
 	return retLimit, retOffset, nil
 }
-func (cmp *compiler) resolveOrderBy(orderBy sqlparser.OrderBy, args *[]any) (string, error) {
+func (cmp *compiler) resolveOrderBy(orderBy sqlparser.OrderBy, args *internal.SqlArgs) (string, error) {
 	/*
 
 	 */
@@ -350,7 +362,7 @@ func (cmp *compiler) resolveOrderBy(orderBy sqlparser.OrderBy, args *[]any) (str
 	return strings.Join(sortLst, ","), nil
 
 }
-func (cmp *compiler) resolveFrom(node sqlparser.TableExprs, args *[]any) (string, error) {
+func (cmp *compiler) resolveFrom(node sqlparser.TableExprs, args *internal.SqlArgs) (string, error) {
 	ret := []string{}
 	for _, x := range node {
 
@@ -363,7 +375,7 @@ func (cmp *compiler) resolveFrom(node sqlparser.TableExprs, args *[]any) (string
 	}
 	return strings.Join(ret, ","), nil
 }
-func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs, args *[]any) (string, error) {
+func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs, args *internal.SqlArgs) (string, error) {
 	fields := []string{}
 	for _, selectExpr := range selectExprs {
 		if starExpr, ok := selectExpr.(*sqlparser.StarExpr); ok {
@@ -417,14 +429,14 @@ func (cmp *compiler) resolveSelect(selectExprs sqlparser.SelectExprs, args *[]an
 	return strings.Join(fields, ","), nil
 }
 
-func (cmp *compiler) resolveWhere(node *sqlparser.Where, args *[]any) (string, error) {
+func (cmp *compiler) resolveWhere(node *sqlparser.Where, args *internal.SqlArgs) (string, error) {
 	return cmp.resolve(node.Expr, C_WHERE, args)
 }
 
 type SqlCompilerInfo struct {
 	Info *types.SqlInfo
 	Dict *Dictionary
-	Args internal.SelectorTypesArgs
+	Args internal.CompilerArgs
 }
 
 func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error) {
@@ -435,9 +447,35 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 		}
 
 		info, err := cmp.getSqlInfo()
+
 		if err != nil {
 			return nil, err
 		}
+		if getReturnField {
+			if len(cmp.returnField) > 0 {
+				info.OutputFields = cmp.returnField
+			} else {
+				tabble := cmp.dict.Tables[0]
+				ent := model.ModelRegister.FindEntityByName(tabble)
+				if ent != nil {
+					info.OutputFields = make(map[string]types.OutputExpr)
+					for _, col := range ent.Cols {
+						info.OutputFields[strings.ToLower(col.Field.Name)] = types.OutputExpr{
+							Expr: &sqlparser.AliasedExpr{
+								Expr: &sqlparser.ColName{
+									Name: sqlparser.NewColIdent(col.Name),
+								},
+								As: sqlparser.NewColIdent(col.Field.Name),
+							},
+							FieldName: col.Name,
+						}
+					}
+				}
+			}
+
+		}
+
+		//for _,x:=range cmp.returnField
 		// cmp.dict
 		// return cmp.getSqlInfo()
 		return &SqlCompilerInfo{
@@ -482,7 +520,7 @@ func (cmp *compiler) initDict(node sqlparser.SQLNode) {
 
 type CompileJoinResult struct {
 	Expr string
-	Args []any
+	Args internal.SqlArgs
 }
 
 func CompileJoin(JoinExpr, dbDriver string) (*CompileJoinResult, error) {
@@ -495,7 +533,7 @@ func CompileJoin(JoinExpr, dbDriver string) (*CompileJoinResult, error) {
 		}
 		stmSelect := cmp.node.(*sqlparser.Select)
 		cmp.initDict(stmSelect.From)
-		args := []any{}
+		args := internal.SqlArgs{}
 		expr, err := cmp.resolveFrom(stmSelect.From, &args)
 		if err != nil {
 			return nil, err
@@ -518,7 +556,7 @@ var cacheCompileSelect sync.Map
 
 type CompileSelectResult struct {
 	Exprs string
-	Args  []any
+	Args  internal.SqlArgs
 }
 
 func CompileSelect(Selecttor, dbDriver string) (*CompileSelectResult, error) {
@@ -533,7 +571,7 @@ func CompileSelect(Selecttor, dbDriver string) (*CompileSelectResult, error) {
 		}
 		stmSelect := cmp.node.(*sqlparser.Select)
 		cmp.initDict(stmSelect.SelectExprs)
-		argsSelect := []any{}
+		argsSelect := internal.SqlArgs{}
 		expr, err := cmp.resolveSelect(stmSelect.SelectExprs, &argsSelect)
 		if err != nil {
 			init.err = err

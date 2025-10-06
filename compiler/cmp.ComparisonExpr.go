@@ -1,8 +1,11 @@
 package compiler
 
-import "github.com/vn-go/dx/sqlparser"
+import (
+	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/sqlparser"
+)
 
-func (cmp *compiler) comparisonExpr(node *sqlparser.ComparisonExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) comparisonExpr(node *sqlparser.ComparisonExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	strLeft, err := cmp.resolve(node.Left, cmpType, args)
 	if err != nil {
 		return "", err

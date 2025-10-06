@@ -147,6 +147,7 @@ type OutputExpr struct {
 	Expr      sqlparser.SQLNode
 	FieldName string
 }
+
 type SqlInfo struct {
 	OutputFields map[string]OutputExpr
 	SqlType      SQL_TYPE
@@ -167,6 +168,8 @@ type SqlInfo struct {
 
 	UnionNext *SqlInfo
 	UnionType string
+	// all arg is "?"
+	Args internal.CompilerArgs
 }
 
 func (info *SqlInfo) GetKey() string {
@@ -263,6 +266,7 @@ func (s *SqlInfo) Clone() *SqlInfo {
 	clone.StrGroupBy = s.StrGroupBy
 	clone.StrHaving = s.StrHaving
 	clone.UnionType = s.UnionType
+	clone.Args = s.Args
 
 	// Copy Limit / Offset
 	if s.Limit != nil {

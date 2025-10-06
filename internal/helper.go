@@ -279,6 +279,9 @@ func (c *helperType) TrimStringLiteral(s string) string {
 	s = strings.ReplaceAll(s, `\"`, `"`)
 	return s
 }
+func (c *helperType) ToBoolFromBytes(bff []byte) bool {
+	return c.ToBool(string(bff))
+}
 func (c *helperType) ToBool(v string) bool {
 	if v == "" {
 		return false
@@ -293,6 +296,72 @@ func (c *helperType) ToBool(v string) bool {
 		// Nếu không nhận dạng được, có thể coi là false
 		return false
 	}
+}
+func (c *helperType) ToInt(strV string) (int, error) {
+	// Convert the byte slice to string
+
+	// Trim leading and trailing spaces (in case there are spaces or newlines)
+	strV = strings.TrimSpace(strV)
+
+	// Parse the string into an integer
+	i, err := strconv.Atoi(strV)
+	if err != nil {
+		// Return 0 and the parsing error if conversion fails
+		return 0, fmt.Errorf("failed to convert bytes to int: %w", err)
+	}
+
+	// Return the parsed integer value and nil error
+	return i, nil
+}
+func (c *helperType) ToIntFormBytes(v []byte) (int, error) {
+	// Convert the byte slice to string
+	strV := string(v)
+
+	// Trim leading and trailing spaces (in case there are spaces or newlines)
+	strV = strings.TrimSpace(strV)
+
+	// Parse the string into an integer
+	i, err := strconv.Atoi(strV)
+	if err != nil {
+		// Return 0 and the parsing error if conversion fails
+		return 0, fmt.Errorf("failed to convert bytes to int: %w", err)
+	}
+
+	// Return the parsed integer value and nil error
+	return i, nil
+}
+func (c *helperType) ToFloat(strV string) (float64, error) {
+	// Convert byte slice to string
+
+	// Trim spaces and newlines to ensure clean input
+	strV = strings.TrimSpace(strV)
+
+	// Parse string to float64
+	f, err := strconv.ParseFloat(strV, 64)
+	if err != nil {
+		// Return 0 and wrap the error for context
+		return 0, fmt.Errorf("failed to convert bytes to float64: %w", err)
+	}
+
+	// Return the parsed float64 value and nil error
+	return f, nil
+}
+func (c *helperType) ToFloatFormBytes(v []byte) (float64, error) {
+	// Convert byte slice to string
+	strV := string(v)
+
+	// Trim spaces and newlines to ensure clean input
+	strV = strings.TrimSpace(strV)
+
+	// Parse string to float64
+	f, err := strconv.ParseFloat(strV, 64)
+	if err != nil {
+		// Return 0 and wrap the error for context
+		return 0, fmt.Errorf("failed to convert bytes to float64: %w", err)
+	}
+
+	// Return the parsed float64 value and nil error
+	return f, nil
 }
 
 var Helper = newHelper()

@@ -5,10 +5,11 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	strArgs := []string{}
 
 	for _, arg := range expr.Exprs {

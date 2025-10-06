@@ -12,7 +12,7 @@ import (
 type cmpSelectorType struct {
 	cmpType       COMPILER
 	aggregateExpr map[string]bool
-	args          internal.SelectorTypesArgs
+	args          internal.CompilerArgs
 }
 
 var CompilerSelect = &cmpSelectorType{}

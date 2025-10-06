@@ -20,12 +20,19 @@ func TestSelectSum(t *testing.T) {
 		t.Fail()
 	}
 	for i := 0; i < 5; i++ {
-		db.ModelDatasource("select * from role where active=?", true)
-		ds := db.ModelDatasource("role").Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m,name").Where("m=9 and total>0 and total <10 and name!='july''''nd'")
+		ds := db.DatasourceFromSql("select concat(code,?) Code,'x' id,'mmmm' name, createdOn from role where name!=?", "c", "A")
+		//ds := db.ModelDatasource("role")
 		sql, err := ds.ToSql()
 		assert.NoError(t, err)
 		fmt.Println(sql.Sql)
 		ret, err := ds.ToDict()
+		assert.NoError(t, err)
+		assert.NotEmpty(t, ret)
+		ds = ds.Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m,name").Where("m=9 and total>0 and total <10 and name!='july''''nd'")
+		sql, err = ds.ToSql()
+		assert.NoError(t, err)
+		fmt.Println(sql.Sql)
+		ret, err = ds.ToDict()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, ret)
 	}

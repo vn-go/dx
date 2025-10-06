@@ -3,10 +3,11 @@ package compiler
 import (
 	"strings"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
-func (cmp *compiler) joinTableExpr(node *sqlparser.JoinTableExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) joinTableExpr(node *sqlparser.JoinTableExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	strCon, err := cmp.resolve(node.Condition, cmpType, args)
 	if err != nil {
 		return "", err

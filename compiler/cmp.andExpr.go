@@ -1,8 +1,11 @@
 package compiler
 
-import "github.com/vn-go/dx/sqlparser"
+import (
+	"github.com/vn-go/dx/internal"
+	"github.com/vn-go/dx/sqlparser"
+)
 
-func (cmp *compiler) andExpr(node *sqlparser.AndExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) andExpr(node *sqlparser.AndExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	left, err := cmp.resolve(node.Left, cmpType, args)
 	if err != nil {
 		return "", err
@@ -13,7 +16,7 @@ func (cmp *compiler) andExpr(node *sqlparser.AndExpr, cmpType COMPILER, args *[]
 	}
 	return left + " AND " + right, nil
 }
-func (cmp *compiler) orExpr(node *sqlparser.OrExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) orExpr(node *sqlparser.OrExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	left, err := cmp.resolve(node.Left, cmpType, args)
 	if err != nil {
 		return "", err
@@ -24,7 +27,7 @@ func (cmp *compiler) orExpr(node *sqlparser.OrExpr, cmpType COMPILER, args *[]an
 	}
 	return left + " OR " + right, nil
 }
-func (cmp *compiler) notExpr(node *sqlparser.NotExpr, cmpType COMPILER, args *[]any) (string, error) {
+func (cmp *compiler) notExpr(node *sqlparser.NotExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	expr, err := cmp.resolve(node.Expr, cmpType, args)
 	if err != nil {
 		return "", err
