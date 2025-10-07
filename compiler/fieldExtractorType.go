@@ -35,8 +35,9 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 							return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", sqlIndent.String()), ERR)
 						}
 						ret[strings.ToLower(sqlIndent.String())] = types.OutputExpr{
-							Expr:      x,
+							SqlNode:   x,
 							FieldName: sqlIndent.String(),
+							Expr:      sqlIndent.String(),
 						}
 
 						visited[strings.ToLower(sqlIndent.String())] = true
@@ -74,7 +75,7 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 				return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", n.As.String()), ERR)
 			}
 			ret[strings.ToLower(n.As.String())] = types.OutputExpr{
-				Expr:      node,
+				SqlNode:   node,
 				FieldName: n.As.String(),
 			}
 
@@ -102,14 +103,29 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 			return nil, newCompilerError(fmt.Sprintf("Duplicate select field,'%s'", n.Name.String()), ERR)
 		}
 		ret[strings.ToLower(n.Name.String())] = types.OutputExpr{
-			Expr:      node,
+			SqlNode:   node,
 			FieldName: n.Name.String(),
+			Expr:      n.Name.String(),
 		}
 
 		visited[strings.ToLower(n.Name.String())] = true
 		return ret, nil
 	}
+	if n, ok := node.(*sqlparser.Union); ok {
 
+		left, err := f.GetFieldAlais(n.Left, map[string]bool{})
+		if err != nil {
+			return nil, err
+		}
+		right, err := f.GetFieldAlais(n.Right, map[string]bool{})
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range right {
+			left[k] = v
+		}
+		return left, nil
+	}
 	panic(fmt.Sprintf("Not impletement %T,`%s`", node, `compiler\fieldExtractorType.go`))
 
 }

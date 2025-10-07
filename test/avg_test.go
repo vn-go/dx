@@ -1,6 +1,7 @@
 package test
 
 import (
+	//"database/sql"
 	"fmt"
 	"testing"
 
@@ -11,6 +12,37 @@ import (
 func Add(a *[]int) {
 	*a = append(*a, 1)
 }
+func testBool(a *bool) {
+	testBool2(a)
+}
+func testBool2(a *bool) {
+	*a = true
+}
+func TestUnionSource(t *testing.T) {
+	x := false
+	testBool(&x)
+	fmt.Println(x)
+	db, err := dx.Open("mysql", hrCnn)
+	if err != nil {
+		t.Fail()
+	}
+	// ds := db.DatasourceFromSql(`select t.name,t.createdOn from ( select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
+	// 							union all
+	// 							select name,createdOn createdOn from role where id=497) t order by name`)
+	// ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
+	// 							union all
+	// 							select name,createdOn createdOn from role where id=497`)
+	ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
+								`)
+	// ds := db.DatasourceFromSql(`
+	// 							select name,createdOn createdOn from role where id=497 order by name`)
+	sql, err := ds.ToSql()
+	assert.NoError(t, err)
+	fmt.Println(sql.Sql)
+	ret, err := ds.ToDict()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ret)
+}
 func TestSelectSum(t *testing.T) {
 	a := []int{}
 	Add(&a)
@@ -20,7 +52,7 @@ func TestSelectSum(t *testing.T) {
 		t.Fail()
 	}
 	for i := 0; i < 5; i++ {
-		ds := db.DatasourceFromSql("select concat(code,?) Code,'x' id,'mmmm' name, createdOn from role where name!=?", "c", "A")
+		ds := db.DatasourceFromSql("select createdOn createdOn,name from role where name!=?", "c", "A")
 		//ds := db.ModelDatasource("role")
 		sql, err := ds.ToSql()
 		assert.NoError(t, err)
@@ -28,7 +60,7 @@ func TestSelectSum(t *testing.T) {
 		ret, err := ds.ToDict()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, ret)
-		ds = ds.Select("left(code,2) C,count(id) total,day(createdOn) d,month(createdOn) m,name").Where("m=9 and total>0 and total <10 and name!='july''''nd'")
+		ds = ds.Select("name,day(createdOn) d,month(createdOn) m").Where("m=9")
 		sql, err = ds.ToSql()
 		assert.NoError(t, err)
 		fmt.Println(sql.Sql)
@@ -51,6 +83,7 @@ func BenchmarkSelectSum(t *testing.B) {
 				ds := db.ModelDatasource("user").Select("count(id) Total,year(createdOn) Year,createdBy").Where("total=6 and Year=2025")
 
 				ds.ToSql()
+				//fmt.Println(sql.Sql)
 
 			}
 		})

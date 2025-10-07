@@ -21,7 +21,7 @@ type ResolevSelectorResult struct {
 	Args         internal.CompilerArgs
 }
 
-func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields *map[string]string, n sqlparser.SelectExprs, selector string, args *internal.SqlArgs) (*ResolevSelectorResult, error) {
+func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields *map[string]types.OutputExpr, n sqlparser.SelectExprs, selector string, args *internal.SqlArgs) (*ResolevSelectorResult, error) {
 
 	strFields := []string{}
 	selectors := []FieldSelect{}
@@ -32,7 +32,11 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 			return nil, err
 		}
 		selectors = append(selectors, *f)
-		(*outputFields)[strings.ToLower(f.Alias)] = f.Expr
+		(*outputFields)[strings.ToLower(f.Alias)] = types.OutputExpr{
+			SqlNode:   x,
+			FieldName: f.Expr,
+			Expr:      f.Expr,
+		}
 		strFields = append(strFields, fmt.Sprintf("%s %s", f.Expr, dialect.Quote(f.Alias)))
 
 	}
@@ -44,7 +48,7 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 
 	return ret, nil
 }
-func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[string]string, n sqlparser.SQLNode, selector string, args *internal.SqlArgs) (*FieldSelect, error) {
+func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[string]types.OutputExpr, n sqlparser.SQLNode, selector string, args *internal.SqlArgs) (*FieldSelect, error) {
 	if x, ok := n.(*sqlparser.AliasedExpr); ok {
 		ret, err := cmp.resolve(dialect, outputFields, x.Expr, selector, args)
 		if err != nil {
@@ -58,15 +62,22 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 
 	}
 	if x, ok := n.(*sqlparser.ColName); ok {
+		if outputFields == nil {
+			return &FieldSelect{
+				Expr:  x.Name.String(),
+				Alias: x.Name.String(),
+			}, nil
+		}
 		if f, ok := (*outputFields)[x.Name.Lowered()]; ok {
 			if cmp.cmpType == C_FUNC { //if is  in compling func return field no alias
+
 				return &FieldSelect{
-					Expr: f,
+					Expr: f.Expr,
 				}, nil
 			}
 
 			return &FieldSelect{
-				Expr:  f,
+				Expr:  f.Expr,
 				Alias: x.Name.String(),
 			}, nil
 			//return f + " " + dialect.Quote(x.Name.String()), nil
@@ -192,7 +203,7 @@ type resolveFuncExprResult struct {
 	isAggFuncCall bool
 }
 
-func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields *map[string]string, x *sqlparser.FuncExpr, selector string, args *internal.SqlArgs) (*resolveFuncExprResult, error) {
+func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields *map[string]types.OutputExpr, x *sqlparser.FuncExpr, selector string, args *internal.SqlArgs) (*resolveFuncExprResult, error) {
 	oldCmpTYpe := cmp.cmpType
 	defer func() {
 		cmp.cmpType = oldCmpTYpe

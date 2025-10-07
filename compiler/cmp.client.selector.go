@@ -25,7 +25,7 @@ type initMakeSelect struct {
 
 var initMakeSelectCache sync.Map
 
-func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]string, selectors, prefixKey string) (*ResolevSelectorResult, error) {
+func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors, prefixKey string) (*ResolevSelectorResult, error) {
 	key := selectors + "://" + prefixKey
 	a, _ := initMakeSelectCache.LoadOrStore(key, &initMakeSelect{})
 	i := a.(*initMakeSelect)
@@ -49,7 +49,7 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 // 	GroupByFields map[string]string
 // }
 
-func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]string, selectors string) (*ResolevSelectorResult, error) {
+func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors string) (*ResolevSelectorResult, error) {
 	sql := "select " + selectors + " from tmp"
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -60,15 +61,31 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *int
 		return ret, err
 	}
 	if x, ok := node.(*sqlparser.Union); ok {
-		retLeft, err := cmp.resolve(x.Left, C_SELECT, args)
+		leftCompiler, err := newCompilerFromSqlNode(x.Left, cmp.dialect)
 		if err != nil {
 			return "", err
 		}
-		retRight, err := cmp.resolve(x.Right, C_SELECT, args)
+		leftSql, err := leftCompiler.resolve(x.Left, C_SELECT, args)
 		if err != nil {
 			return "", err
 		}
-		return retLeft + " " + x.Type + " " + retRight, nil
+		rightCompiler, err := newCompilerFromSqlNode(x.Right, cmp.dialect)
+		if err != nil {
+			return "", err
+		}
+		rightSql, err := rightCompiler.resolve(x.Left, C_SELECT, args)
+		if err != nil {
+			return "", err
+		}
+		// retLeft, err := cmp.resolve(x.Left, C_SELECT, args)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// retRight, err := cmp.resolve(x.Right, C_SELECT, args)
+		// if err != nil {
+		// 	return "", err
+		// }
+		return leftSql + " " + x.Type + " " + rightSql, nil
 	}
 	if x, ok := node.(*sqlparser.Select); ok {
 		info, err := cmp.getSqlInfoBySelect(x)
@@ -125,7 +142,7 @@ func (cmp *compiler) binaryExpr(expr *sqlparser.BinaryExpr, cmpType COMPILER, ar
 }
 func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	if cmp.dict.ExprAlias == nil {
-		cmp.dict.ExprAlias = make(map[string]string)
+		cmp.dict.ExprAlias = make(map[string]types.OutputExpr)
 	}
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
 		resStr, err := cmp.resolve(x.Expr, cmpType, args)
@@ -133,28 +150,53 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 		if err != nil {
 			return "", err
 		}
-		if vx, ok := x.Expr.(*sqlparser.SQLVal); ok {
-			strVal := string(vx.Val)
-			if strings.HasPrefix(strVal, ":v") {
-				fmt.Println(strVal)
+		if _, ok := x.Expr.(*sqlparser.SQLVal); ok {
+			if x.As.IsEmpty() {
+				return resStr, nil
+			} else {
+				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
+					SqlNode: x.Expr,
+					Expr:    resStr,
+				} // resStr
+				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
 			}
 
-			return resStr, nil
+		}
+		if fnNode, ok := x.Expr.(*sqlparser.FuncExpr); ok {
+			if fnNode.Name.String() == internal.FnMarkSpecialTextArgs {
+				if x.As.IsEmpty() {
+					return resStr, nil
+				} else {
+					return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
+				}
+			}
 		}
 		if resStr != "" {
 			if !x.As.IsEmpty() && cmpType == C_SELECT {
-				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = resStr
+				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
+					SqlNode: x,
+					Expr:    resStr,
+				} //resStr
 
 				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
 			} else {
 				if strings.Contains(resStr, ".") {
 					fieldName := strings.Split(resStr, ".")[1]
 					fieldName = fieldName[1 : len(fieldName)-1]
-					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = resStr
+					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = types.OutputExpr{
+						SqlNode: x,
+						Expr:    resStr,
+					} //resStr
 				} else {
+					if resStr == "?" {
+						fmt.Println(resStr)
+					}
 					fieldName := resStr
 					fieldName = fieldName[1 : len(fieldName)-1]
-					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = resStr
+					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = types.OutputExpr{
+						SqlNode: x,
+						Expr:    resStr,
+					} //resStr
 				}
 				//cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(resStr))] = resStr
 				return resStr, nil
@@ -178,13 +220,19 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				if cmpType != C_SELECT {
 					return retField, nil
 				}
-				cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(cmp.dict.StructField[matchField].Name))] = retField
+				cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(cmp.dict.StructField[matchField].Name))] = types.OutputExpr{
+					SqlNode: x,
+					Expr:    retField,
+				}
 				return retField + " " + cmp.dialect.Quote(cmp.dict.StructField[matchField].Name), nil
 			} else {
 				if cmpType != C_SELECT {
 					return cmp.dialect.Quote(tableAlias, field), nil
 				}
-				cmp.dict.ExprAlias[strings.ToLower(field)] = cmp.dialect.Quote(tableAlias, field)
+				cmp.dict.ExprAlias[strings.ToLower(field)] = types.OutputExpr{
+					SqlNode: x,
+					Expr:    cmp.dialect.Quote(tableAlias, field),
+				}
 				return cmp.dialect.Quote(tableAlias, field) + " " + cmp.dialect.Quote(field), nil
 			}
 
@@ -199,7 +247,10 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				if cmpType != C_SELECT {
 					return expr, nil
 				}
-				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = expr
+				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
+					SqlNode: x,
+					Expr:    expr,
+				}
 				return expr + " " + cmp.dialect.Quote(x.As.String()), nil
 			}
 

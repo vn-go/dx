@@ -12,7 +12,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 	case sqlparser.StrVal:
 		*args = append(*args, internal.SqlArg{
 			IsDynamic: false,
-			Value:     cmp.dialect.ToText(string(expr.Val)),
+			Value:     internal.Helper.TrimStringLiteral(string(expr.Val)), //cmp.dialect.ToText(string(expr.Val)),
 		})
 		return "?", nil
 	case sqlparser.IntVal:

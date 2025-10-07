@@ -11,7 +11,19 @@ import (
 
 func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	strArgs := []string{}
-
+	if expr.Name.String() == internal.FnMarkSpecialTextArgs && len(expr.Exprs) == 1 {
+		n := expr.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
+		index, err := internal.Helper.ToIntFormBytes(n.Val)
+		if err != nil {
+			return "", fmt.Errorf("%s is not int value", string(n.Val))
+		}
+		*args = append(*args, internal.SqlArg{
+			IsDynamic:    false,
+			IsInTextArgs: true,
+			TextArgIndex: index,
+		})
+		return "?", nil
+	}
 	for _, arg := range expr.Exprs {
 		strArg, err := cmp.resolve(arg, C_FUNC, args)
 		if err != nil {

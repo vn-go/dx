@@ -71,7 +71,7 @@ type initMakeFilter struct {
 
 var initMakeFilterCache sync.Map
 
-func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]string, filter string, sqlSource string) (*CompilerFilterTypeResult, error) {
+func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string, sqlSource string) (*CompilerFilterTypeResult, error) {
 	key := filter + "://" + reflect.TypeFor[cmpWhereType]().String() + "/" + sqlSource
 	// for k, v := range outputFields {
 	// 	key += k + "@" + v
@@ -91,7 +91,7 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	}
 	return i.val, i.err
 }
-func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]string, filter string) (*CompilerFilterTypeResult, error) {
+func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string) (*CompilerFilterTypeResult, error) {
 
 	sql := "select * from tmp where " + filter
 	sqlParse, err := internal.Helper.QuoteExpression(sql)

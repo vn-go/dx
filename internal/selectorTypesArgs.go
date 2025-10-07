@@ -15,12 +15,25 @@ type SqlArg struct {
 	//index in sql
 	Index int
 	// if not is dynamic this value will part from sql exmaple select a+1,b+? index 0 is
-	Value any
+	Value        any
+	IsInTextArgs bool
+	TextArgIndex int
 }
 type SqlArgs []SqlArg
 
 func (a *SqlArgs) ExtractArgs(args ...any) []any {
-	panic("SqlArg ExtractArgs")
+	ret := []any{}
+	for _, x := range *a {
+		if x.IsDynamic {
+			if x.Index < len(args) {
+				ret = append(ret, args[x.Index])
+			} else {
+				ret = append(ret, x.Value)
+			}
+		}
+	}
+	//panic("SqlArg ExtractArgs")
+	return ret
 }
 func (c *SqlArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
 	if len(*c) == 0 {
@@ -28,7 +41,19 @@ func (c *SqlArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
 	}
 	panic("SqlArgs ToSelectorArgs")
 }
+func UnionCompilerArgs(a CompilerArgs, b CompilerArgs) CompilerArgs {
+	ret := CompilerArgs{
+		ArgWhere:   append(a.ArgWhere, b.ArgWhere...),
+		ArgsSelect: append(a.ArgsSelect, b.ArgsSelect...),
+		ArgJoin:    append(a.ArgJoin, b.ArgJoin...),
+		ArgGroup:   append(a.ArgGroup, b.ArgGroup...),
+		ArgHaving:  append(a.ArgHaving, b.ArgHaving...),
+		ArgOrder:   append(a.ArgOrder, b.ArgOrder...),
+		ArgSetter:  append(a.ArgSetter, b.ArgSetter...),
+	}
+	return ret
 
+}
 func FillArrayToEmptyFields[TObj any, TField any](obj TObj) TObj {
 	v := reflect.ValueOf(obj)
 	t := reflect.TypeOf(obj)
@@ -62,90 +87,6 @@ func GetAllElemetsByType[TType any](args []any) []TType {
 	}
 	return ret
 }
-
-//	func (q *ArgOfSqlStruct) GetFormArgs(args []internal.Sq) []SqlArg {
-//		ret := []SqlArg{}
-//		for _, x := range args {
-//			if v, ok := x.(SqlArg); ok {
-//				ret = append(ret, v)
-//			}
-//		}
-//		return ret
-//	}
-// func (q *ArgOfSqlStruct) ExtracAllDynamicArgsFromSelectorTypesArgs(argsSelector SelectorTypesArgs) {
-// 	q = FillArrayToEmptyFields[*ArgOfSqlStruct, SqlArg](q)
-// 	argsSelectorVal := reflect.ValueOf(argsSelector)
-// 	qValue := reflect.ValueOf(*q)
-// 	typ := reflect.TypeFor[SelectorTypesArgs]()
-// 	typOfDynamicArg := reflect.TypeFor[ArgOfSqlStruct]()
-// 	//typOfDynamicArgs := reflect.TypeFor[[]DynamicArg]()
-// 	for i := 0; i < typ.NumField(); i++ {
-// 		f := typ.Field(i)
-// 		argsSelectorValField := argsSelectorVal.FieldByIndex(f.Index)
-// 		arr := qValue.FieldByIndex(f.Index)
-// 		// if arr.IsNil() {
-// 		// 	fmt.Println(f.Name)
-// 		// 	arr.Set(reflect.MakeSlice(arr.Elem().Type(), 0, 0))
-// 		// }
-
-// 		for j := 0; j < argsSelectorValField.Len(); j++ {
-// 			fmt.Println(argsSelectorValField.Index(i).Elem().Type().String())
-// 			if argsSelectorValField.Index(j).Elem().Type() == typOfDynamicArg {
-// 				arr = reflect.Append(arr, argsSelectorValField.Index(j).Elem())
-// 			}
-// 		}
-// 		// if argsSelectorValField.IsValid() && qValue.FieldByIndex(f.Index).IsValid() {
-
-// 		// }
-// 	}
-// }
-// func (q *ArgOfSqlStruct) BuildDyanmicArgsToSelectorTypesArgs(args []any) SelectorTypesArgs {
-// 	q = FillArrayToEmptyFields[*ArgOfSqlStruct, SqlArg](q)
-// 	ret := SelectorTypesArgs{
-// 		ArgWhere:   []SqlArg{},
-// 		ArgsSelect: []SqlArg{},
-// 		ArgJoin:    []SqlArg{},
-// 		ArgGroup:   []SqlArg{},
-// 		ArgHaving:  []SqlArg{},
-// 		ArgOrder:   []SqlArg{},
-// 		ArgSetter:  []SqlArg{},
-// 	}
-// 	q = FillArrayToEmptyFields[*ArgOfSqlStruct, SqlArg](q)
-// 	valOfRet := reflect.ValueOf(&ret).Elem() // dùng Elem() để set được field
-// 	val := reflect.ValueOf(*q)
-// 	ft := reflect.TypeFor[SqlArg]()
-
-// 	for i := 0; i < ft.NumField(); i++ {
-// 		f := ft.Field(i)
-
-// 		if f.Name == "ArgsSelect" {
-// 			fmt.Println("collect args :" + f.Name)
-// 		}
-// 		fv := val.FieldByIndex(f.Index)
-// 		if !fv.IsValid() {
-// 			continue
-// 		}
-// 		if fv.IsNil() {
-
-// 			fv.Set(reflect.MakeSlice(reflect.TypeOf([]SqlArg{}), 0, 0).Addr())
-// 		}
-// 		qas := fv.Interface().([]SqlArg)
-// 		arr := reflect.MakeSlice(reflect.TypeOf([]any{}), 0, 0)
-
-// 		for _, qa := range qas {
-// 			if qa.Index >= 1 && qa.Index <= len(args) {
-// 				arr = reflect.Append(arr, reflect.ValueOf(args[qa.Index-1]))
-// 			}
-// 		}
-
-// 		fs := valOfRet.FieldByIndex(f.Index)
-// 		if fs.IsValid() && fs.CanSet() {
-// 			fs.Set(arr)
-// 		}
-// 	}
-
-// 	return ret
-// }
 
 type CompilerArgs struct {
 	ArgWhere   SqlArgs
@@ -198,7 +139,6 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs1(args []any) SelectorTypesArgs 
 						argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
 						//args = append(args, reflect.ValueOf(x.Value))
 					}
-					fmt.Println(x)
 
 				}
 				valueField.Elem().Set(argsValue) // panic cho nay
@@ -207,7 +147,7 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs1(args []any) SelectorTypesArgs 
 	}
 	return ret
 }
-func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
+func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any, extraTextArgs []string) SelectorTypesArgs {
 	typ := reflect.TypeFor[CompilerArgs]()
 	ret := NewSelectorTypesArgs()
 
@@ -227,10 +167,14 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
 		argsValue := reflect.MakeSlice(reflect.TypeFor[[]any](), 0, 0)
 
 		for _, x := range items {
-			if x.IsDynamic {
-				argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
+			if !x.IsInTextArgs {
+				if x.IsDynamic {
+					argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
+				} else {
+					argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
+				}
 			} else {
-				argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(extraTextArgs[x.TextArgIndex]))
 			}
 		}
 
@@ -244,15 +188,29 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
 func (a *SelectorTypesArgs) GetArgs(fields []reflect.StructField) []any {
 	ret := []any{}
 	val := reflect.ValueOf(*a)
+	//var nilField reflect.StructField
 	for _, f := range fields {
+		if f.Name == "" {
+			continue
+		}
 		fv := val.FieldByIndex(f.Index)
+
 		if fv.IsValid() {
 			//"reflect.Value.Elem"
-			if fv.IsNil() {
+			if fv.Kind() == reflect.Ptr && fv.IsNil() {
 				continue
 			}
+			if fv.Kind() == reflect.Struct { //<-- arg of query can not be struct
+				fmt.Println(f.Name)
+				dataTest := fv.Interface()
+				fmt.Println(dataTest)
 
-			ret = append(ret, fv.Interface().([]any)...)
+				//ret = append(ret, fv.Interface())
+				continue
+			} else {
+				ret = append(ret, fv.Interface().([]any)...)
+			}
+
 		}
 
 	}

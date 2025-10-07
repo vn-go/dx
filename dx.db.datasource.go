@@ -51,6 +51,8 @@ type datasourceType struct {
 	// autoGroupbyField map[string]string
 	aggExpr map[string]exprWithArgs
 	// aggExprRevert    map[string]string
+	isFormSql     bool
+	extraTextArgs []string
 }
 
 func (ds *datasourceType) Sort(strSort string) *datasourceType {
@@ -86,8 +88,14 @@ func (ds *datasourceType) buildWhere(strWhere string) {
 		return
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
+	var strWhereNew *compiler.CompilerFilterTypeResult
+	var err error
+	if ds.isFormSql {
+		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Info.OutputFields, strWhere, ds.key)
+	} else {
+		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
+	}
 
-	strWhereNew, err := compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
 	if err != nil {
 		ds.err = err
 		return
@@ -152,8 +160,13 @@ func (ds *datasourceType) buildSelect(selector string) {
 		//selector = ds.defaultSelector
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
-
-	selectors, err := compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.key)
+	var selectors *compiler.ResolevSelectorResult
+	var err error
+	if ds.isFormSql {
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Info.OutputFields, selector, ds.key)
+	} else {
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.key)
+	}
 
 	if err != nil {
 		ds.err = err
@@ -276,6 +289,7 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	ret := &datasourceTypeSql{
 		Sql:  sqlParse.Sql,
 		Args: ds.args.GetArgs(sqlParse.ArgIndex),
@@ -477,28 +491,22 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	return ret
 }
 func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
+	strSql, textParams := internal.Helper.InspectStringParam(sqlSelect)
 
-	// defaultInfo, err := db.getDefaultSelectOfModelByModelName(modleName)
-	// if err != nil {
-	// 	return &datasourceType{
-	// 		err: err,
-	// 	}
-	// }
-
-	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, true)
+	sqlInfo, err := compiler.Compile(strSql, db.DriverName, true)
 
 	if err != nil {
 		return &datasourceType{
 			err: err,
 		}
 	}
-	sqlInfo.Dict.ExprAlias = map[string]string{}
+	sqlInfo.Dict.ExprAlias = map[string]types.OutputExpr{}
 	for k, x := range sqlInfo.Info.OutputFields {
-		sqlInfo.Dict.ExprAlias[k] = x.FieldName
+		sqlInfo.Dict.ExprAlias[k] = x
 
 	}
 	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
-	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args)
+	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, textParams)
 	key := sqlInfo.Info.GetKey()
 
 	ret := &datasourceType{
@@ -507,6 +515,8 @@ func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
 		key:             key,
 		db:              db,
 		args:            argsCollected,
+		isFormSql:       true,
+		extraTextArgs:   textParams,
 	}
 	sqlInfo.Info.FieldArs = *ret.args.GetFields()
 	return ret

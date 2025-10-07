@@ -35,7 +35,7 @@ type emptyParam struct {
 	Index int
 }
 
-func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]string, n sqlparser.SQLNode, args *[]any) (*CompilerFilterTypeResult, error) {
+func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, n sqlparser.SQLNode, args *[]any) (*CompilerFilterTypeResult, error) {
 	// Use switch-case for clean handling of different SQL node types
 	switch x := n.(type) {
 
@@ -126,7 +126,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		// Check if the column is a valid field
 		if v, ok := fields[name]; ok {
 			return &CompilerFilterTypeResult{
-				Expr:      v,
+				Expr:      v.Expr,
 				FieldExpr: dialect.Quote(x.Name.String()),
 				Fields:    map[string]string{name: x.Name.String()},
 			}, nil
@@ -298,7 +298,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		return nil, newCompilerError(fmt.Sprintf("Invalid expression structure near '%s'. The expression format is not supported.", strFilter), ERR)
 	}
 }
-func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, fields map[string]string, x *sqlparser.FuncExpr, args *[]any) (*CompilerFilterTypeResult, error) {
+func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, x *sqlparser.FuncExpr, args *[]any) (*CompilerFilterTypeResult, error) {
 	strArgs := []string{}
 	if x.Name.Lowered() == "contains" {
 		if len(x.Exprs) != 2 {
@@ -354,7 +354,10 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		if ex.Fields != nil {
 			for k, v := range ex.Fields {
 				if _, ok := fieldsSelected[k]; !ok {
-					fields[k] = v
+					fields[k] = types.OutputExpr{
+						SqlNode: e,
+						Expr:    v,
+					}
 				}
 			}
 		}

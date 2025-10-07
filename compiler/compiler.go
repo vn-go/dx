@@ -33,7 +33,7 @@ const (
 type Dictionary struct {
 	TableAlias       map[string]string
 	Field            map[string]string
-	ExprAlias        map[string]string
+	ExprAlias        map[string]types.OutputExpr
 	StructField      map[string]reflect.StructField
 	FieldAlaisToExpr map[string]string
 	Tables           []string
@@ -92,6 +92,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 			}
 		}
 	}
+	//sqlparser.Backtick("[]")
 
 	stm, err := sqlparser.Parse(sql)
 	if err != nil {
@@ -111,7 +112,10 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
 
-		tableList := tableExtractor.getTablesFromSql(sql, stmSelect)
+		tableList, err := tableExtractor.getTablesFromSql(sql, stmSelect)
+		if err != nil {
+			return nil, err
+		}
 		if getReturnField {
 			ret.returnField, err = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{})
 			if err != nil {
@@ -119,30 +123,49 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 			}
 		}
 
-		ret.dict = ret.CreateDictionary(tableList)
+		ret.dict = ret.CreateDictionary(tableList.tables)
 		return ret, nil
 
 	}
-	if stmUnion, ok := stm.(*sqlparser.Union); ok {
-		tableList := tableExtractor.getTables(stmUnion.Left, make(map[string]bool))
-		tableList = append(tableList, tableExtractor.getTables(stmUnion.Right, make(map[string]bool))...)
-		ret.dict = ret.CreateDictionary(tableList)
+	if _, ok := stm.(*sqlparser.Union); ok {
+
+		// leftTables := tableExtractor.getTables(stmUnion.Left, make(map[string]bool))
+		// rightTables := tableExtractor.getTables(stmUnion.Right, make(map[string]bool))
+
+		// tableMap := make(map[string]bool)
+		// tables := []string{}
+		// if leftTables != nil {
+		// 	tables = append(tables, leftTables.tables...)
+		// }
+		// if rightTables != nil {
+		// 	for _, t := range rightTables.tables {
+		// 		tableMap[t] = true
+		// 	}
+		// 	tables = append(tables, rightTables.tables...)
+		// }
+		// var tableList []string
+		// for t := range tableMap {
+		// 	tableList = append(tableList, t)
+		// }
+
+		// ret.dict = ret.CreateDictionary(tables)
 		return ret, nil
 	}
 	if stmDelete, ok := stm.(*sqlparser.Delete); ok {
+
 		tableList := tableExtractor.getTables(stmDelete.TableExprs, make(map[string]bool))
-		ret.dict = ret.CreateDictionary(tableList)
+		if tableList != nil {
+			ret.dict = ret.CreateDictionary(tableList.tables)
+		}
+
 		return ret, nil
 	}
 	if stmUpdate, ok := stm.(*sqlparser.Update); ok {
 		visited := make(map[string]bool)
-		tableList := tableExtractor.getTables(stmUpdate.TableExprs, visited)
-		updateTables := tableList
-		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Where, visited)...)
-		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Exprs, visited)...)
-		tableList = append(tableList, tableExtractor.getTables(stmUpdate.Where.Expr, visited)...)
-		ret.dict = ret.CreateDictionary(tableList)
-		ret.dict.SourceUpdate = updateTables
+		tableList := tableExtractor.getTables(stmUpdate, visited)
+
+		ret.dict = ret.CreateDictionary(tableList.tables)
+		ret.dict.SourceUpdate = tableList.tables
 		return ret, nil
 	}
 	return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
@@ -162,28 +185,51 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 	}
 	if stmUnion, ok := cmp.node.(*sqlparser.Union); ok {
 		var ret *types.SqlInfo
-		var err error
+		//var err error
+		var args internal.CompilerArgs
+
 		if left, ok := stmUnion.Left.(*sqlparser.Select); ok {
-			ret, err = cmp.getSqlInfoBySelect(left)
+			compiler, err := newCompilerFromSqlNode(left, cmp.dialect)
 			if err != nil {
 				return nil, err
 			}
+			ret, err = compiler.getSqlInfo()
+			cmp.returnField = compiler.returnField
+			cmp.dict = compiler.dict
+			if err != nil {
+				return nil, err
+			}
+			args = cmp.args
 		} else {
 			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
 		}
 
 		if right, ok := stmUnion.Right.(*sqlparser.Select); ok {
-			var next *types.SqlInfo
-			next, err := cmp.getSqlInfoBySelect(right)
+			// var next *types.SqlInfo
+			// cmp.args = internal.FillArrayToEmptyFields[internal.CompilerArgs, internal.SqlArgs](internal.CompilerArgs{})
+			// next, err := cmp.getSqlInfoBySelect(right)
+			compiler, err := newCompilerFromSqlNode(right, cmp.dialect)
+			if err != nil {
+				return nil, err
+			}
+			next, err := compiler.getSqlInfo()
+
+			if err != nil {
+				return nil, err
+			}
 			if err != nil {
 				return nil, err
 			} else {
 				ret.UnionType = stmUnion.Type
 				ret.UnionNext = next
+				args = internal.UnionCompilerArgs(args, cmp.args)
+
 			}
 		} else {
 			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
 		}
+		//fmt.Println(mainArgs)
+		ret.Args = args
 		return ret, nil
 	}
 	if stmDelete, ok := cmp.node.(*sqlparser.Delete); ok {
@@ -451,6 +497,7 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 		if err != nil {
 			return nil, err
 		}
+		info.SqlSource = sql
 		if getReturnField {
 			if len(cmp.returnField) > 0 {
 				info.OutputFields = cmp.returnField
@@ -461,7 +508,7 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 					info.OutputFields = make(map[string]types.OutputExpr)
 					for _, col := range ent.Cols {
 						info.OutputFields[strings.ToLower(col.Field.Name)] = types.OutputExpr{
-							Expr: &sqlparser.AliasedExpr{
+							SqlNode: &sqlparser.AliasedExpr{
 								Expr: &sqlparser.ColName{
 									Name: sqlparser.NewColIdent(col.Name),
 								},
@@ -514,8 +561,12 @@ func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
 	return ret, nil
 }
 func (cmp *compiler) initDict(node sqlparser.SQLNode) {
+
 	tableList := tableExtractor.getTables(node, make(map[string]bool))
-	cmp.dict = cmp.CreateDictionary(tableList)
+	if tableList != nil {
+		cmp.dict = cmp.CreateDictionary(tableList.tables)
+	}
+
 }
 
 type CompileJoinResult struct {

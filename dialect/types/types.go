@@ -144,8 +144,9 @@ const (
 )
 
 type OutputExpr struct {
-	Expr      sqlparser.SQLNode
+	SqlNode   sqlparser.SQLNode
 	FieldName string
+	Expr      string
 }
 
 type SqlInfo struct {
@@ -169,17 +170,19 @@ type SqlInfo struct {
 	UnionNext *SqlInfo
 	UnionType string
 	// all arg is "?"
-	Args internal.CompilerArgs
+	Args      internal.CompilerArgs
+	SqlSource string
 }
 
 func (info *SqlInfo) GetKey() string {
-	ret := fmt.Sprintf("%s,%s/%s/%s/%s/%s",
+	ret := fmt.Sprintf("%s,%s/%s/%s/%s/%s/%s",
 		info.SqlType,
 		info.StrSelect,
 		info.StrWhere,
 		info.StrOrder,
 		info.StrHaving,
 		info.StrGroupBy,
+		info.SqlSource,
 	)
 
 	if info.Limit != nil {
