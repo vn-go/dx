@@ -36,6 +36,7 @@ func (cmp *compiler) getSqlInfoFromUnion(node sqlparser.SQLNode) (*types.SqlInfo
 		if err != nil {
 			return nil, err
 		}
+		cmp.args = internal.UnionCompilerArgs(compiler.args, cmp.args)
 		return ret, nil
 		//args = compiler.args
 	}

@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"strings"
+
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -16,7 +18,10 @@ func (cmp *compiler) aliasedTableExpr(expr *sqlparser.AliasedTableExpr, cmpType 
 		if err != nil {
 			return "", nil
 		}
-		return "(" + ret + ") " + cmp.dialect.Quote(expr.As.String()), nil
+		retSql := "(" + ret + ") " + cmp.dialect.Quote(strings.ToLower(expr.As.String()))
+		cmp.args = cmpSubQuery.args
+		return retSql, nil
+
 	} else {
 		ret, err := cmp.resolve(expr.Expr, cmpType, args)
 		if err != nil {

@@ -51,7 +51,9 @@ type compiler struct {
 	node        sqlparser.SQLNode
 	dialect     types.Dialect
 
-	args internal.CompilerArgs
+	args           internal.CompilerArgs
+	extraParams    []string
+	isFromSubQuery bool
 }
 type initCreateDictionary struct {
 	val  *Dictionary
@@ -60,13 +62,13 @@ type initCreateDictionary struct {
 
 var cacheCreateDictionary sync.Map
 
-func (cmp *compiler) CreateDictionary(tables []string) *Dictionary {
+func (cmp *compiler) CreateDictionary(tables []string, fields map[string]types.OutputExpr) *Dictionary {
 	key := reflect.TypeFor[compiler]().String() + "/" + reflect.TypeFor[compiler]().PkgPath() + "://CreateDictionary" + strings.Join(tables, ",")
 
 	actually, _ := cacheCreateDictionary.LoadOrStore(key, &initCreateDictionary{})
 	init := actually.(*initCreateDictionary)
 	init.once.Do(func() {
-		init.val = cmp.createDictionary(tables)
+		init.val = cmp.createDictionary(tables, fields)
 	})
 
 	return init.val
@@ -83,8 +85,9 @@ func (sqlErr *sqlCompilerError) Error() string {
 func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField bool) (*compiler, error) {
 	var err error
 	originalSql := sql
+	strSql, textParams := internal.Helper.InspectStringParam(sql)
 	if !skipQuoteExpression {
-		sql, err = internal.Helper.QuoteExpression(sql)
+		sql, err = internal.Helper.QuoteExpression(strSql)
 		if err != nil {
 			return nil, &sqlCompilerError{
 				err: err,
@@ -94,7 +97,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 	}
 	//sqlparser.Backtick("[]")
 
-	stm, err := sqlparser.Parse(sql)
+	stm, err := sqlparser.Parse(strSql)
 	if err != nil {
 		// args := &internal.SelectorTypesArgs{}
 		return nil, &sqlCompilerError{
@@ -104,58 +107,43 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 	}
 
 	ret := &compiler{
-		sql:     sql,
-		node:    stm,
-		dialect: factory.DialectFactory.Create(dbDriver),
-		args:    internal.CompilerArgs{},
+		sql:         originalSql,
+		node:        stm,
+		dialect:     factory.DialectFactory.Create(dbDriver),
+		args:        internal.CompilerArgs{},
+		extraParams: textParams,
 	}
 
 	if stmSelect, ok := stm.(*sqlparser.Select); ok {
 
 		tableList, err := tableExtractor.getTablesFromSql(sql, stmSelect)
+
 		if err != nil {
 			return nil, err
 		}
+		ret.isFromSubQuery = tableList.isSubQuery
+		var outputField map[string]types.OutputExpr = nil
 		if getReturnField {
-			ret.returnField, err = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{})
+			ret.returnField, err = FieldExttractor.GetFieldAlais(stmSelect, map[string]bool{}, tableList.isSubQuery)
+			outputField = ret.returnField
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		ret.dict = ret.CreateDictionary(tableList.tables)
+		ret.dict = ret.CreateDictionary(tableList.tables, outputField)
 		return ret, nil
 
 	}
 	if _, ok := stm.(*sqlparser.Union); ok {
 
-		// leftTables := tableExtractor.getTables(stmUnion.Left, make(map[string]bool))
-		// rightTables := tableExtractor.getTables(stmUnion.Right, make(map[string]bool))
-
-		// tableMap := make(map[string]bool)
-		// tables := []string{}
-		// if leftTables != nil {
-		// 	tables = append(tables, leftTables.tables...)
-		// }
-		// if rightTables != nil {
-		// 	for _, t := range rightTables.tables {
-		// 		tableMap[t] = true
-		// 	}
-		// 	tables = append(tables, rightTables.tables...)
-		// }
-		// var tableList []string
-		// for t := range tableMap {
-		// 	tableList = append(tableList, t)
-		// }
-
-		// ret.dict = ret.CreateDictionary(tables)
 		return ret, nil
 	}
 	if stmDelete, ok := stm.(*sqlparser.Delete); ok {
 
 		tableList := tableExtractor.getTables(stmDelete.TableExprs, make(map[string]bool))
 		if tableList != nil {
-			ret.dict = ret.CreateDictionary(tableList.tables)
+			ret.dict = ret.CreateDictionary(tableList.tables, nil)
 		}
 
 		return ret, nil
@@ -164,7 +152,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 		visited := make(map[string]bool)
 		tableList := tableExtractor.getTables(stmUpdate, visited)
 
-		ret.dict = ret.CreateDictionary(tableList.tables)
+		ret.dict = ret.CreateDictionary(tableList.tables, nil)
 		ret.dict.SourceUpdate = tableList.tables
 		return ret, nil
 	}
@@ -180,7 +168,7 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 			return nil, err
 		}
 
-		ret.Args = cmp.args
+		//ret.Args = cmp.args
 
 		return ret, nil
 	}
@@ -240,25 +228,26 @@ func (cmp *compiler) getSqlInfoByDelete(stmDelete *sqlparser.Delete) (*types.Sql
 	return ret, nil
 }
 func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.SqlInfo, error) {
-	sqlArgs := internal.CompilerArgs{}
+	// sqlArgs := internal.CompilerArgs{}
+	// sqlArgs = internal.FillArrayToEmptyFields[internal.CompilerArgs, internal.SqlArgs](sqlArgs)
 	strSelect, err := cmp.resolveSelect(stmSelect.SelectExprs, &cmp.args.ArgsSelect)
 
 	if err != nil {
 		return nil, err
 	}
-	sqlArgs.ArgsSelect = append(sqlArgs.ArgsSelect, cmp.args.ArgsSelect...)
+	// sqlArgs.ArgsSelect = append(sqlArgs.ArgsSelect, cmp.args.ArgsSelect...)
 	strFrom, err := cmp.resolveFrom(stmSelect.From, &cmp.args.ArgJoin)
 	if err != nil {
 		return nil, err
 	}
-	sqlArgs.ArgsSelect = append(sqlArgs.ArgJoin, cmp.args.ArgJoin...)
+	// sqlArgs.ArgJoin = append(sqlArgs.ArgJoin, cmp.args.ArgJoin...)
 	strWhere := ""
 	if stmSelect.Where != nil {
 		strWhere, err = cmp.resolveWhere(stmSelect.Where, &cmp.args.ArgWhere)
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs.ArgWhere = append(sqlArgs.ArgWhere, cmp.args.ArgWhere...)
+		// sqlArgs.ArgWhere = append(sqlArgs.ArgWhere, cmp.args.ArgWhere...)
 	}
 	strOrderBy := ""
 	if stmSelect.OrderBy != nil {
@@ -266,7 +255,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs.ArgOrder = append(sqlArgs.ArgOrder, cmp.args.ArgOrder...)
+		// sqlArgs.ArgOrder = append(sqlArgs.ArgOrder, cmp.args.ArgOrder...)
 	}
 	var limit, offset *uint64
 	if stmSelect.Limit != nil {
@@ -281,7 +270,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs.ArgGroup = append(sqlArgs.ArgGroup, cmp.args.ArgGroup...)
+		// sqlArgs.ArgGroup = append(sqlArgs.ArgGroup, cmp.args.ArgGroup...)
 	}
 	strHaving := ""
 	if stmSelect.Having != nil {
@@ -289,7 +278,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		if err != nil {
 			return nil, err
 		}
-		sqlArgs.ArgHaving = append(sqlArgs.ArgHaving, cmp.args.ArgHaving...)
+		// sqlArgs.ArgHaving = append(sqlArgs.ArgHaving, cmp.args.ArgHaving...)
 	}
 	if cmp.returnField == nil {
 		cmp.returnField = map[string]types.OutputExpr{}
@@ -304,7 +293,7 @@ func (cmp *compiler) getSqlInfoBySelect(stmSelect *sqlparser.Select) (*types.Sql
 		StrGroupBy:   strGroupBy,
 		StrHaving:    strHaving,
 		OutputFields: cmp.returnField,
-		Args:         sqlArgs,
+		Args:         cmp.args,
 	}
 	return ret, nil
 
@@ -435,9 +424,10 @@ func (cmp *compiler) resolveWhere(node *sqlparser.Where, args *internal.SqlArgs)
 }
 
 type SqlCompilerInfo struct {
-	Info *types.SqlInfo
-	Dict *Dictionary
-	Args internal.CompilerArgs
+	Info            *types.SqlInfo
+	Dict            *Dictionary
+	Args            internal.CompilerArgs
+	ExtraTextParams []string
 }
 
 func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error) {
@@ -478,20 +468,22 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 		}
 
 		return &SqlCompilerInfo{
-			Info: info,
-			Dict: cmp.dict,
-			Args: info.Args,
+			Info:            info,
+			Dict:            cmp.dict,
+			Args:            info.Args,
+			ExtraTextParams: cmp.extraParams,
 		}, nil
 	})
 
 }
-func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
-	cmp, err := newCompiler(sql, dbDriver, true, false)
-	if err != nil {
-		return nil, err
-	}
-	return cmp.getSqlInfo()
-}
+
+//	func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
+//		cmp, err := newCompiler(sql, dbDriver, true, false)
+//		if err != nil {
+//			return nil, err
+//		}
+//		return cmp.getSqlInfo()
+//	}
 func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
 	var err error
 	sql, err = internal.Helper.QuoteExpression(sql)
@@ -516,7 +508,7 @@ func (cmp *compiler) initDict(node sqlparser.SQLNode) {
 
 	tableList := tableExtractor.getTables(node, make(map[string]bool))
 	if tableList != nil {
-		cmp.dict = cmp.CreateDictionary(tableList.tables)
+		cmp.dict = cmp.CreateDictionary(tableList.tables, nil)
 	}
 
 }

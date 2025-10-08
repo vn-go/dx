@@ -19,12 +19,12 @@ type getTablesFromSqlStruct struct {
 
 func (t *tabelExtractorTypes) getTablesFromSql(sql string, node sqlparser.SQLNode) (*getTablesFromSqlStruct, error) {
 	return internal.OnceCall("tabelExtractorTypes/getTablesFromSql/"+sql, func() (*getTablesFromSqlStruct, error) {
-		isSubQuery := false
+
 		mapTable := make(map[string]bool)
 		x := t.getTables(node, mapTable)
 		return &getTablesFromSqlStruct{
 			tables:     x.tables,
-			isSubQuery: isSubQuery,
+			isSubQuery: x.isSubQuery,
 		}, nil
 
 	})
@@ -60,14 +60,19 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		}
 	}
 	if tableExprs, ok := node.(sqlparser.TableExprs); ok {
+		isSubquery := false
 		for _, n := range tableExprs {
 			nextTbl := t.getTables(n, visited)
 			if nextTbl != nil {
+				if nextTbl.isSubQuery {
+					isSubquery = true
+				}
 				ret = append(ret, nextTbl.tables...)
 			}
 		}
 		return &getTablesFromSqlStruct{
-			tables: ret,
+			tables:     ret,
+			isSubQuery: isSubquery,
 		}
 	}
 	if joinTableExpr, ok := node.(*sqlparser.JoinTableExpr); ok {
@@ -106,6 +111,14 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 					tbls = append(tbls, x+"\n"+aliasedTableExpr.As.String())
 				}
 				ret = append(ret, tbls...)
+			}
+			if nextTbl != nil && nextTbl.isSubQuery {
+				return &getTablesFromSqlStruct{
+					tables: []string{
+						aliasedTableExpr.As.String(),
+					},
+					isSubQuery: true,
+				}
 			}
 			return &getTablesFromSqlStruct{
 				tables: ret,
@@ -344,10 +357,7 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		}
 	}
 	if _, ok := node.(*sqlparser.Subquery); ok {
-		// nextTbl := t.getTables(s.Select, visited)
 
-		// *isSubQuey = true //<--set bang tru o day, nhung retrun sang buoc ke tiep no la false
-		// return append(ret, next...)
 		return &getTablesFromSqlStruct{
 			isSubQuery: true,
 		}

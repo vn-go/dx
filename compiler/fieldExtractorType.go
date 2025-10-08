@@ -12,7 +12,8 @@ import (
 type fieldExttractorType struct {
 }
 
-func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[string]bool) (map[string]types.OutputExpr, error) {
+func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[string]bool, isSubQuery bool) (map[string]types.OutputExpr, error) {
+
 	ret := map[string]types.OutputExpr{}
 	if n, ok := node.(sqlparser.SelectExprs); ok {
 		for _, x := range n {
@@ -49,7 +50,7 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 				//
 			}
 			if !found {
-				r, err := f.GetFieldAlais(x, visited)
+				r, err := f.GetFieldAlais(x, visited, isSubQuery)
 				if err != nil {
 					return nil, err
 				}
@@ -67,7 +68,7 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 		return ret, nil
 	}
 	if n, ok := node.(*sqlparser.Select); ok {
-		return f.GetFieldAlais(n.SelectExprs, visited)
+		return f.GetFieldAlais(n.SelectExprs, visited, isSubQuery)
 	}
 	if n, ok := node.(*sqlparser.AliasedExpr); ok {
 		if !n.As.IsEmpty() {
@@ -81,7 +82,7 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 
 			visited[strings.ToLower(n.As.String())] = true
 		} else {
-			r, err := f.GetFieldAlais(n.Expr, visited)
+			r, err := f.GetFieldAlais(n.Expr, visited, isSubQuery)
 			if err != nil {
 				return nil, err
 			}
@@ -113,11 +114,11 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 	}
 	if n, ok := node.(*sqlparser.Union); ok {
 
-		left, err := f.GetFieldAlais(n.Left, map[string]bool{})
+		left, err := f.GetFieldAlais(n.Left, map[string]bool{}, isSubQuery)
 		if err != nil {
 			return nil, err
 		}
-		right, err := f.GetFieldAlais(n.Right, map[string]bool{})
+		right, err := f.GetFieldAlais(n.Right, map[string]bool{}, isSubQuery)
 		if err != nil {
 			return nil, err
 		}

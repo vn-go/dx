@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/model"
 )
 
-func (cmp *compiler) createDictionary(tables []string) *Dictionary {
+func (cmp *compiler) createDictionary(tables []string, fields map[string]types.OutputExpr) *Dictionary {
 	tableAlias := map[string]string{}
 	tblList := []string{}
 	i := 1
@@ -72,5 +73,10 @@ func (cmp *compiler) createDictionary(tables []string) *Dictionary {
 	}
 
 	ret.TableAlias = newMap
+	if len(fields) > 0 {
+		for k, v := range fields {
+			ret.Field[k] = v.Expr
+		}
+	}
 	return ret
 }

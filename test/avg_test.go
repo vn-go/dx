@@ -27,13 +27,13 @@ func TestUnionSource(t *testing.T) {
 		t.Fail()
 	}
 
-	ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001' or name=?
+	ds := db.DatasourceFromSql(`select name,year(createdOn) y from (select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001' or name=?
 								union
 								select name,createdOn createdOn from role where id=497
 								union all
 								select name,createdOn createdOn from role where id>300 and id<350
 								union all
-								select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where r.id>7 and r.id<400`, "admin")
+								select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where r.id>7 and r.id<400) t`, "admin")
 
 	sql, err := ds.ToSql()
 	assert.NoError(t, err)
@@ -88,7 +88,16 @@ cpu: 12th Gen Intel(R) Core(TM) i7-12650H
 BenchmarkUnionSource/test-001-16         	  136614	      9837 ns/op	   12557 B/op	      79 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	2.462s
+---
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUnionSource$ github.com/vn-go/dx/test
 
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUnionSource/test-001-16         	  128601	      9035 ns/op	   12188 B/op	      76 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	1.660s
 */
 func TestSelectSum(t *testing.T) {
 	a := []int{}

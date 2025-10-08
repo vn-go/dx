@@ -491,9 +491,8 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 	return ret
 }
 func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
-	strSql, textParams := internal.Helper.InspectStringParam(sqlSelect)
 
-	sqlInfo, err := compiler.Compile(strSql, db.DriverName, true)
+	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, true)
 
 	if err != nil {
 		return &datasourceType{
@@ -506,7 +505,7 @@ func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
 
 	}
 	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
-	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, textParams)
+	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, sqlInfo.ExtraTextParams)
 	key := sqlInfo.Info.GetKey()
 
 	ret := &datasourceType{
@@ -516,7 +515,7 @@ func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
 		db:              db,
 		args:            argsCollected,
 		isFormSql:       true,
-		extraTextArgs:   textParams,
+		extraTextArgs:   sqlInfo.ExtraTextParams,
 	}
 	sqlInfo.Info.FieldArs = *ret.args.GetFields()
 	return ret

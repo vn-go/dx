@@ -56,36 +56,40 @@ func (cmp *compiler) resolve(node sqlparser.SQLNode, cmpType COMPILER, args *int
 		}
 		return ret + strings.ToUpper(x.Operator), nil
 	}
-	if x, ok := node.(*sqlparser.Subquery); ok {
-		ret, err := cmp.resolve(x.Select, C_SELECT, args)
-		return ret, err
-	}
+	// if x, ok := node.(*sqlparser.Subquery); ok {
+	// 	ret, err := cmp.resolve(x.Select, C_SELECT, args)
+	// 	return ret, err
+	// }
 	if x, ok := node.(*sqlparser.Union); ok {
-		leftCompiler, err := newCompilerFromSqlNode(x.Left, cmp.dialect)
+		info, err := cmp.getSqlInfoFromUnion(x)
 		if err != nil {
 			return "", err
 		}
-		leftSql, err := leftCompiler.resolve(x.Left, C_SELECT, args)
+		sqlRet, err := cmp.dialect.BuildSql(info)
 		if err != nil {
 			return "", err
 		}
-		rightCompiler, err := newCompilerFromSqlNode(x.Right, cmp.dialect)
-		if err != nil {
-			return "", err
-		}
-		rightSql, err := rightCompiler.resolve(x.Left, C_SELECT, args)
-		if err != nil {
-			return "", err
-		}
-		// retLeft, err := cmp.resolve(x.Left, C_SELECT, args)
+
+		return sqlRet.Sql, nil
+		// leftCompiler, err := newCompilerFromSqlNode(x.Left, cmp.dialect)
 		// if err != nil {
 		// 	return "", err
 		// }
-		// retRight, err := cmp.resolve(x.Right, C_SELECT, args)
+		// leftSql, err := leftCompiler.resolve(x.Left, C_SELECT, args)
+		// cmp.args = internal.UnionCompilerArgs(cmp.args, leftCompiler.args)
 		// if err != nil {
 		// 	return "", err
 		// }
-		return leftSql + " " + x.Type + " " + rightSql, nil
+		// rightCompiler, err := newCompilerFromSqlNode(x.Right, cmp.dialect)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// rightSql, err := rightCompiler.resolve(x.Left, C_SELECT, args)
+		// if err != nil {
+		// 	return "", err
+		// }
+		// cmp.args = internal.UnionCompilerArgs(cmp.args, rightCompiler.args)
+		// return leftSql + " " + x.Type + " " + rightSql, nil
 	}
 	if x, ok := node.(*sqlparser.Select); ok {
 		info, err := cmp.getSqlInfoBySelect(x)

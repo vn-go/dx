@@ -17,12 +17,16 @@ func newCompilerFromSqlNode(node sqlparser.SQLNode, dialect types.Dialect) (*com
 	}
 
 	tableList := tableExtractor.getTables(node, map[string]bool{})
-	ret.returnField, err = FieldExttractor.GetFieldAlais(node, map[string]bool{})
+	isSubQuery := false
+	if tableList != nil {
+		isSubQuery = tableList.isSubQuery
+	}
+	ret.returnField, err = FieldExttractor.GetFieldAlais(node, map[string]bool{}, isSubQuery)
 	if err != nil {
 		return nil, err
 	}
 	if tableList != nil {
-		ret.dict = ret.CreateDictionary(tableList.tables)
+		ret.dict = ret.CreateDictionary(tableList.tables, ret.returnField)
 	}
 
 	return ret, nil

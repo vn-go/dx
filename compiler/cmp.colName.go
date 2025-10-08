@@ -8,6 +8,13 @@ import (
 )
 
 func (cmp *compiler) colName(expr *sqlparser.ColName, cmpType COMPILER) (string, error) {
+	if cmp.isFromSubQuery {
+		if expr.Qualifier.IsEmpty() {
+			return cmp.dialect.Quote(expr.Name.String()), nil
+		} else {
+			return cmp.dialect.Quote(expr.Qualifier.Name.String(), expr.Name.String()), nil
+		}
+	}
 	if len(cmp.dict.Tables) == 1 {
 		field := expr.Name.String()
 		matchField := strings.ToLower(fmt.Sprintf("%s.%s", cmp.dict.Tables[0], field))
