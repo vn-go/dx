@@ -100,8 +100,12 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 		} else {
 
 			nextTbl := t.getTables(aliasedTableExpr.Expr, visited)
-			if nextTbl != nil {
-				ret = append(ret, nextTbl.tables...)
+			if nextTbl != nil && len(nextTbl.tables) > 0 {
+				tbls := []string{}
+				for _, x := range nextTbl.tables {
+					tbls = append(tbls, x+"\n"+aliasedTableExpr.As.String())
+				}
+				ret = append(ret, tbls...)
 			}
 			return &getTablesFromSqlStruct{
 				tables: ret,

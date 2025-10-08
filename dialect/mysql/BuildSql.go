@@ -162,22 +162,19 @@ func mySqlbuildSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 			}
 		}
 	}
-	if info.UnionNext != nil {
-		sqlParse, err := mySqlbuildSqlSelect(*info.UnionNext)
+	sqlStm := sb.String()
+
+	if info.UnionPrevious != nil {
+		sqlParse, err := mySqlbuildSqlSelect(*info.UnionPrevious)
 		if err != nil {
 			return nil, err
 		}
-		_, err = sb.WriteString(" " + info.UnionType + " ")
-		if err != nil {
-			return nil, err
-		}
-		_, err = sb.WriteString(sqlParse.Sql)
-		if err != nil {
-			return nil, err
-		}
-		ret.ArgIndex = append(ret.ArgIndex, sqlParse.ArgIndex...)
+
+		sqlStm = sqlParse.Sql + "\n" + info.UnionType + "\n" + sqlStm
+
+		//ret.ArgIndex = append(sqlParse.ArgIndex, ret.ArgIndex...)
 	}
-	ret.Sql = sb.String()
+	ret.Sql = sqlStm
 	return ret, nil
 }
 func (mssql *mySqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {

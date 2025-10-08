@@ -167,8 +167,9 @@ type SqlInfo struct {
 
 	StrHaving string
 
-	UnionNext *SqlInfo
-	UnionType string
+	UnionPrevious *SqlInfo
+	UnionType     string
+	UnionLast     *SqlInfo
 	// all arg is "?"
 	Args      internal.CompilerArgs
 	SqlSource string
@@ -197,9 +198,12 @@ func (info *SqlInfo) GetKey() string {
 	if nextInfo, ok := info.From.(SqlInfo); ok {
 		ret += "/" + nextInfo.GetKey()
 	}
-	if info.UnionNext != nil {
-		ret += "/" + info.UnionNext.GetKey()
+	u := info.UnionPrevious
+	for u != nil {
+		ret += "/" + u.GetKey()
+		u = u.UnionPrevious
 	}
+
 	return ret
 }
 
@@ -237,7 +241,7 @@ func PutSqlInfo(s *SqlInfo) {
 	s.From = nil
 	s.StrGroupBy = ""
 	s.StrHaving = ""
-	s.UnionNext = nil
+	s.UnionPrevious = nil
 	s.UnionType = ""
 
 	sqlInfoPool.Put(s)
@@ -301,10 +305,10 @@ func (s *SqlInfo) Clone() *SqlInfo {
 	}
 
 	// Copy UnionNext
-	if s.UnionNext != nil {
-		clone.UnionNext = s.UnionNext.Clone()
+	if s.UnionPrevious != nil {
+		clone.UnionPrevious = s.UnionPrevious.Clone()
 	} else {
-		clone.UnionNext = nil
+		clone.UnionPrevious = nil
 	}
 
 	return clone

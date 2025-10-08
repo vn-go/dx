@@ -162,22 +162,16 @@ func mssqlBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 		}
 		sb.WriteString(fmt.Sprintf(" OFFSET %d ROWS FETCH NEXT %d ROWS ONLY", *info.Offset, limit))
 	}
-	if info.UnionNext != nil {
-		sqlParse, err := mssqlBuilSqlSelect(*info.UnionNext)
+	sqlStm := sb.String()
+	if info.UnionPrevious != nil {
+		sqlParse, err := mssqlBuilSqlSelect(*info.UnionPrevious)
 		if err != nil {
 			return nil, err
 		}
-		_, err = sb.WriteString(" " + info.UnionType + " ")
-		if err != nil {
-			return nil, err
-		}
-		_, err = sb.WriteString(sqlParse.Sql)
-		if err != nil {
-			return nil, err
-		}
-		ret.ArgIndex = append(ret.ArgIndex, sqlParse.ArgIndex...)
+		sqlStm = sqlParse.Sql + "\n" + info.UnionType + "\n" + sqlStm
+		ret.ArgIndex = append(sqlParse.ArgIndex, ret.ArgIndex...)
 	}
-	ret.Sql = sb.String()
+	ret.Sql = sqlStm
 	return ret, nil
 }
 func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {

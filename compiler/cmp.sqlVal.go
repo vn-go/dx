@@ -16,10 +16,14 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		})
 		return "?", nil
 	case sqlparser.IntVal:
+		if cmpType == C_LIMIT || cmpType == C_OFFSET {
+			return string(expr.Val), nil
+		}
 		intVal, err := internal.Helper.ToIntFormBytes(expr.Val)
 		if err != nil {
 			return "", err
 		}
+
 		*args = append(*args, internal.SqlArg{
 			IsDynamic: false,
 			Value:     intVal,

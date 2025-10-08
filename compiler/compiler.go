@@ -171,6 +171,7 @@ func newCompiler(sql, dbDriver string, skipQuoteExpression bool, getReturnField 
 	return nil, fmt.Errorf("compiler not support %s, %s", originalSql, `compiler\compiler.go`)
 
 }
+
 func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 
 	if stmSelect, ok := cmp.node.(*sqlparser.Select); ok {
@@ -178,59 +179,13 @@ func (cmp *compiler) getSqlInfo() (*types.SqlInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		//ret.Args.ExtracAllDynamicArgsFromSelectorTypesArgs(cmp.args)
+
 		ret.Args = cmp.args
-		//ret.QArg.ArgsSelect = internal.GetAllElemetsByType[internal.DynamicArg](cmp.args.ArgsSelect)
+
 		return ret, nil
 	}
 	if stmUnion, ok := cmp.node.(*sqlparser.Union); ok {
-		var ret *types.SqlInfo
-		//var err error
-		var args internal.CompilerArgs
-
-		if left, ok := stmUnion.Left.(*sqlparser.Select); ok {
-			compiler, err := newCompilerFromSqlNode(left, cmp.dialect)
-			if err != nil {
-				return nil, err
-			}
-			ret, err = compiler.getSqlInfo()
-			cmp.returnField = compiler.returnField
-			cmp.dict = compiler.dict
-			if err != nil {
-				return nil, err
-			}
-			args = cmp.args
-		} else {
-			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
-		}
-
-		if right, ok := stmUnion.Right.(*sqlparser.Select); ok {
-			// var next *types.SqlInfo
-			// cmp.args = internal.FillArrayToEmptyFields[internal.CompilerArgs, internal.SqlArgs](internal.CompilerArgs{})
-			// next, err := cmp.getSqlInfoBySelect(right)
-			compiler, err := newCompilerFromSqlNode(right, cmp.dialect)
-			if err != nil {
-				return nil, err
-			}
-			next, err := compiler.getSqlInfo()
-
-			if err != nil {
-				return nil, err
-			}
-			if err != nil {
-				return nil, err
-			} else {
-				ret.UnionType = stmUnion.Type
-				ret.UnionNext = next
-				args = internal.UnionCompilerArgs(args, cmp.args)
-
-			}
-		} else {
-			panic(fmt.Sprintf("compiler.getSqlInfo: not support %T", stmUnion.Left))
-		}
-		//fmt.Println(mainArgs)
-		ret.Args = args
-		return ret, nil
+		return cmp.getSqlInfoFromUnion(stmUnion)
 	}
 	if stmDelete, ok := cmp.node.(*sqlparser.Delete); ok {
 		return cmp.getSqlInfoByDelete(stmDelete)
@@ -370,7 +325,7 @@ func (cmp *compiler) resolveGroupBy(group sqlparser.GroupBy, args *internal.SqlA
 func (cmp *compiler) resolveLimit(limit *sqlparser.Limit) (*uint64, *uint64, error) {
 	var retLimit, retOffset *uint64
 	if limit.Rowcount != nil {
-		strLimit, err := cmp.resolve(limit.Rowcount, C_LIMIT, nil)
+		strLimit, err := cmp.resolve(limit.Rowcount, C_LIMIT, &internal.SqlArgs{})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -522,13 +477,10 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 
 		}
 
-		//for _,x:=range cmp.returnField
-		// cmp.dict
-		// return cmp.getSqlInfo()
 		return &SqlCompilerInfo{
 			Info: info,
 			Dict: cmp.dict,
-			Args: cmp.args,
+			Args: info.Args,
 		}, nil
 	})
 

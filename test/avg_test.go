@@ -29,13 +29,33 @@ func TestUnionSource(t *testing.T) {
 	// ds := db.DatasourceFromSql(`select t.name,t.createdOn from ( select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
 	// 							union all
 	// 							select name,createdOn createdOn from role where id=497) t order by name`)
-	// ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
+	// ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001' or name=?
+	// 							union
+	// 							select name,createdOn createdOn from role where id=497
 	// 							union all
-	// 							select name,createdOn createdOn from role where id=497`)
-	ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
-								`)
+	// 							select name,createdOn createdOn from role where id>300 and id<350
+	// 							union all
+	// 							select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where 350>7 and r.id<400`, "admin")
+	ds := db.DatasourceFromSql(`select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where 350>7 and r.id<400`, "admin")
+	/*
+		SELECT CONCAT(`T1`.`name`, ?, ?) `name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`name` = ?
+		union all
+		SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` = ?
+		union
+		SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` > ? AND `T1`.`id` < ?
+
+	*/
+
+	// ds := db.DatasourceFromSql(`select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001'
+	// 							`)
 	// ds := db.DatasourceFromSql(`
 	// 							select name,createdOn createdOn from role where id=497 order by name`)
+	/*
+		SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE ? > ? AND `T1`.`id` < ?
+		SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` > ? AND `T1`.`id` < ?
+		SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` = ?SELECT CONCAT(`T1`.`name`, ?, ?) `name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`name` = ? union all SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` = ? union all SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE `T1`.`id` > ? AND `T1`.`id` < ? union all SELECT `T1`.`name`,`T1`.`created_on` `createdOn` FROM `sys_roles` `T1` WHERE ? > ? AND `T1`.`id` < ?
+
+	*/
 	sql, err := ds.ToSql()
 	assert.NoError(t, err)
 	fmt.Println(sql.Sql)

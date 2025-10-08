@@ -130,16 +130,17 @@ func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 			sb.WriteString(fmt.Sprintf(" OFFSET %d", *info.Offset))
 		}
 	}
-	if info.UnionNext != nil {
-		sqlParse, err := postgresBuilSqlSelect(*info.UnionNext)
+	sqlStm := sb.String()
+
+	if info.UnionPrevious != nil {
+		sqlParse, err := postgresBuilSqlSelect(*info.UnionPrevious)
 		if err != nil {
 			return nil, err
 		}
-		sb.WriteString(" " + info.UnionType + " ")
-		sb.WriteString(sqlParse.Sql)
-		ret.ArgIndex = append(ret.ArgIndex, sqlParse.ArgIndex...)
+		sqlStm = sqlParse.Sql + "\n" + info.UnionType + "\n" + sqlStm
+		ret.ArgIndex = append(sqlParse.ArgIndex, ret.ArgIndex...)
 	}
-	ret.Sql = sb.String()
+	ret.Sql = sqlStm
 	return ret, nil
 }
 func (mssql *postgresDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
