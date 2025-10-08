@@ -94,7 +94,7 @@ func (db *DB) findtWithFilter(
 			sql = sql + " " + orderStr
 
 		}
-		sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
+		sqlInfo, err := compiler.Compile(sql, db.DriverName, false, false)
 		if err != nil {
 			return "", err
 		}

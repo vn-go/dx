@@ -75,7 +75,7 @@ func (cmp *compiler) createDictionary(tables []string, fields map[string]types.O
 	ret.TableAlias = newMap
 	if len(fields) > 0 {
 		for k, v := range fields {
-			ret.Field[k] = v.Expr
+			ret.Field[k] = v.Expr.ExprContent
 		}
 	}
 	return ret

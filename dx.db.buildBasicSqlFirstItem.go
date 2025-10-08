@@ -41,7 +41,7 @@ func (db *DB) buildBasicSqlFirstItem(typ reflect.Type, filter string) (string, e
 
 			sql += " WHERE " + filter
 		}
-		cmpInfo, err := compiler.Compile(sql, db.DriverName, false)
+		cmpInfo, err := compiler.Compile(sql, db.DriverName, false, false)
 		if err != nil {
 			return "", err
 		}
@@ -128,7 +128,7 @@ func (db *DB) buildBasicSqlFindItem(typ reflect.Type, filter string, orderStr st
 
 			sql += " ORDER BY " + orderStr
 		}
-		sqlInfo, err := compiler.Compile(sql, db.DriverName, false)
+		sqlInfo, err := compiler.Compile(sql, db.DriverName, false, false)
 		if err != nil {
 			return "", err
 		}

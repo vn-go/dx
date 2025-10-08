@@ -430,7 +430,7 @@ type SqlCompilerInfo struct {
 	ExtraTextParams []string
 }
 
-func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error) {
+func Compile(sql, dbDriver string, getReturnField bool, bySqlSelect bool) (*SqlCompilerInfo, error) {
 	return internal.OnceCall("compiler/"+dbDriver+"/"+sql, func() (*SqlCompilerInfo, error) {
 		cmp, err := newCompiler(sql, dbDriver, false, getReturnField)
 		if err != nil {
@@ -467,12 +467,21 @@ func Compile(sql, dbDriver string, getReturnField bool) (*SqlCompilerInfo, error
 
 		}
 
-		return &SqlCompilerInfo{
+		ret := &SqlCompilerInfo{
 			Info:            info,
 			Dict:            cmp.dict,
 			Args:            info.Args,
 			ExtraTextParams: cmp.extraParams,
-		}, nil
+		}
+		if bySqlSelect {
+			ret.Dict.ExprAlias = map[string]types.OutputExpr{}
+			for k, x := range ret.Info.OutputFields {
+				ret.Dict.ExprAlias[k] = x
+
+			}
+		}
+
+		return ret, nil
 	})
 
 }
@@ -594,7 +603,7 @@ func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 			return nil, err
 		}
 
-		info, err := Compile(retSql.Sql, dbDriver, true)
+		info, err := Compile(retSql.Sql, dbDriver, true, false)
 		if err != nil {
 			return nil, err
 		}

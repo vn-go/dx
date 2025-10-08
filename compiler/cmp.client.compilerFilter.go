@@ -13,11 +13,14 @@ import (
 type compilerFilterType struct {
 }
 type CompilerFilterTypeResult struct {
-	Expr       string
-	FieldExpr  string
-	Fields     map[string]string
-	IsConstant bool
-	Args       []interface{}
+	Expr      string
+	FieldExpr string
+	Fields    map[string]types.OutputExpr
+	//map field: agg func name
+	FieldInFunc      map[string]types.OutputExpr
+	IsConstant       bool
+	Args             []interface{}
+	HasAggregateFunc bool
 }
 
 //	func (c *CompilerFilterTypeResult) GetExpr() string {
@@ -35,6 +38,20 @@ type emptyParam struct {
 	Index int
 }
 
+func union(a, b map[string]types.OutputExpr) map[string]types.OutputExpr {
+	ret := map[string]types.OutputExpr{}
+	for k, v := range a {
+		if _, ok := ret[k]; !ok {
+			ret[k] = v
+		}
+	}
+	for k, v := range b {
+		if _, ok := ret[k]; !ok {
+			ret[k] = v
+		}
+	}
+	return ret
+}
 func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, n sqlparser.SQLNode, args *[]any) (*CompilerFilterTypeResult, error) {
 	// Use switch-case for clean handling of different SQL node types
 	switch x := n.(type) {
@@ -69,18 +86,20 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		fieldExpr := left.FieldExpr + " " + x.Operator + " " + right.FieldExpr
 
 		// Collect fields
-		fieldsSelected := make(map[string]string, len(left.Fields)+len(right.Fields))
-		for k, v := range left.Fields {
-			fieldsSelected[k] = v
-		}
-		for k, v := range right.Fields {
-			fieldsSelected[k] = v
-		}
 
+		fieldsSelected := internal.UnionMap(left.Fields, right.Fields)
+
+		fieldInFunc := union(left.FieldInFunc, right.FieldInFunc)
+		isAggFuncCall := left.HasAggregateFunc || right.HasAggregateFunc
+		if isAggFuncCall {
+			fmt.Println(fieldInFunc)
+		}
 		return &CompilerFilterTypeResult{
-			Expr:      expr,
-			FieldExpr: fieldExpr,
-			Fields:    fieldsSelected,
+			Expr:             expr,
+			FieldExpr:        fieldExpr,
+			Fields:           fieldsSelected,
+			HasAggregateFunc: isAggFuncCall,
+			FieldInFunc:      fieldInFunc,
 		}, nil
 
 	// --- 2. Binary Expression (e.g., +, -, *, /) ---
@@ -97,13 +116,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		expr := left.Expr + " " + x.Operator + " " + right.Expr
 
 		// Collect fields
-		fieldsSelected := make(map[string]string, len(left.Fields)+len(right.Fields))
-		for k, v := range left.Fields {
-			fieldsSelected[k] = v
-		}
-		for k, v := range right.Fields {
-			fieldsSelected[k] = v
-		}
+		fieldsSelected := internal.UnionMap(left.Fields, right.Fields)
 
 		return &CompilerFilterTypeResult{
 			Expr:   expr,
@@ -126,9 +139,13 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		// Check if the column is a valid field
 		if v, ok := fields[name]; ok {
 			return &CompilerFilterTypeResult{
-				Expr:      v.Expr,
+				Expr:      v.Expr.ExprContent,
 				FieldExpr: dialect.Quote(x.Name.String()),
-				Fields:    map[string]string{name: x.Name.String()},
+				Fields: map[string]types.OutputExpr{
+					name: types.OutputExpr{
+						Expr: v.Expr,
+					},
+				},
 			}, nil
 		}
 
@@ -146,13 +163,13 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 		// Handle parameters (e.g., :v1)
 		if strings.HasPrefix(v, ":v") {
-			pIndex, err := strconv.ParseInt(v[2:], 32, 0)
-			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
-			}
-			*args = append(*args, emptyParam{
-				Index: int(pIndex),
-			})
+			// pIndex, err := strconv.ParseInt(v[2:], 32, 0)
+			// if err != nil {
+			// 	return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
+			// }
+			// *args = append(*args, emptyParam{
+			// 	Index: int(pIndex),
+			// })
 			return &CompilerFilterTypeResult{Expr: "?", FieldExpr: "?", IsConstant: true}, nil
 		}
 
@@ -219,18 +236,16 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		// Collect fields
-		fieldsSelected := make(map[string]string, len(left.Fields)+len(right.Fields))
-		for k, v := range left.Fields {
-			fieldsSelected[k] = v
-		}
-		for k, v := range right.Fields {
-			fieldsSelected[k] = v
-		}
+		fieldsSelected := internal.UnionMap(left.Fields, right.Fields)
+
+		fieldInFunc := union(left.FieldInFunc, right.FieldInFunc)
 
 		return &CompilerFilterTypeResult{
-			Expr:      left.Expr + " AND " + right.Expr,
-			FieldExpr: left.FieldExpr + " AND " + right.FieldExpr,
-			Fields:    fieldsSelected,
+			Expr:             left.Expr + " AND " + right.Expr,
+			FieldExpr:        left.FieldExpr + " AND " + right.FieldExpr,
+			Fields:           fieldsSelected,
+			HasAggregateFunc: left.HasAggregateFunc || right.HasAggregateFunc,
+			FieldInFunc:      fieldInFunc,
 		}, nil
 
 	// --- 6. Logical OR Expression (OrExpr) ---
@@ -250,18 +265,13 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		// Collect fields
-		fieldsSelected := make(map[string]string, len(left.Fields)+len(right.Fields))
-		for k, v := range left.Fields {
-			fieldsSelected[k] = v
-		}
-		for k, v := range right.Fields {
-			fieldsSelected[k] = v
-		}
+		fieldsSelected := internal.UnionMap(left.Fields, right.Fields)
 
 		return &CompilerFilterTypeResult{
-			Expr:      left.Expr + " OR " + right.Expr,
-			FieldExpr: left.FieldExpr + " OR " + right.FieldExpr,
-			Fields:    fieldsSelected,
+			Expr:             left.Expr + " OR " + right.Expr,
+			FieldExpr:        left.FieldExpr + " OR " + right.FieldExpr,
+			Fields:           fieldsSelected,
+			HasAggregateFunc: left.HasAggregateFunc || right.HasAggregateFunc,
 		}, nil
 
 	// --- 7. Logical NOT Expression (NotExpr) ---
@@ -277,9 +287,10 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		}
 
 		return &CompilerFilterTypeResult{
-			Expr:      "NOT " + left.Expr,
-			FieldExpr: "NOT " + left.FieldExpr,
-			Fields:    left.Fields,
+			Expr:             "NOT " + left.Expr,
+			FieldExpr:        "NOT " + left.FieldExpr,
+			Fields:           left.Fields,
+			HasAggregateFunc: left.HasAggregateFunc,
 		}, nil
 
 	// --- 8. Function Expression ---
@@ -304,20 +315,13 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		if len(x.Exprs) != 2 {
 			return nil, newCompilerError(fmt.Sprintf("%s require 2 args. expression is '%s", x.Name.String(), strFilter), ERR)
 		}
-		fieldsSelected := map[string]string{}
+		fieldsSelected := map[string]types.OutputExpr{}
 		for _, e := range x.Exprs {
 			ex, err := cmp.Resolve(dialect, strFilter, fields, e, args)
 			if err != nil {
 				return nil, err
 			}
-			if ex.Fields != nil {
-				for k, v := range ex.Fields {
-					if _, ok := fieldsSelected[k]; !ok {
-						fieldsSelected[k] = v
-					}
-
-				}
-			}
+			fieldsSelected = internal.UnionMap(fieldsSelected, fieldsSelected)
 
 			strArgs = append(strArgs, ex.Expr)
 		}
@@ -344,24 +348,32 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 			Fields: fieldsSelected,
 		}, nil
 	}
-	fieldsSelected := map[string]string{}
+	fieldsSelected := map[string]types.OutputExpr{}
+	fieldInArgs := map[string]types.OutputExpr{}
+	fieldInFunc := map[string]types.OutputExpr{}
 	for _, e := range x.Exprs {
-		fieldsSelected = map[string]string{}
+
 		ex, err := cmp.Resolve(dialect, strFilter, fields, e, args)
+		//fieldInArgs=append(fieldInArgs, ex.Fields[])
 		if err != nil {
 			return nil, err
 		}
+		fieldsSelected = internal.UnionMap(fieldsSelected, ex.Fields)
 		if ex.Fields != nil {
 			for k, v := range ex.Fields {
 				if _, ok := fieldsSelected[k]; !ok {
+					fieldInArgs[k] = types.OutputExpr{
+						SqlNode: e,
+						Expr:    v.Expr,
+					}
 					fields[k] = types.OutputExpr{
 						SqlNode: e,
-						Expr:    v,
+						Expr:    v.Expr,
 					}
 				}
 			}
 		}
-
+		fieldInFunc = union(fieldInFunc, ex.FieldInFunc)
 		strArgs = append(strArgs, ex.Expr)
 	}
 
@@ -376,10 +388,17 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		return nil, err
 	}
 	if dialectDelegateFunction.HandledByDialect {
+		//newField := map[string]types.OutputExpr{}
+		for k, v := range fieldsSelected {
+			v.IsInAggregateFunc = dialectDelegateFunction.IsAggregate
+			fieldsSelected[k] = v
 
+		}
 		return &CompilerFilterTypeResult{
-			Expr:   ret,
-			Fields: fieldsSelected,
+			Expr:             ret,
+			Fields:           fieldsSelected,
+			HasAggregateFunc: dialectDelegateFunction.IsAggregate,
+			FieldInFunc:      fieldsSelected,
 		}, nil
 	}
 	if x.Name.Lowered() == "concat" {
@@ -394,9 +413,20 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		}, nil
 	}
 	ret = dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")"
+	if dialectDelegateFunction.IsAggregate {
+		fmt.Println(fieldInArgs)
+	}
+	for k, v := range fieldsSelected {
+		v.IsInAggregateFunc = dialectDelegateFunction.IsAggregate
+		fieldsSelected[k] = v
+
+	}
 	return &CompilerFilterTypeResult{
-		Expr:   ret,
-		Fields: fieldsSelected,
+		Expr:        ret,
+		Fields:      fieldsSelected,
+		FieldInFunc: fieldInArgs,
+
+		HasAggregateFunc: dialectDelegateFunction.IsAggregate,
 	}, nil
 }
 

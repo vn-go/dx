@@ -79,7 +79,7 @@ func (m *selectorTypes) buildUpdateSql() (string, []any, error) {
 		}
 
 		sql := "update " + ent.Entity.TableName + " set " + strings.Join(setterItems, ",") + " Where " + strWhere
-		sqlInfo, err := compiler.Compile(sql, m.db.DriverName, false)
+		sqlInfo, err := compiler.Compile(sql, m.db.DriverName, false, false)
 		if err != nil {
 			return "", err
 		}

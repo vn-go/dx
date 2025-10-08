@@ -150,17 +150,16 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 	}
 	if x, ok := expr.(*sqlparser.AliasedExpr); ok {
 		resStr, err := cmp.resolve(x.Expr, cmpType, args)
-
-		if err != nil {
-			return "", err
-		}
 		if _, ok := x.Expr.(*sqlparser.SQLVal); ok {
 			if x.As.IsEmpty() {
 				return resStr, nil
 			} else {
 				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
 					SqlNode: x.Expr,
-					Expr:    resStr,
+					Expr: types.FiedlExpression{
+						ExprContent: resStr,
+						ExprType:    types.EXPR_TYPE(types.EXPR_TYPE_VAL),
+					},
 				} // resStr
 				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
 			}
@@ -175,11 +174,17 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				}
 			}
 		}
+
+		if err != nil {
+			return "", err
+		}
 		if resStr != "" {
 			if !x.As.IsEmpty() && cmpType == C_SELECT {
 				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
 					SqlNode: x,
-					Expr:    resStr,
+					Expr: types.FiedlExpression{
+						ExprContent: resStr,
+					},
 				} //resStr
 
 				return resStr + " " + cmp.dialect.Quote(x.As.String()), nil
@@ -189,7 +194,9 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 					fieldName = fieldName[1 : len(fieldName)-1]
 					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = types.OutputExpr{
 						SqlNode: x,
-						Expr:    resStr,
+						Expr: types.FiedlExpression{
+							ExprContent: resStr,
+						},
 					} //resStr
 				} else {
 					if resStr == "?" {
@@ -199,7 +206,9 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 					fieldName = fieldName[1 : len(fieldName)-1]
 					cmp.dict.ExprAlias[strings.ToLower(fieldName)] = types.OutputExpr{
 						SqlNode: x,
-						Expr:    resStr,
+						Expr: types.FiedlExpression{
+							ExprContent: resStr,
+						},
 					} //resStr
 				}
 				//cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(resStr))] = resStr
@@ -226,7 +235,10 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				}
 				cmp.dict.ExprAlias[strings.ToLower(strings.ToLower(cmp.dict.StructField[matchField].Name))] = types.OutputExpr{
 					SqlNode: x,
-					Expr:    retField,
+					Expr: types.FiedlExpression{
+						ExprContent: retField,
+						ExprType:    types.EXPR_TYPE(types.EXPR_TYPE_FIELD),
+					},
 				}
 				return retField + " " + cmp.dialect.Quote(cmp.dict.StructField[matchField].Name), nil
 			} else {
@@ -235,7 +247,10 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				}
 				cmp.dict.ExprAlias[strings.ToLower(field)] = types.OutputExpr{
 					SqlNode: x,
-					Expr:    cmp.dialect.Quote(tableAlias, field),
+					Expr: types.FiedlExpression{
+						ExprContent: cmp.dialect.Quote(tableAlias, field),
+						ExprType:    types.EXPR_TYPE(types.EXPR_TYPE_FIELD),
+					},
 				}
 				return cmp.dialect.Quote(tableAlias, field) + " " + cmp.dialect.Quote(field), nil
 			}
@@ -253,7 +268,9 @@ func (cmp *compiler) selectExpr(expr sqlparser.SelectExpr, cmpType COMPILER, arg
 				}
 				cmp.dict.ExprAlias[strings.ToLower(x.As.String())] = types.OutputExpr{
 					SqlNode: x,
-					Expr:    expr,
+					Expr: types.FiedlExpression{
+						ExprContent: expr,
+					},
 				}
 				return expr + " " + cmp.dialect.Quote(x.As.String()), nil
 			}

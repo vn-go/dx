@@ -76,3 +76,17 @@ func ExtractTextsAndArgs(args []any) ([]string, []any, error) {
 	}
 	return strFields, params, nil
 }
+func UnionMap[T any](a, b map[string]T) map[string]T {
+	ret := map[string]T{}
+	for k, v := range a {
+		if _, ok := ret[k]; !ok {
+			ret[k] = v
+		}
+	}
+	for k, v := range b {
+		if _, ok := ret[k]; !ok {
+			ret[k] = v
+		}
+	}
+	return ret
+}

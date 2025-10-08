@@ -38,7 +38,10 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 						ret[strings.ToLower(sqlIndent.String())] = types.OutputExpr{
 							SqlNode:   x,
 							FieldName: sqlIndent.String(),
-							Expr:      sqlIndent.String(),
+							Expr: types.FiedlExpression{
+								ExprContent: sqlIndent.String(),
+								ExprType:    types.EXPR_TYPE(types.EXPR_TYPE_FIELD),
+							},
 						}
 
 						visited[strings.ToLower(sqlIndent.String())] = true
@@ -106,7 +109,10 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 		ret[strings.ToLower(n.Name.String())] = types.OutputExpr{
 			SqlNode:   node,
 			FieldName: n.Name.String(),
-			Expr:      n.Name.String(),
+			Expr: types.FiedlExpression{
+				ExprContent: n.Name.String(),
+				ExprType:    types.EXPR_TYPE(types.EXPR_TYPE_FIELD),
+			},
 		}
 
 		visited[strings.ToLower(n.Name.String())] = true

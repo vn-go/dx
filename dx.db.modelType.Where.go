@@ -127,7 +127,7 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		}
 
 		retSql := "select count(*) from " + ent.Entity.TableName + " where " + wherStr
-		sqlInfo, err := compiler.Compile(retSql, m.db.DriverName, false)
+		sqlInfo, err := compiler.Compile(retSql, m.db.DriverName, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +257,7 @@ func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
 	setterArsg = append(setterArsg, argWhere...)
 	sql := "Update " + ent.Entity.TableName + " set " + strings.Join(fields, ",") + " where " + strWhere
 	sql, err = internal.OnceCall("modelTypeWhere/"+m.db.DriverName+"/"+sql, func() (string, error) {
-		sqlInfo, err := compiler.Compile(sql, m.db.DriverName, false)
+		sqlInfo, err := compiler.Compile(sql, m.db.DriverName, false, false)
 		if err != nil {
 			return "", err
 		}

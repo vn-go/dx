@@ -24,7 +24,7 @@ func (db *DB) CompilerSqlSelect(sqlSelect string) (*compiler.CompileSelectResult
 // all rows as []map[column]value. If no row found, returns an empty slice.
 func (db *DB) ExecRawSqlSelectToDict(ctx context.Context, sqlSelect string, args ...any) ([]map[string]any, error) {
 	// 1) Compile abstract SQL into dialect-specific SQL
-	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, false)
+	sqlInfo, err := compiler.Compile(sqlSelect, db.DriverName, false, false)
 	if err != nil {
 		return nil, fmt.Errorf("compile select: %w", err)
 	}

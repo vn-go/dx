@@ -143,10 +143,26 @@ const (
 
 )
 
+type EXPR_TYPE int
+
+const (
+	EXPR_TYPE_UNKNOWN SQL_TYPE = iota
+	EXPR_TYPE_FIELD
+	EXPR_TYPE_EXPR
+	EXPR_TYPE_FUNC
+	EXPR_TYPE_AGG_FUNC
+	EXPR_TYPE_VAL
+)
+
+type FiedlExpression struct {
+	ExprContent string
+	ExprType    EXPR_TYPE
+}
 type OutputExpr struct {
-	SqlNode   sqlparser.SQLNode
-	FieldName string
-	Expr      string
+	SqlNode           sqlparser.SQLNode
+	FieldName         string
+	Expr              FiedlExpression
+	IsInAggregateFunc bool
 }
 
 type SqlInfo struct {
