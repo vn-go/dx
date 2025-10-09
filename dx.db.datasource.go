@@ -82,10 +82,72 @@ func (ds *datasourceType) Where(strWhere string, args ...any) *datasourceType {
 	ds.args.ArgWhere = append(ds.args.ArgWhere, args...)
 	return ds
 }
-func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) {
+
+type datasourceTypeBuildStruct struct {
+	DriverName, key, strGroupBy, strWhereOrigin, strSelectOrigin, strWhere string
+	isFormSql, skipCheck, whereIsInHaving                                  bool
+	OutputFieldsOrExprAlias                                                map[string]types.OutputExpr
+	aggExpr                                                                map[string]exprWithArgs
+	//strWhereUseAliasField                                                  exprWithArgs
+	selector    map[string]bool
+	strWhereNew *compiler.CompilerFilterTypeResult
+}
+
+func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct) error {
+
+	if ds.strWhere == "" {
+		return nil
+	}
+	dialect := factory.DialectFactory.Create(ds.DriverName)
+
+	var err error
+	if ds.isFormSql {
+		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.OutputFieldsOrExprAlias, ds.strWhere, ds.key)
+	} else {
+		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.OutputFieldsOrExprAlias, ds.strWhere, ds.key)
+	}
+
+	if err != nil {
+
+		return err
+
+	}
+
+	//check if field in fields is agg func expr
+
+	// ds.strWhereUseAliasField.Expr = strWhereNew.FieldExpr
+	// ds.strWhereUseAliasField.Args = strWhereNew.Args
+	ok := false
+	for k := range ds.strWhereNew.Fields {
+		if _, ok = ds.aggExpr[k]; ok {
+			break
+		}
+	}
+	ds.whereIsInHaving = ok || ds.strWhereNew.HasAggregateFunc
+	if ds.whereIsInHaving {
+		for k := range ds.strWhereNew.Fields {
+			if _, ok = ds.aggExpr[strings.ToLower(k)]; !ok {
+				if _, ok := ds.selector[strings.ToLower(k)]; !ok {
+					if !ds.skipCheck {
+						ds.strGroupBy += "," + k
+					} else {
+						return compiler.NewCompilerError(fmt.Sprintf("'%s' has field '%s', but not found in '%s", ds.strWhereOrigin, k, ds.strSelectOrigin))
+
+					}
+
+				}
+
+			}
+		}
+
+		//ds.args.ArgHaving = append(ds.args.ArgHaving, strWhereNew.Args...)
+	}
+	return nil
+}
+func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) *compiler.CompilerFilterTypeResult {
 
 	if strWhere == "" {
-		return
+		return nil
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 	var strWhereNew *compiler.CompilerFilterTypeResult
@@ -98,7 +160,7 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) {
 
 	if err != nil {
 		ds.err = err
-		return
+		return nil
 
 	}
 
@@ -123,7 +185,7 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) {
 						ds.strGroupBy += "," + k
 					} else {
 						ds.err = compiler.NewCompilerError(fmt.Sprintf("'%s' has field '%s', but not found in '%s", ds.strWhereOrigin, k, ds.strSelectOrigin))
-						return
+						return nil
 					}
 
 				}
@@ -131,11 +193,8 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) {
 			}
 		}
 
-		ds.args.ArgHaving = append(ds.args.ArgHaving, strWhereNew.Args...)
-	} else {
-		ds.args.ArgWhere = append(ds.args.ArgWhere, strWhereNew.Args...)
 	}
-
+	return strWhereNew
 }
 
 // type datasourceTypeArgs struct {
@@ -217,12 +276,16 @@ type datasourceTypeSql struct {
 	Sql  string
 	Args []any
 }
+type sqlParseStruct struct {
+	sqlParse *types.SqlParse
+	where    *compiler.CompilerFilterTypeResult
+}
 
 func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 	if ds.err != nil {
 		return nil, ds.err
 	}
-	sqlParse, err := internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*types.SqlParse, error) {
+	sqlParse, err := internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*sqlParseStruct, error) {
 		var db = ds.db
 		// var ctx = ds.ctx
 		var sqlInfo = ds.cmpInfo.Info.Clone()
@@ -233,7 +296,8 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 		if ds.err != nil {
 			return nil, ds.err
 		}
-		ds.buildWhere(ds.strWhereOrigin, false)
+		where := ds.buildWhere(ds.strWhereOrigin, false)
+
 		if ds.err != nil {
 			return nil, ds.err
 		}
@@ -294,15 +358,29 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 			}
 
 		}
-		return factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
+		sqlParse, er := factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
+		if er != nil {
+			return nil, er
+		}
+		ret := &sqlParseStruct{
+			sqlParse: sqlParse,
+			where:    where,
+		}
+		return ret, nil
+
 	})
+	if ds.whereIsInHaving {
+		ds.args.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
+	} else {
+		ds.args.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	ret := &datasourceTypeSql{
-		Sql:  sqlParse.Sql,
-		Args: ds.args.GetArgs(sqlParse.ArgIndex),
+		Sql:  sqlParse.sqlParse.Sql,
+		Args: ds.args.GetArgs(sqlParse.sqlParse.ArgIndex),
 	}
 	// v := reflect.ValueOf(ds.args)
 	//args := ds.args.getArgs(sqlParse.ArgIndex)
