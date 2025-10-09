@@ -419,3 +419,11 @@ git tag -a v1.0.64 -m "cache datasource sql after compile, decrease alloc"
 git push origin v1.0.64
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.64
+--
+--
+git add .
+git commit -m "fix return error 23505 for PG"
+git tag -a v1.0.66 -m "fix return error 23505 for PG"
+git push origin v1.0.66
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.66
