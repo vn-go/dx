@@ -217,12 +217,13 @@ func (cmp *compiler) getSqlInfoByDelete(stmDelete *sqlparser.Delete) (*types.Sql
 		SqlType: types.SQL_DELETE,
 	}
 	if stmDelete.Where != nil {
+
 		ret.StrWhere, err = cmp.resolveWhere(stmDelete.Where, &cmp.args.ArgWhere)
 		if err != nil {
 			return nil, err
 		}
-		alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
-		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0]) + " " + cmp.dialect.Quote(alias)
+		//alias := cmp.dict.TableAlias[strings.ToLower(cmp.dict.Tables[0])]
+		ret.From = cmp.dialect.Quote(cmp.dict.Tables[0])
 	}
 
 	return ret, nil
@@ -486,13 +487,6 @@ func Compile(sql, dbDriver string, getReturnField bool, bySqlSelect bool) (*SqlC
 
 }
 
-//	func compileNoQuote(sql, dbDriver string) (*types.SqlInfo, error) {
-//		cmp, err := newCompiler(sql, dbDriver, true, false)
-//		if err != nil {
-//			return nil, err
-//		}
-//		return cmp.getSqlInfo()
-//	}
 func newBasicCompiler(sql, dbDriver string) (*compiler, error) {
 	var err error
 	sql, err = internal.Helper.QuoteExpression(sql)

@@ -10,7 +10,7 @@ import (
 	_ "github.com/vn-go/dx/test/models"
 )
 
-var pgDsn = "postgres://postgres:123456@localhost:5432/a001?sslmode=disable"
+var pgDsn = "postgres://postgres:123456@localhost:5432/hrm?sslmode=disable"
 var mySqlDsn = "root:123456@tcp(127.0.0.1:3306)/hrm"
 
 type App struct {

@@ -22,6 +22,46 @@ var mssqlBoolMap = map[string]string{
 	"false": "0",
 }
 
+func (d *mssqlDialect) ReplacePlaceholders(query string) string {
+	var builder strings.Builder
+	inSingle := false
+	inDouble := false
+	argIndex := 1
+
+	for i := 0; i < len(query); i++ {
+		ch := query[i]
+
+		switch ch {
+		case '\'':
+			// Toggle trạng thái nếu không bị escape
+			if !inDouble {
+				inSingle = !inSingle
+			}
+			builder.WriteByte(ch)
+
+		case '"':
+			// Toggle trạng thái nếu không bị escape
+			if !inSingle {
+				inDouble = !inDouble
+			}
+			builder.WriteByte(ch)
+
+		case '?':
+			if inSingle || inDouble {
+				// '?' nằm trong literal, giữ nguyên
+				builder.WriteByte('?')
+			} else {
+				builder.WriteString(fmt.Sprintf("@p%d", argIndex))
+				argIndex++
+			}
+
+		default:
+			builder.WriteByte(ch)
+		}
+	}
+
+	return builder.String()
+}
 func (d *mssqlDialect) ReleaseMode(v bool) {
 	d.isReleaseMode = v
 }
@@ -50,7 +90,6 @@ func (d *mssqlDialect) ToText(value string) string {
 func (d *mssqlDialect) ToParam(index int) string {
 	return fmt.Sprintf("@p%d", index)
 }
-
 
 var mssqlDialectIntance = &mssqlDialect{
 	cacheMakeSqlInsert: sync.Map{},

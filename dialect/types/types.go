@@ -100,6 +100,7 @@ type Dialect interface {
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
 	NewDataBase(db *db.DB, dbName string) (string, error)
+	ReplacePlaceholders(sql string) string
 	LimitAndOffset(sql string, limit, offset *uint64, orderBy string) string
 	/*
 				Build sql info and produce index field of arg in SqlInfo

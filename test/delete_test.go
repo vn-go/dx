@@ -20,6 +20,18 @@ func TestDeleteMySql(t *testing.T) {
 	ret := db.Delete(user, "username=?", "admin")
 	assert.NoError(t, ret.Error)
 }
+func TestDeletePg(t *testing.T) {
+	db, err := dx.Open("postgres", pgDsn)
+	if err != nil {
+		t.Fail()
+	}
+	defer db.Close()
+	user, _ := dx.NewDTO[models.User]()
+	user.Username = "admin"
+	db.Insert(user)
+	ret := db.Delete(user, "username=?", "admin")
+	assert.NoError(t, ret.Error)
+}
 func BenchmarkDeleteMySql(t *testing.B) {
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {

@@ -73,6 +73,9 @@ func myqlbuildSqlDelete(info types.SqlInfo) (*types.SqlParse, error) {
 	return ret, nil
 
 }
+func (d *mySqlDialect) ReplacePlaceholders(query string) string {
+	return query
+}
 func mySqlbuildSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
 	ret := &types.SqlParse{

@@ -72,6 +72,7 @@ func postgresBuilSqlDelete(info types.SqlInfo) (*types.SqlParse, error) {
 	ret.Sql = sb.String()
 	return ret, nil
 }
+
 func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 	var sb strings.Builder
 	ret := &types.SqlParse{
@@ -145,9 +146,60 @@ func postgresBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 }
 func (mssql *postgresDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
 	return internal.OnceCall(info.GetKey(), func() (*types.SqlParse, error) {
-		return postgresBuilSql(*info)
+		ret, err := postgresBuilSql(*info)
+		if err != nil {
+			return nil, err
+		}
+		ret.Sql = mssql.ReplacePlaceholders(ret.Sql)
+		return ret, nil
+
 	})
 }
 func (mssql *postgresDialect) BuildSqlNoCache(info *types.SqlInfo) (*types.SqlParse, error) {
-	return postgresBuilSql(*info)
+	ret, err := postgresBuilSql(*info)
+	if err != nil {
+		return nil, err
+	}
+	ret.Sql = mssql.ReplacePlaceholders(ret.Sql)
+	return ret, nil
+}
+func (d *postgresDialect) ReplacePlaceholders(query string) string {
+	var builder strings.Builder
+	inSingle := false
+	inDouble := false
+	argIndex := 1
+
+	for i := 0; i < len(query); i++ {
+		ch := query[i]
+
+		switch ch {
+		case '\'':
+			// Toggle trạng thái nếu không bị escape
+			if !inDouble {
+				inSingle = !inSingle
+			}
+			builder.WriteByte(ch)
+
+		case '"':
+			// Toggle trạng thái nếu không bị escape
+			if !inSingle {
+				inDouble = !inDouble
+			}
+			builder.WriteByte(ch)
+
+		case '?':
+			if inSingle || inDouble {
+				// '?' nằm trong literal, giữ nguyên
+				builder.WriteByte('?')
+			} else {
+				builder.WriteString(fmt.Sprintf("$%d", argIndex))
+				argIndex++
+			}
+
+		default:
+			builder.WriteByte(ch)
+		}
+	}
+
+	return builder.String()
 }

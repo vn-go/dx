@@ -177,10 +177,20 @@ func mssqlBuilSqlSelect(info types.SqlInfo) (*types.SqlParse, error) {
 func (mssql *mssqlDialect) BuildSql(info *types.SqlInfo) (*types.SqlParse, error) {
 
 	return internal.OnceCall(info.GetKey(), func() (*types.SqlParse, error) {
-		return mssqlBuilSql(*info)
+		ret, err := mssqlBuilSql(*info)
+		if err != nil {
+			return nil, err
+		}
+		ret.Sql = mssql.ReplacePlaceholders(ret.Sql)
+		return ret, nil
 	})
 }
 func (mssql *mssqlDialect) BuildSqlNoCache(info *types.SqlInfo) (*types.SqlParse, error) {
 
-	return mssqlBuilSql(*info)
+	ret, err := mssqlBuilSql(*info)
+	if err != nil {
+		return nil, err
+	}
+	ret.Sql = mssql.ReplacePlaceholders(ret.Sql)
+	return ret, nil
 }
