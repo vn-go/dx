@@ -75,8 +75,8 @@ func BenchmarkUnionSource(t *testing.B) {
 			union all
 			select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where r.id>7 and r.id<400`, "admin")
 
-			//ds.ToSql()
-			ds.ToDict()
+			ds.ToSql()
+			//ds.ToDict()
 		}
 
 	})
@@ -141,6 +141,17 @@ cpu: 12th Gen Intel(R) Core(TM) i7-12650H
 BenchmarkUnionSource/test-001-16         	  135568	      8762 ns/op	   12187 B/op	      76 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	2.832s
+
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUnionSource$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUnionSource/test-001-16         	  139729	      8592 ns/op	   11561 B/op	      74 allocs/op
+BenchmarkUnionSource/test-001-paralle-16 	  233094	      5449 ns/op	   11632 B/op	      74 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	3.048s
 */
 func TestSelectSum(t *testing.T) {
 	a := []int{}

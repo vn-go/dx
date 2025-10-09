@@ -370,9 +370,14 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 
 	})
 	if ds.whereIsInHaving {
-		ds.args.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
+		if sqlParse.where != nil {
+			ds.args.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
+		}
+
 	} else {
-		ds.args.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
+		if sqlParse.where != nil {
+			ds.args.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
+		}
 	}
 	if err != nil {
 		return nil, err
