@@ -393,7 +393,40 @@ func (t *tabelExtractorTypes) getTables(node sqlparser.SQLNode, visited map[stri
 			tables: ret,
 		}
 	}
+	if s, ok := node.(*sqlparser.UpdateExpr); ok {
 
+		ret := t.getTables(s.Expr, visited)
+		if ret != nil {
+			if !s.Name.Qualifier.IsEmpty() {
+				ret.tables = append(ret.tables, s.Name.Qualifier.Name.String())
+			}
+			return ret
+		} else {
+			if !s.Name.Qualifier.IsEmpty() {
+				return &getTablesFromSqlStruct{
+					tables: []string{s.Name.Qualifier.Name.String()},
+				}
+
+			}
+		}
+		return nil
+
+	}
+	if s, ok := node.(*sqlparser.Update); ok {
+		nodes := []sqlparser.SQLNode{
+			s.Exprs,
+			s.TableExprs,
+			s.Where,
+		}
+		ret := &getTablesFromSqlStruct{}
+		for _, n := range nodes {
+			next := t.getTables(n, visited)
+			if next != nil {
+				ret.tables = append(ret.tables, next.tables...)
+			}
+		}
+		return ret
+	}
 	if s, ok := node.(*sqlparser.ParenExpr); ok {
 		return t.getTables(s.Expr, visited)
 	}

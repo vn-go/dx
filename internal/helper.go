@@ -130,7 +130,7 @@ const FnMarkSpecialTextArgs = "dx__system_get_params_info"
 //   - This is not a full SQL parser, but it correctly handles common SQL literal patterns.
 //   - Works reliably for most SQL dialects (MySQL, PostgreSQL, SQL Server, etc.).
 func (c *helperType) InspectStringParam(s string) (string, []string) {
-	ret, _ := OnceCall(helperTypeKey+"/InspectStringParam", func() (*inspectStringParamStruct, error) {
+	ret, _ := OnceCall(helperTypeKey+"/InspectStringParam/"+s, func() (*inspectStringParamStruct, error) {
 		ret := &inspectStringParamStruct{}
 		ret.Sql, ret.Params = c.inspectStringParam(s)
 		return ret, nil
