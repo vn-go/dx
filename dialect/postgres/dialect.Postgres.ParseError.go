@@ -19,7 +19,15 @@ func (d *postgresDialect) ParseError(dbSchema *types.DbSchema, err error) error 
 			return d.ParseError23502(dbSchema, pgErr)
 
 		}
-		panic(fmt.Errorf(`not implemented,vdb\dialect.Postgres.go`))
+		if pgErr.Code == "42601" {
+			return d.ParseError42601(dbSchema, pgErr)
+
+		}
+		if pgErr.Code == "42P18" {
+			return d.ParseError42P18(dbSchema, pgErr)
+
+		}
+		panic(fmt.Errorf(`not implemented error code %s at %s`, pgErr.Code, `dialect\postgres\dialect.Postgres.ParseError.go`))
 	} else {
 		return err
 	}

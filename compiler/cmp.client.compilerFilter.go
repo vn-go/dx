@@ -142,7 +142,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 				Expr:      v.Expr.ExprContent,
 				FieldExpr: dialect.Quote(x.Name.String()),
 				Fields: map[string]types.OutputExpr{
-					name: types.OutputExpr{
+					name: {
 						Expr: v.Expr,
 					},
 				},
@@ -300,7 +300,8 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 	// --- 9. Aliased Expression ---
 	case *sqlparser.AliasedExpr:
 		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args)
-
+	case *sqlparser.ParenExpr:
+		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args)
 	// --- 10. Default / Unimplemented Node Type ---
 	default:
 		if isDebugMode {

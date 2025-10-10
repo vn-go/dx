@@ -6,30 +6,49 @@ import (
 	"sync"
 )
 
+// ValType specifies the type for SQLVal.
+type PARAM_TYPE int
+
+const (
+	//param is ?
+	PARAM_TYPE_DEFAULT = PARAM_TYPE(iota)
+	//param is constant
+	PARAM_TYPE_CONSTANT
+	// param is text and has doulbe apostrophe
+	PARAM_TYPE_2APOSTROPHE
+)
+
 //	type DynamicArg struct {
 //		Index int
 //	}
+
 type SqlArg struct {
-	// Exmaple select a+1,b+?=> first is static the second is dynamic
-	IsDynamic bool
-	//index in sql
-	Index int
-	// if not is dynamic this value will part from sql exmaple select a+1,b+? index 0 is
-	Value        any
-	IsInTextArgs bool
-	TextArgIndex int
+	ParamType PARAM_TYPE
+	Index     int
+	Value     any
+	// /*
+	// 	if query has any text constant value with double aspotrophe that mean this value of field is false
+	// 	Example : select concat(name,'O''Reilly'), compiler will set this value is false
+	// */
+	// IsDynamic bool
+	// //index in sql
+	// Index int
+	// // if not is dynamic this value will part from sql exmaple select a+1,b+? index 0 is
+	// Value        any
+	// IsInTextArgs bool
+	// TextArgIndex int
 }
 type SqlArgs []SqlArg
 
 func (a *SqlArgs) ExtractArgs(args ...any) []any {
 	ret := []any{}
 	for _, x := range *a {
-		if x.IsDynamic {
+		if x.ParamType == PARAM_TYPE_DEFAULT {
 			if x.Index < len(args) {
 				ret = append(ret, args[x.Index])
-			} else {
-				ret = append(ret, x.Value)
 			}
+		} else {
+			ret = append(ret, x.Value)
 		}
 	}
 	//panic("SqlArg ExtractArgs")
@@ -118,36 +137,8 @@ func NewSelectorTypesArgs() SelectorTypesArgs {
 		ArgSetter:  []any{},
 	}
 }
-func (compilerArgs *CompilerArgs) ToSelectorArgs1(args []any) SelectorTypesArgs {
-	typ := reflect.TypeFor[CompilerArgs]()
 
-	ret := NewSelectorTypesArgs()
-	valueOfCompilerArgs := reflect.ValueOf(*compilerArgs)
-	retValue := reflect.ValueOf(ret)
-	for i := 0; i < typ.NumField(); i++ {
-		valueOfField := valueOfCompilerArgs.FieldByIndex(typ.Field(i).Index)
-		if valueOfField.IsValid() {
-			if !valueOfField.IsNil() {
-				valueField := retValue.FieldByIndex(typ.Field(i).Index)
-				items := valueOfField.Interface().(SqlArgs)
-				argsValue := reflect.MakeSlice(reflect.TypeFor[[]any](), 0, 0)
-				for _, x := range items {
-					if x.IsDynamic {
-						argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
-						//args = append(args, reflect.ValueOf(args[x.Index]))
-					} else {
-						argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
-						//args = append(args, reflect.ValueOf(x.Value))
-					}
-
-				}
-				valueField.Elem().Set(argsValue) // panic cho nay
-			}
-		}
-	}
-	return ret
-}
-func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any, extraTextArgs []string) SelectorTypesArgs {
+func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any, doulbeApostrophes []string) SelectorTypesArgs {
 	typ := reflect.TypeFor[CompilerArgs]()
 	ret := NewSelectorTypesArgs()
 
@@ -167,14 +158,15 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any, extraTextArgs []str
 		argsValue := reflect.MakeSlice(reflect.TypeFor[[]any](), 0, 0)
 
 		for _, x := range items {
-			if !x.IsInTextArgs {
-				if x.IsDynamic {
-					argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
-				} else {
-					argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
-				}
-			} else {
-				argsValue = reflect.Append(argsValue, reflect.ValueOf(extraTextArgs[x.TextArgIndex]))
+			if x.ParamType == PARAM_TYPE_DEFAULT {
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
+
+			}
+			if x.ParamType == PARAM_TYPE_CONSTANT {
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
+			}
+			if x.ParamType == PARAM_TYPE_2APOSTROPHE {
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(doulbeApostrophes[x.Index]))
 			}
 		}
 

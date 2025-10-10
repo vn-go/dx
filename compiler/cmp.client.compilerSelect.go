@@ -23,12 +23,15 @@ type FieldSelect struct {
 	FieldExprType FieldExprTypeEnum
 	Args          internal.SqlArgs
 	FieldStat     map[string]FieldExprTypeEnum
+	OriginalExpr  string
 }
 type FieldSelects []FieldSelect
 type ResolevSelectorResult struct {
 	StrSelectors string
 	Selectors    FieldSelects
-	Args         internal.CompilerArgs
+	Args         []any
+	// all text constant in query has double apostrophe whill be exract here
+	ApostropheArg []string
 }
 
 func (c *FieldSelects) HasAggregateFunction() bool {
@@ -69,22 +72,10 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 
 	return ret, nil
 }
-func unionFieldStat(a, b map[string]FieldExprTypeEnum) map[string]FieldExprTypeEnum {
-	ret := map[string]FieldExprTypeEnum{}
-	for k, v := range a {
-		if _, ok := ret[k]; !ok {
-			ret[k] = v
-		}
-	}
-	for k, v := range a {
-		if _, ok := ret[k]; !ok {
-			ret[k] = v
-		}
-	}
-	return ret
-}
 
-func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[string]types.OutputExpr, n sqlparser.SQLNode, selector string, args *internal.SqlArgs) (*FieldSelect, error) {
+func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
+	outputFields *map[string]types.OutputExpr, n sqlparser.SQLNode,
+	selector string, args *internal.SqlArgs) (*FieldSelect, error) {
 	if x, ok := n.(*sqlparser.AliasedExpr); ok {
 		ret, err := cmp.resolve(dialect, outputFields, x.Expr, selector, args)
 		if err != nil {
@@ -98,24 +89,31 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 
 	}
 	if x, ok := n.(*sqlparser.ColName); ok {
+		originalField := x.Name.String()
+		if !x.Qualifier.IsEmpty() {
+			originalField = x.Qualifier.Name.String() + "." + originalField
+		}
 		if outputFields == nil {
 			return &FieldSelect{
-				Expr:  x.Name.String(),
-				Alias: x.Name.String(),
+				Expr:         x.Name.String(),
+				Alias:        x.Name.String(),
+				OriginalExpr: originalField,
 			}, nil
 		}
 		if f, ok := (*outputFields)[x.Name.Lowered()]; ok {
 			if cmp.cmpType == C_FUNC { //if is  in compling func return field no alias
 
 				return &FieldSelect{
-					Expr:      f.Expr.ExprContent,
-					FieldStat: map[string]FieldExprTypeEnum{x.Name.Lowered(): FieldExprType_Field},
+					Expr:         f.Expr.ExprContent,
+					FieldStat:    map[string]FieldExprTypeEnum{x.Name.Lowered(): FieldExprType_Field},
+					OriginalExpr: originalField,
 				}, nil
 			}
 
 			return &FieldSelect{
-				Expr:  f.Expr.ExprContent,
-				Alias: x.Name.String(),
+				Expr:         f.Expr.ExprContent,
+				Alias:        x.Name.String(),
+				OriginalExpr: originalField,
 			}, nil
 			//return f + " " + dialect.Quote(x.Name.String()), nil
 		} else {
@@ -123,10 +121,25 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 			for k := range *outputFields {
 				fieldList = append(fieldList, k)
 			}
-			return nil, NewCompilerError(fmt.Sprintf("'%s' was not found in '%s',expression is '%s'", x.Name.String(), strings.Join(fieldList, ","), selector))
+			return nil, NewCompilerError(fmt.Sprintf("'%s' was not found in '%s',expression is '%s'", x.Name.String(), strings.Join(fieldList, ","), cmp.originalSelector))
 		}
 	}
 	if x, ok := n.(*sqlparser.FuncExpr); ok {
+		if x.Name.String() == internal.FnMarkSpecialTextArgs && len(x.Exprs) == 1 {
+			n := x.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
+			index, err := internal.Helper.ToIntFormBytes(n.Val)
+			if err != nil {
+				return nil, fmt.Errorf("%s is not int value", string(n.Val))
+			}
+			*args = append(*args, internal.SqlArg{
+				ParamType: internal.PARAM_TYPE_2APOSTROPHE,
+				Index:     index,
+			})
+			return &FieldSelect{
+				Expr:          dialect.ToParam(len(*args)),
+				FieldExprType: FieldExprType_Expression,
+			}, nil
+		}
 		defer func() {
 			cmp.cmpType = C_SELECT
 		}()
@@ -145,6 +158,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 			Expr:          ret.expr,
 			FieldExprType: fieldExprType,
 			Args:          argsInFunc,
+			OriginalExpr:  ret.originalFuncCall,
 		}, nil
 
 	}
@@ -153,46 +167,50 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 		if strings.HasPrefix(v, ":v") {
 			index, err := internal.Helper.ToInt(v[2:])
 			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", selector))
+				return nil, NewCompilerError(fmt.Sprintf("%s is invalid ", selector))
 			}
-			//n := *nextArgIndex + argIndex
+
 			*args = append(*args, internal.SqlArg{
-				IsDynamic: true,
+				ParamType: internal.PARAM_TYPE_DEFAULT,
 				Index:     index - 1,
 			})
 			return &FieldSelect{
-				Expr: "?",
+				Expr:         dialect.ToParam(len(*args)),
+				OriginalExpr: "?",
 			}, nil
 
 		} else {
 			if x.Type == sqlparser.StrVal {
 				*args = append(*args, internal.SqlArg{
-					IsDynamic: false,
+					ParamType: internal.PARAM_TYPE_CONSTANT,
 					Value:     v,
 				})
 				return &FieldSelect{
-					Expr: "?",
+					Expr:         dialect.ToParam(len(*args)),
+					OriginalExpr: "'" + v + "'",
 				}, nil
 				//return dialect.ToText(v), nil
 			}
 			if internal.Helper.IsString(v) {
 				*args = append(*args, internal.SqlArg{
-					IsDynamic: false,
+					ParamType: internal.PARAM_TYPE_CONSTANT,
 					Value:     v,
 				})
 
 				return &FieldSelect{
-					Expr: "?",
+					Expr:         dialect.ToParam(len(*args)),
+					OriginalExpr: "'" + v + "'",
 				}, nil
 				//return dialect.ToText(v), nil
 			} else if internal.Helper.IsBool(v) {
 				*args = append(*args, internal.SqlArg{
-					IsDynamic: false,
+					ParamType: internal.PARAM_TYPE_CONSTANT,
 					Value:     internal.Helper.ToBool(v),
 				})
 
 				return &FieldSelect{
-					Expr: "?",
+					Expr:         dialect.ToParam(len(*args)),
+					OriginalExpr: v,
 				}, nil
 				//return dialect.ToBool(v), nil
 			} else if internal.Helper.IsFloatNumber(v) {
@@ -201,35 +219,107 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 					return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", selector))
 				}
 				*args = append(*args, internal.SqlArg{
-					IsDynamic: false,
+					ParamType: internal.PARAM_TYPE_CONSTANT,
 					Value:     fx,
 				})
 				return &FieldSelect{
-					Expr: "?",
+					Expr:         dialect.ToParam(len(*args)),
+					OriginalExpr: v,
 				}, nil
 				//return v, nil
 			} else if internal.Helper.IsNumber(v) {
 				fx, err := internal.Helper.ToInt(v)
 				if err != nil {
-					return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", selector))
+					return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", cmp.originalSelector))
 				}
 				*args = append(*args, internal.SqlArg{
-					IsDynamic: false,
+					ParamType: internal.PARAM_TYPE_CONSTANT,
 					Value:     fx,
 				})
 				return &FieldSelect{
-					Expr: "?",
+					Expr:         dialect.ToParam(len(*args)),
+					OriginalExpr: v,
 				}, nil
 				//return v, nil
 			} else {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid value", v, selector))
+				return nil, NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid value", v, cmp.originalSelector))
 			}
 
 		}
 	}
 	if _, ok := n.(*sqlparser.StarExpr); ok {
-		return nil, NewCompilerError(fmt.Sprintf("%s' in '%s' is invalid expression, use CountAll instead", "count(*)", selector))
+		return nil, NewCompilerError(fmt.Sprintf("%s' in '%s' is invalid expression, use CountAll instead", "count(*)", cmp.originalSelector))
 
+	}
+	if x, ok := n.(*sqlparser.BinaryExpr); ok {
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldSelect{
+			Expr:          left.Expr + " " + x.Operator + " " + right.Expr,
+			FieldExprType: FieldExprType_Expression,
+			FieldStat:     internal.UnionMap(left.FieldStat, right.FieldStat),
+			OriginalExpr:  left.OriginalExpr + " " + x.Operator + " " + right.OriginalExpr,
+		}, nil
+	}
+	if x, ok := n.(*sqlparser.AndExpr); ok {
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		if left.Expr == right.Expr {
+			return nil, NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid expression", left.OriginalExpr+" or "+right.OriginalExpr, cmp.originalSelector))
+		}
+		return &FieldSelect{
+			Expr:          left.Expr + " AND " + right.Expr,
+			FieldExprType: FieldExprType_Expression,
+			FieldStat:     internal.UnionMap(left.FieldStat, right.FieldStat),
+			OriginalExpr:  left.OriginalExpr + " and " + right.OriginalExpr,
+		}, nil
+	}
+	if x, ok := n.(*sqlparser.OrExpr); ok {
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		if left.Expr == right.Expr {
+			return nil, NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid expression", left.OriginalExpr+" or "+right.OriginalExpr, selector))
+		}
+		return &FieldSelect{
+			Expr:          left.Expr + " OR " + right.Expr,
+			FieldExprType: FieldExprType_Expression,
+			FieldStat:     internal.UnionMap(left.FieldStat, right.FieldStat),
+			OriginalExpr:  left.OriginalExpr + " or " + right.OriginalExpr,
+		}, nil
+	}
+	if x, ok := n.(*sqlparser.ComparisonExpr); ok {
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldSelect{
+			Expr:          left.Expr + " " + x.Operator + " " + right.Expr,
+			FieldExprType: FieldExprType_Expression,
+			FieldStat:     internal.UnionMap(left.FieldStat, right.FieldStat),
+			OriginalExpr:  left.OriginalExpr + " " + x.Operator + " " + right.OriginalExpr,
+		}, nil
 	}
 	if isDebugMode {
 		panic(fmt.Sprintf("Not implement %T, see 'resolve' in %s", n, `compiler\cmp.client.compilerSelect.go`))
@@ -240,18 +330,22 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect, outputFields *map[str
 }
 
 type resolveFuncExprResult struct {
-	expr          string
-	isAggFuncCall bool
-	fieldStats    map[string]FieldExprTypeEnum
+	expr             string
+	isAggFuncCall    bool
+	fieldStats       map[string]FieldExprTypeEnum
+	originalFuncCall string
 }
 
-func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields *map[string]types.OutputExpr, x *sqlparser.FuncExpr, selector string, args *internal.SqlArgs) (*resolveFuncExprResult, error) {
+func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
+	outputFields *map[string]types.OutputExpr, x *sqlparser.FuncExpr,
+	selector string, args *internal.SqlArgs) (*resolveFuncExprResult, error) {
 	oldCmpTYpe := cmp.cmpType
 	defer func() {
 		cmp.cmpType = oldCmpTYpe
 	}()
 	cmp.cmpType = C_FUNC
 	strArgs := []string{}
+
 	if x.Name.Lowered() == "contains" {
 		if len(x.Exprs) != 2 {
 			return nil, newCompilerError(fmt.Sprintf("%s require 2 args. expression is '%s", x.Name.String(), selector), ERR)
@@ -288,16 +382,18 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields 
 		}, nil
 	}
 	fieldStats := map[string]FieldExprTypeEnum{}
-
+	originalArgs := []string{}
 	for _, e := range x.Exprs {
 		ex, err := cmp.resolve(dialect, outputFields, e, selector, args)
-		fieldStats = internal.UnionMap(fieldStats, ex.FieldStat)
 		if err != nil {
 			return nil, err
 		}
+		originalArgs = append(originalArgs, ex.OriginalExpr)
+		fieldStats = internal.UnionMap(fieldStats, ex.FieldStat)
+
 		strArgs = append(strArgs, ex.Expr)
 	}
-
+	originalFuncCall := fmt.Sprintf("%s(%s)", x.Name, strings.Join(originalArgs, ","))
 	dialectDelegateFunction := types.DialectDelegateFunction{
 		FuncName:         x.Name.String(),
 		Args:             strArgs,
@@ -322,9 +418,10 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields 
 	}
 	if dialectDelegateFunction.HandledByDialect {
 		return &resolveFuncExprResult{
-			expr:          ret,
-			isAggFuncCall: dialectDelegateFunction.IsAggregate,
-			fieldStats:    fieldStats,
+			expr:             ret,
+			isAggFuncCall:    dialectDelegateFunction.IsAggregate,
+			fieldStats:       fieldStats,
+			originalFuncCall: originalFuncCall,
 		}, nil
 
 		//return ret, nil
@@ -342,15 +439,17 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect, outputFields 
 		}
 		//ret:=
 		return &resolveFuncExprResult{
-			expr:          dialectDelegateFunction.FuncName + "(" + strings.Join(newArgs, ", ") + ")",
-			isAggFuncCall: dialectDelegateFunction.IsAggregate,
-			fieldStats:    fieldStats,
+			expr:             dialectDelegateFunction.FuncName + "(" + strings.Join(newArgs, ", ") + ")",
+			isAggFuncCall:    dialectDelegateFunction.IsAggregate,
+			fieldStats:       fieldStats,
+			originalFuncCall: originalFuncCall,
 		}, nil
 	}
 	return &resolveFuncExprResult{
-		expr:          dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")",
-		isAggFuncCall: dialectDelegateFunction.IsAggregate,
-		fieldStats:    fieldStats,
+		expr:             dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")",
+		isAggFuncCall:    dialectDelegateFunction.IsAggregate,
+		fieldStats:       fieldStats,
+		originalFuncCall: originalFuncCall,
 	}, nil
 	//return dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")", nil
 }

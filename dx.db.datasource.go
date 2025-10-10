@@ -31,8 +31,10 @@ type datasourceType struct {
 	defaultSelector string
 	cmpInfo         *compiler.SqlCompilerInfo
 	// sqlInfo *types.SqlInfo
-	db                    *DB
-	args                  internal.SelectorTypesArgs
+	db   *DB
+	args internal.SelectorTypesArgs
+	// args for function ToSQL
+	argsExecutor          internal.SelectorTypesArgs
 	ctx                   context.Context
 	err                   error
 	strWhere              string
@@ -217,27 +219,35 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 
 	return ds
 }
-func (ds *datasourceType) buildSelect(selector string) {
-
-	if selector == "" {
-		return
+func (ds *datasourceType) buildSelect(sqlSelect string) (*compiler.ResolevSelectorResult, error) {
+	//
+	if sqlSelect == "" {
+		return nil, nil
 		//selector = ds.defaultSelector
 	}
 	dialect := factory.DialectFactory.Create(ds.db.DriverName)
 	var selectors *compiler.ResolevSelectorResult
 	var err error
 	if ds.isFormSql {
-		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Info.OutputFields, selector, ds.key)
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Info.OutputFields, sqlSelect, ds.key)
 	} else {
-		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, selector, ds.key)
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, sqlSelect, ds.key)
 	}
 
 	if err != nil {
-		ds.err = err
-		return
+
+		return nil, err
 	}
 	groupByItems := []string{}
 	ds.selector = map[string]bool{}
+	for _, selector := range selectors.Selectors {
+		if selector.FieldExprType != compiler.FieldExprType_Field {
+			if selector.Alias == "" {
+				ds.err = compiler.NewCompilerError(fmt.Sprintf("'%s' require alias, expression is '%s'", selector.OriginalExpr, sqlSelect))
+
+			}
+		}
+	}
 	if selectors.Selectors.HasAggregateFunction() {
 		for _, x := range selectors.Selectors {
 			if x.FieldExprType != compiler.FieldExprType_AggregateFunctionCall {
@@ -259,9 +269,7 @@ func (ds *datasourceType) buildSelect(selector string) {
 	}
 
 	ds.strGroupBy = strings.Join(groupByItems, ",")
-
-	ds.strSelect = selectors.StrSelectors
-	ds.args.ArgsSelect = append(ds.args.ArgsSelect, selectors.Args.ArgsSelect.ExtractArgs()...)
+	return selectors, nil
 
 }
 func (ds *datasourceType) WithContext(ctx context.Context) *datasourceType {
@@ -279,6 +287,7 @@ type datasourceTypeSql struct {
 type sqlParseStruct struct {
 	sqlParse *types.SqlParse
 	where    *compiler.CompilerFilterTypeResult
+	selector *compiler.ResolevSelectorResult
 }
 
 func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
@@ -291,11 +300,15 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 		var sqlInfo = ds.cmpInfo.Info.Clone()
 		defer types.PutSqlInfo(sqlInfo)
 
-		ds.buildSelect(ds.strSelectOrigin)
+		selector, err := ds.buildSelect(ds.strSelectOrigin)
 
-		if ds.err != nil {
-			return nil, ds.err
+		if err != nil {
+			return nil, err
 		}
+		if selector != nil {
+			sqlInfo.StrSelect = selector.StrSelectors
+		}
+
 		where := ds.buildWhere(ds.strWhereOrigin, false)
 
 		if ds.err != nil {
@@ -345,9 +358,6 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 			}
 		}
 
-		if ds.strSelect != "" {
-			sqlInfo.StrSelect = ds.strSelect
-		}
 		if ds.strGroupBy != "" {
 
 			if sqlInfo.StrGroupBy == "" {
@@ -358,6 +368,7 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 			}
 
 		}
+
 		sqlParse, er := factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
 		if er != nil {
 			return nil, er
@@ -365,35 +376,38 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 		ret := &sqlParseStruct{
 			sqlParse: sqlParse,
 			where:    where,
+			selector: selector,
 		}
 		return ret, nil
 
 	})
-	if ds.whereIsInHaving {
-		if sqlParse.where != nil {
-			ds.args.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
-		}
-
-	} else {
-		if sqlParse.where != nil {
-			ds.args.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
+	ds.argsExecutor = ds.args
+	if sqlParse.selector != nil {
+		ds.strSelect = sqlParse.selector.StrSelectors
+		ds.argsExecutor.ArgsSelect = append(ds.argsExecutor.ArgsSelect, sqlParse.selector.Args...)
+	}
 
+	if sqlParse.where != nil {
+		if ds.whereIsInHaving {
+			if sqlParse.where != nil {
+				ds.argsExecutor.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
+			}
+
+		} else {
+			if sqlParse.where != nil {
+				ds.argsExecutor.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
+			}
+		}
+	}
+	argsExecutors := ds.argsExecutor.GetArgs(sqlParse.sqlParse.ArgIndex)
 	ret := &datasourceTypeSql{
 		Sql:  sqlParse.sqlParse.Sql,
-		Args: ds.args.GetArgs(sqlParse.sqlParse.ArgIndex),
+		Args: argsExecutors,
 	}
-	// v := reflect.ValueOf(ds.args)
-	//args := ds.args.getArgs(sqlParse.ArgIndex)
-	// params := []any{}
-	// for _, x := range sqlParse.ArgIndex {
-	// 	args := v.FieldByIndex(x.Index).Interface().([]any)
-	// 	params = append(params, args)
-	// }
+
 	return ret, nil
 
 }
@@ -421,6 +435,7 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 		fmt.Println("-------------")
 	}
 	// 3) Execute query
+	//fmt.Println(len(sqlCompiled.Args))
 	rows, err := db.QueryContext(ctx, sqlCompiled.Sql, sqlCompiled.Args...)
 	if err != nil {
 
@@ -571,17 +586,38 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 			err: err,
 		}
 	}
+	fmt.Println(sqlInfo.ExtraTextParams)
+	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
+	// argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, sqlInfo.ExtraTextParams)
 	key := sqlInfo.Info.GetKey()
 
 	ret := &datasourceType{
-		defaultSelector: strings.Join(defaultInfo.defaultItems, ","),
+		defaultSelector: sqlInfo.Info.StrSelect,
 		cmpInfo:         sqlInfo,
 		key:             key,
 		db:              db,
-		args:            internal.SelectorTypesArgs{},
+		// args:            argsCollected,
+		//isFormSql:     true,
+		extraTextArgs: sqlInfo.ExtraTextParams,
 	}
 	sqlInfo.Info.FieldArs = *ret.args.GetFields()
 	return ret
+	// if err != nil {
+	// 	return &datasourceType{
+	// 		err: err,
+	// 	}
+	// }
+	// key := sqlInfo.Info.GetKey()
+
+	// ret := &datasourceType{
+	// 	defaultSelector: strings.Join(defaultInfo.defaultItems, ","),
+	// 	cmpInfo:         sqlInfo,
+	// 	key:             key,
+	// 	db:              db,
+	// 	args:            internal.SelectorTypesArgs{},
+	// }
+	// sqlInfo.Info.FieldArs = *ret.args.GetFields()
+	// return ret
 }
 func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
 

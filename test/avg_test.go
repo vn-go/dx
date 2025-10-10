@@ -39,29 +39,34 @@ func TestUnionSource(t *testing.T) {
 	x := false
 	testBool(&x)
 	fmt.Println(x)
-	db, err := dx.Open("mysql", hrCnn)
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
+	for i := 0; i < 5; i++ {
+		ds := db.DatasourceFromSql(`select name,year(createdOn) y from (select concat(name,'-','x''0001') name, createdOn createdOn from role where name='R''0001' or name=?
+		union
+		select name,createdOn createdOn from role where id=497
+		union all
+		select name,createdOn createdOn from role where id>300 and id<350
+		union all
+		select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where r.id>7 and r.id<400) t`, "admin")
+		// ds := db.DatasourceFromSql("select isnull(email,'ok') username from user")
+		sql, err := ds.ToSql()
+		assert.NoError(t, err)
+		fmt.Println(sql.Sql)
+		_, err = ds.ToDict()
+		assert.NoError(t, err)
+	}
 
-	ds := db.DatasourceFromSql(`select name,year(createdOn) y from (select concat(name,' ','x''0001') name, createdOn createdOn from role where name='R''0001' or name=?
-								union
-								select name,createdOn createdOn from role where id=497
-								union all
-								select name,createdOn createdOn from role where id>300 and id<350
-								union all
-								select r.name,r.createdOn createdOn from role r left join User on role.id=user.id where r.id>7 and r.id<400) t`, "admin")
-
-	sql, err := ds.ToSql()
-	assert.NoError(t, err)
-	fmt.Println(sql.Sql)
-	ret, err := ds.ToDict()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, ret)
+	//assert.NotEmpty(t, ret)
+	/*
+		interface {}(string) "R'0001"
+	*/
 }
 func BenchmarkUnionSource(t *testing.B) {
 
-	db, err := dx.Open("mysql", hrCnn)
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}

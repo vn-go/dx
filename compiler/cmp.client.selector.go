@@ -9,10 +9,14 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
+type paramInfo struct {
+	Index int
+}
 type cmpSelectorType struct {
-	cmpType       COMPILER
-	aggregateExpr map[string]bool
-	args          internal.CompilerArgs
+	cmpType          COMPILER
+	aggregateExpr    map[string]bool
+	args             internal.CompilerArgs
+	originalSelector string
 }
 
 var CompilerSelect = &cmpSelectorType{}
@@ -50,11 +54,18 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 // }
 
 func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors string) (*ResolevSelectorResult, error) {
-	sql := "select " + selectors + " from tmp"
+	cmp.originalSelector = selectors
+	sqlPreprocess := "select " + selectors + " from t	mp"
+	sql, staticParams := internal.Helper.InspectStringParam(sqlPreprocess)
+	fmt.Println(staticParams)
+
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
+
 	if err != nil {
+
 		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax", selectors), ERR)
 	}
+
 	sqlExpr, err := sqlparser.Parse(sqlParse)
 	if err != nil {
 		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax. Error:%s", selectors, err.Error()), ERR)
@@ -64,7 +75,7 @@ func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFiel
 		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &cmp.args.ArgsSelect)
 		if err == nil {
 			//no error get all args after compiler
-			ret.Args = cmp.args
+			ret.Args = cmp.args.ArgsSelect.ExtractArgs()
 			return ret, nil
 		} else {
 			return nil, err

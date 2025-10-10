@@ -11,8 +11,9 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 	switch expr.Type {
 	case sqlparser.StrVal:
 		*args = append(*args, internal.SqlArg{
-			IsDynamic: false,
+			ParamType: internal.PARAM_TYPE_CONSTANT,
 			Value:     internal.Helper.TrimStringLiteral(string(expr.Val)), //cmp.dialect.ToText(string(expr.Val)),
+			Index:     len(*args),
 		})
 		return "?", nil
 	case sqlparser.IntVal:
@@ -25,8 +26,9 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		}
 
 		*args = append(*args, internal.SqlArg{
-			IsDynamic: false,
+			ParamType: internal.PARAM_TYPE_CONSTANT,
 			Value:     intVal,
+			Index:     len(*args),
 		})
 		return "?", nil
 	case sqlparser.FloatVal:
@@ -35,8 +37,9 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			return "", err
 		}
 		*args = append(*args, internal.SqlArg{
-			IsDynamic: false,
+			ParamType: internal.PARAM_TYPE_CONSTANT,
 			Value:     floatVal,
+			Index:     len(*args),
 		})
 		return "?", nil
 
@@ -47,8 +50,8 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			return "", NewCompilerError("Expression is invalid")
 		}
 		*args = append(*args, internal.SqlArg{
+			ParamType: internal.PARAM_TYPE_DEFAULT,
 			Index:     index - 1,
-			IsDynamic: true,
 		})
 		return "?", nil
 

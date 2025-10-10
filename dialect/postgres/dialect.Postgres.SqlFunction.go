@@ -19,9 +19,9 @@ var pgFunc = map[string]string{
 	"date": "DATE(%s)",
 
 	// String
-	"len":       "LENGTH",
-	"isnull":    "COALESCE", // PG dùng COALESCE thay IFNULL
-	"concat":    "CONCAT",
+	"len":    "LENGTH",
+	"isnull": "COALESCE", // PG dùng COALESCE thay IFNULL
+	//"concat":    "CONCAT",
 	"upper":     "UPPER",
 	"lower":     "LOWER",
 	"left":      "LEFT",  // có
@@ -96,7 +96,31 @@ var pgAggregateFunc = map[string]string{
 }
 
 func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
+	fnName := strings.ToLower(delegator.FuncName)
+	if ret, ok := pgFunc[fnName]; ok {
+		delegator.FuncName = ret
+		for i := 0; i < len(delegator.Args); i++ {
+			placeHilder := fmt.Sprintf("$%d", i+1)
+			if strings.Contains(ret, placeHilder) {
+				ret = strings.ReplaceAll(ret, fmt.Sprintf("$%d", i+1), delegator.Args[i])
+				delegator.HandledByDialect = true
+			}
 
+		}
+
+		return ret, nil
+	}
+	if ret, ok := pgAggregateFunc[fnName]; ok {
+		delegator.FuncName = ret
+		delegator.IsAggregate = true
+		return ret, nil
+	}
+	if fnName == "countall" {
+		delegator.FuncName = "count(*)"
+		delegator.IsAggregate = true
+		delegator.HandledByDialect = true
+		return "count(*)", nil
+	}
 	switch strings.ToLower(delegator.FuncName) {
 	case "len":
 		delegator.FuncName = "LENGTH"
@@ -106,13 +130,15 @@ func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) 
 		delegator.HandledByDialect = true
 		castArgs := make([]string, len(delegator.Args))
 		for i, x := range delegator.Args {
-			if x[0] == '$' {
+			if x == "?" || x[0] == '$' {
 				castArgs[i] = x + "::text"
 			} else {
 				castArgs[i] = x
 			}
 		}
 		return "CONCAT" + "(" + strings.Join(castArgs, ", ") + ")", nil
+	case "if":
+		return d.SqlFunctionIf(delegator)
 	default:
 
 		if !d.isReleaseMode {
