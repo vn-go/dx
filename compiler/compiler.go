@@ -607,6 +607,9 @@ func GetSql(sqlInfo *types.SqlInfo, dbDriver string) (*types.SqlParse, error) {
 			return nil, err
 		}
 		retSql2.ArgIndex = retSql.ArgIndex
+
+		retSql2.Args = info.Args
+		retSql2.ApstropheArgs = info.ExtraTextParams
 		return retSql2, nil
 	})
 

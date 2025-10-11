@@ -266,7 +266,11 @@ func (selectors *selectorTypes) GetSQL(typModel reflect.Type) (string, []interfa
 	if err != nil {
 		return "", nil, err
 	}
+	// internal.UnionMap(selectSql.Args, selectors.args)
+
 	retArgs := selectors.args.GetArgs(selectSql.ArgIndex)
+	selectorArg := selectSql.Args.ToSelectorArgs(retArgs, selectSql.ApstropheArgs)
+	retArgs = selectorArg.GetArgs(selectSql.ArgIndex)
 	return selectSql.Sql, retArgs, err
 }
 
@@ -285,6 +289,12 @@ func (selectors *selectorTypes) Find(item any) error {
 		typeEle = typeEle.Elem()
 		if selectors.entityType != nil {
 			sqlQuery, args, err := selectors.GetSQL(*selectors.entityType)
+			if selectors.db.DriverName == "mysql" {
+				sqlQuery, args, err = internal.Helper.FixParam(sqlQuery, args)
+				if err != nil {
+					return err
+				}
+			}
 			if err != nil {
 				return err
 			}
@@ -294,6 +304,12 @@ func (selectors *selectorTypes) Find(item any) error {
 			sqlQuery, args, err := selectors.GetSQL(typeEle)
 			if err != nil {
 				return err
+			}
+			if selectors.db.DriverName == "mysql" {
+				sqlQuery, args, err = internal.Helper.FixParam(sqlQuery, args)
+				if err != nil {
+					return err
+				}
 			}
 			return selectors.db.fecthItems(item, sqlQuery, selectors.ctx, selectors.sqlTx, true, args...)
 		}

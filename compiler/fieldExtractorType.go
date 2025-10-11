@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -128,10 +129,33 @@ func (f *fieldExttractorType) GetFieldAlais(node sqlparser.SQLNode, visited map[
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range right {
-			left[k] = v
+		return internal.UnionMap(left, right), nil
+	}
+	if n, ok := node.(*sqlparser.ComparisonExpr); ok {
+		left, err := f.GetFieldAlais(n.Left, map[string]bool{}, isSubQuery)
+		if err != nil {
+			return nil, err
 		}
-		return left, nil
+		right, err := f.GetFieldAlais(n.Right, map[string]bool{}, isSubQuery)
+		if err != nil {
+			return nil, err
+		}
+
+		return internal.UnionMap(left, right), nil
+	}
+	if n, ok := node.(*sqlparser.FuncExpr); ok {
+		ret := map[string]types.OutputExpr{}
+		for _, x := range n.Exprs {
+			exprMap, err := f.GetFieldAlais(x, map[string]bool{}, isSubQuery)
+			if err != nil {
+				return nil, err
+			}
+			ret = internal.UnionMap(ret, exprMap)
+		}
+		return ret, nil
+	}
+	if _, ok := node.(*sqlparser.SQLVal); ok {
+		return map[string]types.OutputExpr{}, nil
 	}
 	panic(fmt.Sprintf("Not impletement %T,`%s`", node, `compiler\fieldExtractorType.go`))
 

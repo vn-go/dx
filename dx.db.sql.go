@@ -95,6 +95,17 @@ func (db *DB) fecthItemsBySliceVal(sliceVal reflect.Value, queryStmt string, ctx
 	}
 	var rows *sql.Rows
 	var err error
+	if db.DriverName == "mysql" {
+		queryStmt, args, err = internal.Helper.FixParam(queryStmt, args)
+		if err != nil {
+			return err
+		}
+	}
+	if Options.ShowSql {
+		println("----------------------------")
+		println(queryStmt)
+		println("----------------------------")
+	}
 	if sqlTx != nil {
 		if ctx == nil {
 			rows, err = sqlTx.Query(queryStmt, args...)

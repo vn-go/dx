@@ -76,8 +76,10 @@ func (e *DialectError) Reload() {
 }
 
 type SqlParse struct {
-	Sql      string
-	ArgIndex []reflect.StructField
+	Sql           string
+	ArgIndex      []reflect.StructField
+	Args          internal.CompilerArgs
+	ApstropheArgs []string
 }
 type SqlFncType struct {
 	Expr        string

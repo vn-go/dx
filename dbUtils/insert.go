@@ -7,6 +7,7 @@ import (
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migate/migrator"
 	"github.com/vn-go/dx/model"
 )
@@ -27,6 +28,12 @@ func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context) erro
 		return err
 	}
 	sqlText, args := dialect.MakeSqlInsert(modelInfo.Entity.TableName, modelInfo.Entity.Cols, data)
+	if dialect.Name() == "mysql" {
+		sqlText, args, err = internal.Helper.FixParam(sqlText, args)
+		if err != nil {
+			return err
+		}
+	}
 	sqlStmt, err := db.Prepare(sqlText)
 	if err != nil {
 		return err

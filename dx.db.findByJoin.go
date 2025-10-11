@@ -68,5 +68,6 @@ func (selectors *selectorTypes) findByJoin(item any) error {
 	if Options.ShowSql {
 		fmt.Println(sqlQuery.Sql)
 	}
+
 	return selectors.db.fecthItems(item, sqlQuery.Sql, nil, nil, true, args...)
 }

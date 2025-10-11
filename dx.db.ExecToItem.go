@@ -59,7 +59,13 @@ func (db *DB) execToItemOptimized(
 	query string,
 	args ...interface{},
 ) (err error) { // dùng named return
-
+	if db.DriverName == "mysql" {
+		var fixError error
+		query, args, fixError = internal.Helper.FixParam(query, args)
+		if fixError != nil {
+			return fixError
+		}
+	}
 	if Options.ShowSql {
 		fmt.Println(query)
 	}

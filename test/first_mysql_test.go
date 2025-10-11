@@ -42,7 +42,7 @@ func TestFirstFilterMysql(t *testing.T) {
 	}
 	defer db.Close()
 	user := &models.User{}
-	err = db.First(user, "username!=?", "admin")
+	err = db.First(user, "username!=? or id>0", "admin")
 	assert.NoError(t, err)
 }
 func BenchmarkFirstFilterMysql(t *testing.B) {

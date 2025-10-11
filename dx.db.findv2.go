@@ -114,6 +114,12 @@ func (db *DB) findtWithFilterV2(
 	if Options.ShowSql {
 		fmt.Println(sql.Sql)
 	}
+	if db.DriverName == "mysql" {
+		sql.Sql, args, err = internal.Helper.FixParam(sql.Sql, args)
+		if err != nil {
+			return err
+		}
+	}
 	return db.fecthItems(entity, sql.Sql, ctx, sqtTx, resetLen, args...)
 
 }

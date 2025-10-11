@@ -141,7 +141,13 @@ func (m *modelTypeWhere) Count(ret *uint64) error {
 		return err
 	}
 	argsExec := m.args.GetArgs(query.ArgIndex)
-	// Thực thi câu lệnh SQL và quét kết quả vào biến 'count'
+	// exec SQL then scan row to 'count'
+	if m.db.DriverName == "mysql" {
+		query.Sql, argsExec, err = internal.Helper.FixParam(query.Sql, argsExec)
+		if err != nil {
+			return err
+		}
+	}
 	err = m.db.QueryRow(query.Sql, argsExec...).Scan(ret)
 	if err != nil {
 		return m.db.parseError(err)

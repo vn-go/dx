@@ -9,6 +9,7 @@ import (
 )
 
 func TestSelecJoinMySql(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
@@ -24,6 +25,7 @@ func TestSelecJoinMySql(t *testing.T) {
 
 }
 func TestSelecGroupByHaveing1TableMySql(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
@@ -35,7 +37,7 @@ func TestSelecGroupByHaveing1TableMySql(t *testing.T) {
 	}{}
 	//users := []models.User{}
 	a := db.Model(&models.User{})
-	b := a.Select("count(*) Total,email").Group("email")
+	b := a.Select("count(*) Total,count(id)>?,email", 4).Group("email")
 	c := b.Having("count(*)>0 and email is not null")
 	//e := c.Group("user.UserName", "user.Email", "User.userId", "concat(user.Email,?,user.Username)", " ")
 	err = c.Find(&data)

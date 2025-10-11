@@ -10,12 +10,13 @@ import (
 func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *internal.SqlArgs) (string, error) {
 	switch expr.Type {
 	case sqlparser.StrVal:
+		indexInSql := len(*args) + 1
 		*args = append(*args, internal.SqlArg{
 			ParamType:  internal.PARAM_TYPE_CONSTANT,
 			Value:      internal.Helper.TrimStringLiteral(string(expr.Val)), //cmp.dialect.ToText(string(expr.Val)),
-			IndexInSql: len(*args),
+			IndexInSql: indexInSql,
 		})
-		return "?", nil
+		return cmp.dialect.ToParam(indexInSql), nil
 	case sqlparser.IntVal:
 		if cmpType == C_LIMIT || cmpType == C_OFFSET {
 			return string(expr.Val), nil
@@ -24,24 +25,25 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		if err != nil {
 			return "", err
 		}
-
+		indexInSql := len(*args) + 1
 		*args = append(*args, internal.SqlArg{
 			ParamType:  internal.PARAM_TYPE_CONSTANT,
 			Value:      intVal,
-			IndexInSql: len(*args),
+			IndexInSql: indexInSql,
 		})
-		return "?", nil
+		return cmp.dialect.ToParam(indexInSql), nil
 	case sqlparser.FloatVal:
 		floatVal, err := internal.Helper.ToFloatFormBytes(expr.Val)
 		if err != nil {
 			return "", err
 		}
+		indexInSql := len(*args) + 1
 		*args = append(*args, internal.SqlArg{
 			ParamType:  internal.PARAM_TYPE_CONSTANT,
 			Value:      floatVal,
-			IndexInSql: len(*args),
+			IndexInSql: indexInSql,
 		})
-		return "?", nil
+		return cmp.dialect.ToParam(indexInSql), nil
 
 	case sqlparser.ValArg:
 		strIndex := string(expr.Val[2:])
@@ -49,13 +51,14 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		if err != nil {
 			return "", NewCompilerError("Expression is invalid")
 		}
+		indexInSql := len(*args) + 1
 		*args = append(*args, internal.SqlArg{
 			ParamType: internal.PARAM_TYPE_DEFAULT,
 
-			IndexInSql:  len(*args),
+			IndexInSql:  indexInSql,
 			IndexInArgs: index - 1,
 		})
-		return "?", nil
+		return cmp.dialect.ToParam(index), nil
 
 	}
 

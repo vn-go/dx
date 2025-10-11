@@ -10,6 +10,7 @@ import (
 )
 
 func TestFindbyWhereMysql(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
@@ -20,7 +21,7 @@ func TestFindbyWhereMysql(t *testing.T) {
 	total := uint64(0)
 	err = db.Model(&models.User{}).Where("username!=?", "admin").Count(&total)
 	assert.NoError(t, err)
-	err = db.Where("username!=?", "admin").Limit(100).Order("Id desc").Find(&user)
+	err = db.Where("username!=? or id>1", "admin").Limit(100).Order("Id desc").Find(&user)
 
 	assert.NoError(t, err)
 }
