@@ -3,6 +3,8 @@ package dx
 import (
 	"context"
 	"reflect"
+
+	"github.com/vn-go/dx/internal"
 )
 
 func (db *DB) UpdateWithContext(context context.Context, item interface{}) UpdateResult {
@@ -24,6 +26,14 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 	numOfFieds := len(info.fieldIndex)
 	for i, index := range info.keyFieldIndex {
 		args[i+numOfFieds] = val.FieldByIndex(index).Interface()
+	}
+	if db.DriverName == "mysql" {
+		info.sql, args, err = internal.Helper.FixParam(info.sql, args)
+		if err != nil {
+			return UpdateResult{
+				Error: err,
+			}
+		}
 	}
 	r, err := db.ExecContext(context, info.sql, args...)
 	if err != nil {

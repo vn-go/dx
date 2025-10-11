@@ -279,8 +279,18 @@ func (m *modelTypeWhere) Update(data map[string]interface{}) UpdateResult {
 			Error: err,
 		}
 	}
+	if m.db.DriverName=="mysql" {
+		sql, setterArsg,err=internal.Helper.FixParam(sql, setterArsg)
+		if err!=nil {
+			return UpdateResult{
+				Error: err,
+			}
+		}
+	}
 	if Options.ShowSql {
+		fmt.Println("-----------------------------")
 		fmt.Println(sql)
+		fmt.Println("-----------------------------")
 	}
 	rs, err := m.db.Exec(sql, setterArsg...)
 	if err != nil {

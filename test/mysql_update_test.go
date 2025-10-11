@@ -28,7 +28,7 @@ func TestUpdatetUserMysql(t *testing.T) {
 	}
 }
 func TestUpdatetUserWithWhereMysql(t *testing.T) {
-
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", mySqlDsn)
 	//dx.SetManagerDb("mysql", "a001")
 	assert.NoError(t, err)
