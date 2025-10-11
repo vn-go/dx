@@ -17,12 +17,13 @@ func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *
 		if err != nil {
 			return "", fmt.Errorf("%s is not int value", string(n.Val))
 		}
+		indexInSql := len(*args) + 1
 		*args = append(*args, internal.SqlArg{
 			ParamType:   internal.PARAM_TYPE_2APOSTROPHE,
-			IndexInSql:  len(*args),
+			IndexInSql:  indexInSql,
 			IndexInArgs: index,
 		})
-		return "?", nil
+		return cmp.dialect.ToParam(indexInSql), nil
 	}
 	for _, arg := range expr.Exprs {
 		strArg, err := cmp.resolve(arg, C_FUNC, args)

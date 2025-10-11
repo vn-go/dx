@@ -466,13 +466,20 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if ds.db.DriverName == "mysql" {
+		sqlCompiled.Sql, sqlCompiled.Args, err = internal.Helper.FixParam(sqlCompiled.Sql, sqlCompiled.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if Options.ShowSql {
 		fmt.Println("-------------")
 		fmt.Println(sqlCompiled.Sql)
 		fmt.Println("-------------")
 	}
+
 	// 3) Execute query
-	//fmt.Println(len(sqlCompiled.Args))
+
 	rows, err := db.QueryContext(ctx, sqlCompiled.Sql, sqlCompiled.Args...)
 	if err != nil {
 

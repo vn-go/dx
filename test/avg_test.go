@@ -39,7 +39,11 @@ func TestUnionSource(t *testing.T) {
 	x := false
 	testBool(&x)
 	fmt.Println(x)
-	db, err := dx.Open("postgres", pgDsn)
+	// db, err := dx.Open("postgres", pgDsn)
+	// if err != nil {
+	// 	t.Fail()
+	// }
+	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
 	}
@@ -168,7 +172,6 @@ BenchmarkUnionSource/test-001-16         	  119857	      9396 ns/op	   11946 B/o
 BenchmarkUnionSource/test-001-paralle-16 	  204520	      6638 ns/op	   12048 B/op	      74 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	4.935s
-
 */
 func TestSelectSum(t *testing.T) {
 	a := []int{}

@@ -9,7 +9,11 @@ import (
 )
 
 func TestDsCounntPg(t *testing.T) {
-	db, err := dx.Open("postgres", pgDsn)
+	// db, err := dx.Open("postgres", pgDsn)
+	// if err != nil {
+	// 	t.Fail()
+	// }
+	db, err := dx.Open("mysql", mySqlDsn)
 	if err != nil {
 		t.Fail()
 	}
