@@ -27,6 +27,15 @@ func (d *postgresDialect) ParseError(dbSchema *types.DbSchema, err error) error 
 			return d.ParseError42P18(dbSchema, pgErr)
 
 		}
+		if pgErr.Code == "22P02" {
+			return pgErr
+		}
+		if pgErr.Code == "42P02" {
+			return pgErr
+		}
+		if pgErr.Code == "42803" {
+			return pgErr
+		}
 		panic(fmt.Errorf(`not implemented error code %s at %s`, pgErr.Code, `dialect\postgres\dialect.Postgres.ParseError.go`))
 	} else {
 		return err

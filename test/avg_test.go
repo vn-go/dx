@@ -157,6 +157,18 @@ BenchmarkUnionSource/test-001-16         	  139729	      8592 ns/op	   11561 B/o
 BenchmarkUnionSource/test-001-paralle-16 	  233094	      5449 ns/op	   11632 B/op	      74 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	3.048s
+----
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkUnionSource$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkUnionSource/test-001-16         	  119857	      9396 ns/op	   11946 B/op	      74 allocs/op
+BenchmarkUnionSource/test-001-paralle-16 	  204520	      6638 ns/op	   12048 B/op	      74 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	4.935s
+
 */
 func TestSelectSum(t *testing.T) {
 	a := []int{}

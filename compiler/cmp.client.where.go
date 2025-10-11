@@ -71,7 +71,7 @@ type initMakeFilter struct {
 
 var initMakeFilterCache sync.Map
 
-func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string, sqlSource string) (*CompilerFilterTypeResult, error) {
+func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string, sqlSource string, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) (*CompilerFilterTypeResult, error) {
 	key := filter + "://" + reflect.TypeFor[cmpWhereType]().String() + "/" + sqlSource
 	// for k, v := range outputFields {
 	// 	key += k + "@" + v
@@ -79,7 +79,7 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	a, _ := initMakeFilterCache.LoadOrStore(key, &initMakeFilter{})
 	i := a.(*initMakeFilter)
 	i.once.Do(func() {
-		i.val, i.err = cmp.makeFilterInternal(dialect, outputFields, filter)
+		i.val, i.err = cmp.makeFilterInternal(dialect, outputFields, filter, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg)
 	})
 	if i.err != nil {
 		initMakeFilterCache.Delete(key)
@@ -91,9 +91,10 @@ func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[stri
 	}
 	return i.val, i.err
 }
-func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string) (*CompilerFilterTypeResult, error) {
-
-	sql := "select * from tmp where " + filter
+func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) (*CompilerFilterTypeResult, error) {
+	var args internal.SqlArgs = []internal.SqlArg{}
+	sqlPreProcess := "select * from tmp where " + filter
+	sql, apostropheText := internal.Helper.InspectStringParam(sqlPreProcess)
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 	if err != nil {
 		return nil, newCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter), ERR)
@@ -104,12 +105,13 @@ func (cmp *cmpWhereType) makeFilterInternal(dialect types.Dialect, outputFields 
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		p := []any{}
-		ret, err := CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr, &p)
+
+		ret, err := CompilerFilter.Resolve(dialect, filter, outputFields, selectExpr.Where.Expr, &args, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
-		ret.Args = p
+		ret.ApostropheArg = apostropheText
+		ret.Args = args
 		return ret, nil
 	} else {
 		return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid syntax", filter))

@@ -19,8 +19,9 @@ type CompilerFilterTypeResult struct {
 	//map field: agg func name
 	FieldInFunc      map[string]types.OutputExpr
 	IsConstant       bool
-	Args             []interface{}
+	Args             internal.SqlArgs //[]interface{}
 	HasAggregateFunc bool
+	ApostropheArg    []string
 }
 
 //	func (c *CompilerFilterTypeResult) GetExpr() string {
@@ -52,7 +53,7 @@ func union(a, b map[string]types.OutputExpr) map[string]types.OutputExpr {
 	}
 	return ret
 }
-func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, n sqlparser.SQLNode, args *[]any) (*CompilerFilterTypeResult, error) {
+func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, n sqlparser.SQLNode, args *internal.SqlArgs, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg int) (*CompilerFilterTypeResult, error) {
 	// Use switch-case for clean handling of different SQL node types
 	switch x := n.(type) {
 
@@ -63,11 +64,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			return nil, NewCompilerError(fmt.Sprintf("Invalid comparison '%s': The left side of operator '%s' must be a Field or Expression, not a constant value.", strFilter, x.Operator))
 		}
 
-		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args)
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args)
+		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
@@ -104,11 +105,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 2. Binary Expression (e.g., +, -, *, /) ---
 	case *sqlparser.BinaryExpr:
-		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args)
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args)
+		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
@@ -129,9 +130,14 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 		// Handle boolean literals (e.g., 'true', 'false') as constants
 		if name == "yes" || name == "no" || name == "true" || name == "false" {
-			*args = append(*args, dialect.ToBool(x.Name.String()))
+			indexOfArs := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:  internal.PARAM_TYPE_CONSTANT,
+				IndexInSql: indexOfArs,
+				Value:      dialect.ToBool(x.Name.String()),
+			})
 			return &CompilerFilterTypeResult{
-				Expr:       "?",
+				Expr:       dialect.ToParam(indexOfArs),
 				IsConstant: true,
 			}, nil
 		}
@@ -163,30 +169,48 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 		// Handle parameters (e.g., :v1)
 		if strings.HasPrefix(v, ":v") {
-			// pIndex, err := strconv.ParseInt(v[2:], 32, 0)
-			// if err != nil {
-			// 	return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
-			// }
-			// *args = append(*args, emptyParam{
-			// 	Index: int(pIndex),
-			// })
-			return &CompilerFilterTypeResult{Expr: "?", FieldExpr: "?", IsConstant: true}, nil
+			pIndex, err := internal.Helper.ToInt(v[2:])
+			if err != nil {
+				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
+			}
+			indexOfParam := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:   internal.PARAM_TYPE_DEFAULT,
+				IndexInSql:  indexOfParam,
+				IndexInArgs: pIndex - 1 + startOdDynamicArg,
+			})
+
+			return &CompilerFilterTypeResult{
+				Expr:       dialect.ToParam(indexOfParam),
+				FieldExpr:  dialect.ToParam(indexOfParam),
+				IsConstant: true,
+			}, nil
 		}
 
 		// Handle specific literal types
 		if x.Type == sqlparser.StrVal || internal.Helper.IsString(v) {
-			*args = append(*args, internal.Helper.TrimStringLiteral(v))
+			indexInSql := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:  internal.PARAM_TYPE_CONSTANT,
+				IndexInSql: indexInSql,
+				Value:      v,
+			})
 			return &CompilerFilterTypeResult{
-				Expr:      "?",
+				Expr:      dialect.ToParam(indexInSql),
 				FieldExpr: "?",
 
 				IsConstant: true,
 			}, nil
 		}
 		if internal.Helper.IsBool(v) {
-			*args = append(*args, internal.Helper.ToBool(v))
+			indeInSql := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:  internal.PARAM_TYPE_CONSTANT,
+				IndexInSql: indeInSql,
+				Value:      internal.Helper.ToBool(v),
+			})
 			return &CompilerFilterTypeResult{
-				Expr:       "?",
+				Expr:       dialect.ToParam(indeInSql),
 				FieldExpr:  "?",
 				IsConstant: true,
 			}, nil
@@ -196,9 +220,14 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			if err != nil {
 				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
 			}
-			*args = append(*args, fValue)
+			indexInSql := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:  internal.PARAM_TYPE_CONSTANT,
+				IndexInSql: indexInSql,
+				Value:      fValue,
+			})
 			return &CompilerFilterTypeResult{
-				Expr:       "?",
+				Expr:       dialect.ToParam(indexInSql),
 				FieldExpr:  "?",
 				IsConstant: true,
 			}, nil
@@ -208,9 +237,14 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			if err != nil {
 				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
 			}
-			*args = append(*args, fValue)
+			indexInSql := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:  internal.PARAM_TYPE_CONSTANT,
+				IndexInSql: indexInSql,
+				Value:      fValue,
+			})
 			return &CompilerFilterTypeResult{
-				Expr:       "?",
+				Expr:       dialect.ToParam(indexInSql),
 				FieldExpr:  "?",
 				IsConstant: true,
 			}, nil
@@ -221,11 +255,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 5. Logical AND Expression (AndExpr) ---
 	case *sqlparser.AndExpr:
-		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args)
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args)
+		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
@@ -250,11 +284,11 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 6. Logical OR Expression (OrExpr) ---
 	case *sqlparser.OrExpr:
-		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args)
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Left, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args)
+		right, err := cmp.Resolve(dialect, strFilter, fields, x.Right, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
@@ -276,7 +310,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 7. Logical NOT Expression (NotExpr) ---
 	case *sqlparser.NotExpr:
-		left, err := cmp.Resolve(dialect, strFilter, fields, x.Expr, args)
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Expr, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		if err != nil {
 			return nil, err
 		}
@@ -295,13 +329,31 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 8. Function Expression ---
 	case *sqlparser.FuncExpr:
-		return cmp.ResolveFunc(dialect, strFilter, fields, x, args)
+		if x.Name.String() == internal.FnMarkSpecialTextArgs {
+			n := x.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
+			index, err := internal.Helper.ToIntFormBytes(n.Val)
+			if err != nil {
+				return nil, fmt.Errorf("%s is not int value", string(n.Val))
+			}
+			indexInSql := len(*args) + startSqlIndex + 1
+			*args = append(*args, internal.SqlArg{
+				ParamType:   internal.PARAM_TYPE_2APOSTROPHE,
+				IndexInSql:  indexInSql,
+				IndexInArgs: index + numberOfPreviuos2Apostrophe,
+			})
+			return &CompilerFilterTypeResult{
+				Expr:       dialect.ToParam(indexInSql),
+				FieldExpr:  dialect.ToParam(indexInSql),
+				IsConstant: true,
+			}, nil
+		}
+		return cmp.ResolveFunc(dialect, strFilter, fields, x, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 
 	// --- 9. Aliased Expression ---
 	case *sqlparser.AliasedExpr:
-		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args)
+		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 	case *sqlparser.ParenExpr:
-		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args)
+		return cmp.Resolve(dialect, strFilter, fields, x.Expr, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 	// --- 10. Default / Unimplemented Node Type ---
 	default:
 		if isDebugMode {
@@ -310,7 +362,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		return nil, newCompilerError(fmt.Sprintf("Invalid expression structure near '%s'. The expression format is not supported.", strFilter), ERR)
 	}
 }
-func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, x *sqlparser.FuncExpr, args *[]any) (*CompilerFilterTypeResult, error) {
+func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter string, fields map[string]types.OutputExpr, x *sqlparser.FuncExpr, args *internal.SqlArgs, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg int) (*CompilerFilterTypeResult, error) {
 	strArgs := []string{}
 	if x.Name.Lowered() == "contains" {
 		if len(x.Exprs) != 2 {
@@ -318,7 +370,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 		}
 		fieldsSelected := map[string]types.OutputExpr{}
 		for _, e := range x.Exprs {
-			ex, err := cmp.Resolve(dialect, strFilter, fields, e, args)
+			ex, err := cmp.Resolve(dialect, strFilter, fields, e, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 			if err != nil {
 				return nil, err
 			}
@@ -354,7 +406,7 @@ func (cmp *compilerFilterType) ResolveFunc(dialect types.Dialect, strFilter stri
 	fieldInFunc := map[string]types.OutputExpr{}
 	for _, e := range x.Exprs {
 
-		ex, err := cmp.Resolve(dialect, strFilter, fields, e, args)
+		ex, err := cmp.Resolve(dialect, strFilter, fields, e, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 		//fieldInArgs=append(fieldInArgs, ex.Fields[])
 		if err != nil {
 			return nil, err

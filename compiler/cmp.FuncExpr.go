@@ -18,8 +18,9 @@ func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *
 			return "", fmt.Errorf("%s is not int value", string(n.Val))
 		}
 		*args = append(*args, internal.SqlArg{
-			ParamType: internal.PARAM_TYPE_2APOSTROPHE,
-			Index:     index,
+			ParamType:   internal.PARAM_TYPE_2APOSTROPHE,
+			IndexInSql:  len(*args),
+			IndexInArgs: index,
 		})
 		return "?", nil
 	}

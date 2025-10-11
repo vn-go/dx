@@ -25,7 +25,7 @@ import (
 //	}
 type exprWithArgs struct {
 	Expr string
-	Args []any
+	Args internal.SqlArgs
 }
 type datasourceType struct {
 	defaultSelector string
@@ -95,7 +95,7 @@ type datasourceTypeBuildStruct struct {
 	strWhereNew *compiler.CompilerFilterTypeResult
 }
 
-func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct) error {
+func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct, args *internal.SqlArgs) error {
 
 	if ds.strWhere == "" {
 		return nil
@@ -104,9 +104,18 @@ func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct) error {
 
 	var err error
 	if ds.isFormSql {
-		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.OutputFieldsOrExprAlias, ds.strWhere, ds.key)
+		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(
+			dialect,
+			ds.OutputFieldsOrExprAlias,
+			ds.strWhere,
+			ds.key, 0,
+			0,
+			args.Len())
 	} else {
-		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.OutputFieldsOrExprAlias, ds.strWhere, ds.key)
+		ds.strWhereNew, err = compiler.CmpWhere.MakeFilter(
+			dialect,
+			ds.OutputFieldsOrExprAlias,
+			ds.strWhere, ds.key, 0, 0, args.Len())
 	}
 
 	if err != nil {
@@ -146,7 +155,7 @@ func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct) error {
 	}
 	return nil
 }
-func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) *compiler.CompilerFilterTypeResult {
+func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) *compiler.CompilerFilterTypeResult {
 
 	if strWhere == "" {
 		return nil
@@ -155,9 +164,9 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool) *compiler.
 	var strWhereNew *compiler.CompilerFilterTypeResult
 	var err error
 	if ds.isFormSql {
-		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Info.OutputFields, strWhere, ds.key)
+		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Info.OutputFields, strWhere, ds.key, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg)
 	} else {
-		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key)
+		strWhereNew, err = compiler.CmpWhere.MakeFilter(dialect, ds.cmpInfo.Dict.ExprAlias, strWhere, ds.key, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg)
 	}
 
 	if err != nil {
@@ -214,13 +223,14 @@ func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 	ds.strSelect = selector
 	ds.strSelectOrigin = selector
 	if len(args) > 0 {
-		ds.args.ArgsSelect = append(ds.args.ArgsSelect, args)
+		ds.args.ArgsSelect = append(ds.args.ArgsSelect, args...)
 	}
 
 	return ds
 }
-func (ds *datasourceType) buildSelect(sqlSelect string) (*compiler.ResolevSelectorResult, error) {
+func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs, startOfSqlIndex int) (*compiler.ResolevSelectorResult, error) {
 	//
+
 	if sqlSelect == "" {
 		return nil, nil
 		//selector = ds.defaultSelector
@@ -229,9 +239,9 @@ func (ds *datasourceType) buildSelect(sqlSelect string) (*compiler.ResolevSelect
 	var selectors *compiler.ResolevSelectorResult
 	var err error
 	if ds.isFormSql {
-		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Info.OutputFields, sqlSelect, ds.key)
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Info.OutputFields, sqlSelect, ds.key, strartOf2ApostropheArgs, startOfSqlIndex)
 	} else {
-		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, sqlSelect, ds.key)
+		selectors, err = compiler.CompilerSelect.MakeSelect(dialect, &ds.cmpInfo.Dict.ExprAlias, sqlSelect, ds.key, strartOf2ApostropheArgs, startOfSqlIndex)
 	}
 
 	if err != nil {
@@ -253,14 +263,14 @@ func (ds *datasourceType) buildSelect(sqlSelect string) (*compiler.ResolevSelect
 			if x.FieldExprType != compiler.FieldExprType_AggregateFunctionCall {
 				// if current selector is agg function call
 				groupByItems = append(groupByItems, x.Expr)
-				ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.ExtractArgs()...) // add agrs group by
+				ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
 			} else {
 				if ds.aggExpr == nil {
 					ds.aggExpr = map[string]exprWithArgs{}
 				}
 				ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
 					Expr: x.Expr,
-					Args: x.Args.ExtractArgs(),
+					Args: x.Args,
 				}
 
 			}
@@ -269,6 +279,7 @@ func (ds *datasourceType) buildSelect(sqlSelect string) (*compiler.ResolevSelect
 	}
 
 	ds.strGroupBy = strings.Join(groupByItems, ",")
+
 	return selectors, nil
 
 }
@@ -288,31 +299,37 @@ type sqlParseStruct struct {
 	sqlParse *types.SqlParse
 	where    *compiler.CompilerFilterTypeResult
 	selector *compiler.ResolevSelectorResult
+	Args     internal.SqlArgs
 }
 
-func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
-	if ds.err != nil {
-		return nil, ds.err
-	}
-	sqlParse, err := internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*sqlParseStruct, error) {
+func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex int) (*sqlParseStruct, error) {
+	return internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*sqlParseStruct, error) {
 		var db = ds.db
+		var args internal.SqlArgs = []internal.SqlArg{}
+		apostropheArgs := []string{}
 		// var ctx = ds.ctx
 		var sqlInfo = ds.cmpInfo.Info.Clone()
 		defer types.PutSqlInfo(sqlInfo)
 
-		selector, err := ds.buildSelect(ds.strSelectOrigin)
+		selector, err := ds.buildSelect(ds.strSelectOrigin, startOf2ApostropheArgs, startOfSqlIndex)
 
 		if err != nil {
 			return nil, err
 		}
 		if selector != nil {
 			sqlInfo.StrSelect = selector.StrSelectors
+			args = append(args, selector.Args...)
+			apostropheArgs = append(apostropheArgs, selector.ApostropheArg...)
+
 		}
 
-		where := ds.buildWhere(ds.strWhereOrigin, false)
+		where := ds.buildWhere(ds.strWhereOrigin, false, len(apostropheArgs), len(args), len(*args.GetDynamicArgs()))
 
 		if ds.err != nil {
 			return nil, ds.err
+		}
+		if where != nil {
+			args = append(args, where.Args...)
 		}
 		// var args = ds.args
 		if ds.whereIsInHaving {
@@ -377,35 +394,55 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 			sqlParse: sqlParse,
 			where:    where,
 			selector: selector,
+			Args:     args,
 		}
 		return ret, nil
 
 	})
+}
+func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
+	apostropheArg := []string{}
+	if ds.err != nil {
+		return nil, ds.err
+	}
+
+	sqlParse, err := ds.getSqlParse(0, 0)
 	if err != nil {
 		return nil, err
 	}
 	ds.argsExecutor = ds.args
 	if sqlParse.selector != nil {
 		ds.strSelect = sqlParse.selector.StrSelectors
-		ds.argsExecutor.ArgsSelect = append(ds.argsExecutor.ArgsSelect, sqlParse.selector.Args...)
+		apostropheArg = append(apostropheArg, sqlParse.selector.ApostropheArg...)
+		//ds.argsExecutor.ArgsSelect = append(ds.argsExecutor.ArgsSelect, sqlParse.selector.Args...)
 	}
 
 	if sqlParse.where != nil {
+
 		if ds.whereIsInHaving {
 			if sqlParse.where != nil {
-				ds.argsExecutor.ArgHaving = append(ds.args.ArgHaving, sqlParse.where.Args...)
+				apostropheArg = append(apostropheArg, sqlParse.where.ApostropheArg...)
+
 			}
 
 		} else {
 			if sqlParse.where != nil {
-				ds.argsExecutor.ArgWhere = append(ds.args.ArgWhere, sqlParse.where.Args...)
+				apostropheArg = append(apostropheArg, sqlParse.where.ApostropheArg...)
+
 			}
 		}
 	}
-	argsExecutors := ds.argsExecutor.GetArgs(sqlParse.sqlParse.ArgIndex)
+	args := []any{}
+	if sqlParse.Args.Len() > 0 {
+		argsExecutors := ds.argsExecutor.GetArgs(sqlParse.sqlParse.ArgIndex)
+		args = sqlParse.Args.CompileArgs(argsExecutors, apostropheArg)
+	} else {
+		args = ds.argsExecutor.GetArgs(sqlParse.sqlParse.ArgIndex)
+	}
+
 	ret := &datasourceTypeSql{
 		Sql:  sqlParse.sqlParse.Sql,
-		Args: argsExecutors,
+		Args: args,
 	}
 
 	return ret, nil
@@ -586,7 +623,7 @@ func (db *DB) ModelDatasource(modleName string) *datasourceType {
 			err: err,
 		}
 	}
-	fmt.Println(sqlInfo.ExtraTextParams)
+
 	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
 	// argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, sqlInfo.ExtraTextParams)
 	key := sqlInfo.Info.GetKey()
@@ -629,7 +666,7 @@ func (db *DB) DatasourceFromSql(sqlSelect string, args ...any) *datasourceType {
 		}
 	}
 
-	//argsCollected := sqlInfo.Info.Args.ArgJoin.ToSelectorArgs(args)
+	//argsCollected := sqlInfo.Info.Args.
 	argsCollected := sqlInfo.Info.Args.ToSelectorArgs(args, sqlInfo.ExtraTextParams)
 	key := sqlInfo.Info.GetKey()
 

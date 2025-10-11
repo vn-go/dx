@@ -13,9 +13,9 @@ type paramInfo struct {
 	Index int
 }
 type cmpSelectorType struct {
-	cmpType          COMPILER
-	aggregateExpr    map[string]bool
-	args             internal.CompilerArgs
+	cmpType       COMPILER
+	aggregateExpr map[string]bool
+	//args             internal.CompilerArgs
 	originalSelector string
 }
 
@@ -29,12 +29,12 @@ type initMakeSelect struct {
 
 var initMakeSelectCache sync.Map
 
-func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors, prefixKey string) (*ResolevSelectorResult, error) {
+func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors, prefixKey string, startOf2ApostropheArgs, startOfSqlIndex int) (*ResolevSelectorResult, error) {
 	key := selectors + "://" + prefixKey
 	a, _ := initMakeSelectCache.LoadOrStore(key, &initMakeSelect{})
 	i := a.(*initMakeSelect)
 	i.once.Do(func() {
-		i.val, i.err = cmp.makeSelectInternal(dialect, outputFields, selectors)
+		i.val, i.err = cmp.makeSelectInternal(dialect, outputFields, selectors, startOf2ApostropheArgs, startOfSqlIndex)
 
 	})
 	if i.err != nil {
@@ -53,11 +53,13 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 // 	GroupByFields map[string]string
 // }
 
-func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors string) (*ResolevSelectorResult, error) {
+func (cmpTyp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors string, startOf2ApostropheArgs, startOfSqlIndex int) (*ResolevSelectorResult, error) {
+	cmp := &cmpSelectorType{}
 	cmp.originalSelector = selectors
 	sqlPreprocess := "select " + selectors + " from t	mp"
-	sql, staticParams := internal.Helper.InspectStringParam(sqlPreprocess)
-	fmt.Println(staticParams)
+	sql, apostropheArg := internal.Helper.InspectStringParam(sqlPreprocess)
+
+	var args internal.SqlArgs = []internal.SqlArg{}
 
 	sqlParse, err := internal.Helper.QuoteExpression(sql)
 
@@ -72,10 +74,12 @@ func (cmp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFiel
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &cmp.args.ArgsSelect)
+		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &args, startOf2ApostropheArgs, startOfSqlIndex)
 		if err == nil {
 			//no error get all args after compiler
-			ret.Args = cmp.args.ArgsSelect.ExtractArgs()
+			ret.Args = args
+			ret.ApostropheArg = apostropheArg
+
 			return ret, nil
 		} else {
 			return nil, err

@@ -23,9 +23,11 @@ const (
 //	}
 
 type SqlArg struct {
-	ParamType PARAM_TYPE
-	Index     int
-	Value     any
+	ParamType  PARAM_TYPE
+	IndexInSql int
+	//index of reference Param (reference param is args in arguments macth with "?")
+	IndexInArgs int
+	Value       any
 	// /*
 	// 	if query has any text constant value with double aspotrophe that mean this value of field is false
 	// 	Example : select concat(name,'O''Reilly'), compiler will set this value is false
@@ -40,20 +42,58 @@ type SqlArg struct {
 }
 type SqlArgs []SqlArg
 
-func (a *SqlArgs) ExtractArgs(args ...any) []any {
-	ret := []any{}
+func (a *SqlArgs) GetDynamicArgs() *SqlArgs {
+	var ret SqlArgs = []SqlArg{}
 	for _, x := range *a {
+		//x.IndexInSql is always start at 1
 		if x.ParamType == PARAM_TYPE_DEFAULT {
-			if x.Index < len(args) {
-				ret = append(ret, args[x.Index])
+			ret = append(ret, x)
+		}
+	}
+	return &ret
+}
+func (a *SqlArgs) Len() int {
+	return len(*a)
+}
+func (a *SqlArgs) CompileArgs(dyanmicArgs []any, douleApostropheArgs []string) []any {
+	ret := make([]any, len(*a))
+	for _, x := range *a {
+		//x.IndexInSql is always start at 1
+		if x.ParamType == PARAM_TYPE_DEFAULT {
+			if x.IndexInArgs < len(dyanmicArgs) {
+				ret[x.IndexInSql-1] = dyanmicArgs[x.IndexInArgs]
 			}
-		} else {
-			ret = append(ret, x.Value)
+
+		}
+		if x.ParamType == PARAM_TYPE_CONSTANT {
+			//ret = append(ret, x.Value)
+			ret[x.IndexInSql-1] = x.Value
+		}
+		if x.ParamType == PARAM_TYPE_2APOSTROPHE {
+			if x.IndexInArgs < len(douleApostropheArgs) {
+				ret[x.IndexInSql-1] = douleApostropheArgs[x.IndexInArgs]
+
+			}
 		}
 	}
 	//panic("SqlArg ExtractArgs")
 	return ret
 }
+
+//	func (a *SqlArgs) ExtractArgs(args ...any) []any {
+//		ret := []any{}
+//		for _, x := range *a {
+//			if x.ParamType == PARAM_TYPE_DEFAULT {
+//				if x.Index < len(args) {
+//					ret = append(ret, args[x.Index])
+//				}
+//			} else {
+//				ret = append(ret, x.Value)
+//			}
+//		}
+//		//panic("SqlArg ExtractArgs")
+//		return ret
+//	}
 func (c *SqlArgs) ToSelectorArgs(args []any) SelectorTypesArgs {
 	if len(*c) == 0 {
 		return SelectorTypesArgs{}
@@ -159,14 +199,14 @@ func (compilerArgs *CompilerArgs) ToSelectorArgs(args []any, doulbeApostrophes [
 
 		for _, x := range items {
 			if x.ParamType == PARAM_TYPE_DEFAULT {
-				argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.Index]))
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(args[x.IndexInArgs]))
 
 			}
 			if x.ParamType == PARAM_TYPE_CONSTANT {
 				argsValue = reflect.Append(argsValue, reflect.ValueOf(x.Value))
 			}
 			if x.ParamType == PARAM_TYPE_2APOSTROPHE {
-				argsValue = reflect.Append(argsValue, reflect.ValueOf(doulbeApostrophes[x.Index]))
+				argsValue = reflect.Append(argsValue, reflect.ValueOf(doulbeApostrophes[x.IndexInArgs]))
 			}
 		}
 
