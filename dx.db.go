@@ -5,10 +5,12 @@ import (
 	"database/sql"
 
 	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/dialect/types"
 )
 
 type DB struct {
 	*db.DB
+	Dialect types.Dialect
 }
 type TxOptions struct {
 	// Isolation is the transaction isolation level.

@@ -101,11 +101,10 @@ func Open(driverName, dsn string) (*DB, error) {
 	}
 	ret.DB = DB
 	err = detect(ret.Info, ret.DB)
-	internal.SetDsn(dsnEncypt, dsn)
-
 	if err != nil {
 		return nil, err
 	}
+	internal.SetDsn(dsnEncypt, dsn)
 
 	return ret, nil
 }

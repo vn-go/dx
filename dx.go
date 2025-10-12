@@ -6,6 +6,7 @@ import (
 	"github.com/vn-go/dx/compiler"
 	"github.com/vn-go/dx/db"
 	dbutils "github.com/vn-go/dx/dbUtils"
+	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
 	dxErrors "github.com/vn-go/dx/errors"
 	migrateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
@@ -61,8 +62,11 @@ func Open(driverName string, dsn string) (*DB, error) {
 		defer retDb.Close()
 		return nil, err
 	}
+	dialect := factory.DialectFactory.Create(retDb.Info.DriverName)
+
 	return &DB{
-		DB: retDb,
+		DB:      retDb,
+		Dialect: dialect,
 	}, nil
 
 }

@@ -82,7 +82,7 @@ func (db *DB) fecthItemsToSliceVal(queryStmt string, ctx context.Context, sqlTx 
 	if err != nil {
 		return nil, err
 	}
-	typElem := internal.Helper.CreateDynamicStructFromSqlColumnType(queryStmt, colTypes)
+	typElem := db.Dialect.DynamicStructFormColumnTypes(queryStmt, colTypes)
 	sliceVal := reflect.New(reflect.SliceOf(typElem))
 	key := typElem.String() + "://" + queryStmt + "://fecthItems"
 	fectInfo, err := internal.OnceCall(key, func() (map[string]fieldInfo, error) {

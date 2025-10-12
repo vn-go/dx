@@ -2,11 +2,11 @@ package internal
 
 import (
 	"database/sql"
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // ---- convert sql type → Go type ----
@@ -51,61 +51,7 @@ func (h *helperType) toExportedName(name string) string {
 }
 
 // ---- create struct ----
-func (h *helperType) createDynamicStructFromSqlColumnType(colTypes []*sql.ColumnType) reflect.Type {
-	fields := make([]reflect.StructField, 0, len(colTypes))
 
-	for _, col := range colTypes {
-		dbType := strings.ToUpper(col.DatabaseTypeName())
-		goType := reflect.TypeOf(new(interface{})).Elem() // fallback
-
-		switch dbType {
-		case "INT", "INTEGER", "SMALLINT", "SERIAL", "BIGSERIAL":
-			goType = reflect.TypeFor[*int64]()
-		case "BIGINT":
-			goType = reflect.TypeFor[*int64]()
-		case "REAL", "FLOAT4":
-			goType = reflect.TypeOf(float32(0))
-		case "DOUBLE", "FLOAT8", "NUMERIC", "DECIMAL":
-			goType = reflect.TypeFor[*float64]()
-		case "BOOLEAN", "BOOL":
-			goType = reflect.TypeFor[*bool]()
-		case "CHAR", "VARCHAR", "TEXT", "CITEXT", "UUID":
-			goType = reflect.TypeOf("")
-		case "DATE", "TIMESTAMP", "TIMESTAMPTZ":
-			goType = reflect.TypeFor[*time.Time]() //reflect.TypeOf(time.Time{})
-		case "BYTEA":
-			goType = reflect.TypeOf([]byte(nil))
-		default:
-			goType = reflect.TypeOf(new(interface{})).Elem()
-		}
-
-		field := reflect.StructField{
-			Name: strings.Title(col.Name()), // viết hoa để export
-			Type: goType,
-			Tag:  reflect.StructTag(fmt.Sprintf(`db:"%s"`, col.Name())),
-		}
-		fields = append(fields, field)
-	}
-
-	return reflect.StructOf(fields)
-}
-
-type initCreateDynamicStructFromSqlColumnType struct {
-	val  reflect.Type
-	once sync.Once
-}
-
-var initCreateDynamicStructFromSqlColumnTypeCache sync.Map
-
-func (h *helperType) CreateDynamicStructFromSqlColumnType(sql string, colTypes []*sql.ColumnType) reflect.Type {
-	a, _ := initCreateDynamicStructFromSqlColumnTypeCache.LoadOrStore(sql, &initCreateDynamicStructFromSqlColumnType{})
-	i := a.(*initCreateDynamicStructFromSqlColumnType)
-	i.once.Do(func() {
-		i.val = h.createDynamicStructFromSqlColumnType(colTypes)
-
-	})
-	return i.val
-}
 func (h *helperType) createTypesInRowFromSqlColumnTypeInternal(colTypes []*sql.ColumnType) []reflect.Type {
 	ret := make([]reflect.Type, len(colTypes))
 	for i, col := range colTypes {
@@ -166,4 +112,16 @@ func (h *helperType) CreateRowsFromSqlColumnType(key string, colTypes []*sql.Col
 	}
 
 	return ret
+}
+func (h *helperType) ToLowerCamel(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	// Nếu 2 ký tự đầu đều viết hoa (ví dụ HTTPServer), thì chỉ hạ chữ đầu tiên
+	if len(runes) > 1 && unicode.IsUpper(runes[0]) && unicode.IsUpper(runes[1]) {
+		runes[0] = unicode.ToLower(runes[0])
+		return string(runes)
+	}
+	return string(unicode.ToLower(runes[0])) + string(runes[1:])
 }

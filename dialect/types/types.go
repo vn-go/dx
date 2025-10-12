@@ -90,7 +90,7 @@ type SqlFncType struct {
 type Dialect interface {
 	// true debug mode, panic will raise instead returning error
 	ReleaseMode(bool)
-
+	DynamicStructFormColumnTypes(sql string, ccolTypes []*sql.ColumnType) reflect.Type
 	LikeValue(val string) string
 
 	ParseError(dbSchema *types.DbSchema, err error) error
