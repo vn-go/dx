@@ -434,3 +434,10 @@ git tag -a v1.0.68 -m "fix return error 23505 for PG"
 git push origin v1.0.68
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.68
+--
+git add .
+git commit -m "fix function db.ModelDataSource and db.DataSourceFromSQL"
+git tag -a v1.0.70 -m "fix return error 23505 for PG"
+git push origin v1.0.70
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.70

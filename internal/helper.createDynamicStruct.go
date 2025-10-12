@@ -20,11 +20,11 @@ func (h *helperType) goTypeFromSqlColumn(col *sql.ColumnType) reflect.Type {
 
 	switch {
 	case strings.Contains(dbType, "int"):
-		return reflect.TypeFor[int64]()
+		return reflect.TypeFor[*int64]()
 	case strings.Contains(dbType, "bool"):
 		return reflect.TypeOf(bool(false))
 	case strings.Contains(dbType, "float"), strings.Contains(dbType, "double"), strings.Contains(dbType, "numeric"), strings.Contains(dbType, "decimal"):
-		return reflect.TypeFor[float64]()
+		return reflect.TypeFor[*float64]()
 	case strings.Contains(dbType, "char"), strings.Contains(dbType, "text"), strings.Contains(dbType, "citext"):
 		return reflect.TypeOf("")
 	case strings.Contains(dbType, "time"), strings.Contains(dbType, "date"):
@@ -51,7 +51,7 @@ func (h *helperType) toExportedName(name string) string {
 }
 
 // ---- create struct ----
-func (h *helperType) CreateDynamicStructFromSqlColumnType(colTypes []*sql.ColumnType) reflect.Type {
+func (h *helperType) createDynamicStructFromSqlColumnType(colTypes []*sql.ColumnType) reflect.Type {
 	fields := make([]reflect.StructField, 0, len(colTypes))
 
 	for _, col := range colTypes {
@@ -60,19 +60,19 @@ func (h *helperType) CreateDynamicStructFromSqlColumnType(colTypes []*sql.Column
 
 		switch dbType {
 		case "INT", "INTEGER", "SMALLINT", "SERIAL", "BIGSERIAL":
-			goType = reflect.TypeFor[int64]()
+			goType = reflect.TypeFor[*int64]()
 		case "BIGINT":
-			goType = reflect.TypeFor[int64]()
+			goType = reflect.TypeFor[*int64]()
 		case "REAL", "FLOAT4":
 			goType = reflect.TypeOf(float32(0))
 		case "DOUBLE", "FLOAT8", "NUMERIC", "DECIMAL":
-			goType = reflect.TypeFor[float64]()
+			goType = reflect.TypeFor[*float64]()
 		case "BOOLEAN", "BOOL":
-			goType = reflect.TypeOf(false)
+			goType = reflect.TypeFor[*bool]()
 		case "CHAR", "VARCHAR", "TEXT", "CITEXT", "UUID":
 			goType = reflect.TypeOf("")
 		case "DATE", "TIMESTAMP", "TIMESTAMPTZ":
-			goType = reflect.TypeOf(time.Time{})
+			goType = reflect.TypeFor[*time.Time]() //reflect.TypeOf(time.Time{})
 		case "BYTEA":
 			goType = reflect.TypeOf([]byte(nil))
 		default:
@@ -89,7 +89,24 @@ func (h *helperType) CreateDynamicStructFromSqlColumnType(colTypes []*sql.Column
 
 	return reflect.StructOf(fields)
 }
-func (h *helperType) createTypesInRowFromSqlColumnTypeInternal(key string, colTypes []*sql.ColumnType) []reflect.Type {
+
+type initCreateDynamicStructFromSqlColumnType struct {
+	val  reflect.Type
+	once sync.Once
+}
+
+var initCreateDynamicStructFromSqlColumnTypeCache sync.Map
+
+func (h *helperType) CreateDynamicStructFromSqlColumnType(sql string, colTypes []*sql.ColumnType) reflect.Type {
+	a, _ := initCreateDynamicStructFromSqlColumnTypeCache.LoadOrStore(sql, &initCreateDynamicStructFromSqlColumnType{})
+	i := a.(*initCreateDynamicStructFromSqlColumnType)
+	i.once.Do(func() {
+		i.val = h.createDynamicStructFromSqlColumnType(colTypes)
+
+	})
+	return i.val
+}
+func (h *helperType) createTypesInRowFromSqlColumnTypeInternal(colTypes []*sql.ColumnType) []reflect.Type {
 	ret := make([]reflect.Type, len(colTypes))
 	for i, col := range colTypes {
 		dbType := strings.ToUpper(col.DatabaseTypeName())
@@ -97,19 +114,19 @@ func (h *helperType) createTypesInRowFromSqlColumnTypeInternal(key string, colTy
 
 		switch dbType {
 		case "INT", "INTEGER", "SMALLINT", "SERIAL", "BIGSERIAL":
-			goType = reflect.TypeFor[int64]()
+			goType = reflect.TypeFor[*int64]()
 		case "BIGINT":
-			goType = reflect.TypeFor[int64]()
+			goType = reflect.TypeFor[*int64]()
 		case "REAL", "FLOAT4":
 			goType = reflect.TypeOf(float32(0))
 		case "DOUBLE", "FLOAT8", "NUMERIC", "DECIMAL":
-			goType = reflect.TypeFor[float64]()
+			goType = reflect.TypeFor[*float64]()
 		case "BOOLEAN", "BOOL":
-			goType = reflect.TypeOf(false)
+			goType = reflect.TypeFor[*bool]()
 		case "CHAR", "VARCHAR", "TEXT", "CITEXT", "UUID":
 			goType = reflect.TypeOf("")
 		case "DATE", "TIMESTAMP", "TIMESTAMPTZ":
-			goType = reflect.TypeOf(time.Time{})
+			goType = reflect.TypeFor[*time.Time]()
 		case "BYTEA":
 			goType = reflect.TypeOf([]byte(nil))
 		default:
@@ -133,7 +150,7 @@ func (h *helperType) CreateTypesInRowFromSqlColumnType(key string, colTypes []*s
 	a, _ := initCreateTypesInRowFromSqlColumnTypeCache.LoadOrStore(key, &initCreateTypesInRowFromSqlColumnType{})
 	i := a.(*initCreateTypesInRowFromSqlColumnType)
 	i.once.Do(func() {
-		i.val = h.createTypesInRowFromSqlColumnTypeInternal(key, colTypes)
+		i.val = h.createTypesInRowFromSqlColumnTypeInternal(colTypes)
 	})
 	return i.val
 }

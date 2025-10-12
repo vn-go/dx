@@ -17,12 +17,12 @@ func TestDsCounntPg(t *testing.T) {
 	// if err != nil {
 	// 	t.Fail()
 	// }
-	ds := db.ModelDatasource("user")
+	ds := db.ModelDatasource("user") //.Select("modifiedOn,username")
 	//count(if(id<=1,'a',id<=2,?)) ok
-	ds.Select(
-		//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
-		"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
-	) //.Where("username like 'user-''p%' and id=?", 1)
+	// ds.Select(
+	// 	//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
+	// 	"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
+	// ) //.Where("username like 'user-''p%' and id=?", 1)
 	psql, err := ds.ToSql()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, psql.Sql)
@@ -44,10 +44,10 @@ func BenchmarkDsCounntPg(b *testing.B) {
 			ds := db.ModelDatasource("user")
 			//count(if(id<=1,'a',id<=2,?)) ok
 			//ds.Select("id, concat(username,'user-''p%',?,?,'''x') nameTest", "b", "OK").Where("username like 'user-''p%' and id=?", 1)
-			ds.Select(
-				//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
-				"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
-			) //.Where("username like 'user-''p%' and id=?", 1)
+			// ds.Select(
+			// 	//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
+			// 	"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
+			// ) //.Where("username like 'user-''p%' and id=?", 1)
 			ds.ToData()
 		}
 	})
@@ -58,10 +58,10 @@ func BenchmarkDsCounntPg(b *testing.B) {
 				//count(if(id<=1,'a',id<=2,?)) ok
 				// ds.Select("id, concat(username,'user-''p%',?,?,'''x') nameTest", "b", "OK").Where("username like 'user-''p%' and id=?", 1)
 				// ds.ToSql()
-				ds.Select(
-					//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
-					"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
-				) //.Where("username like 'user-''p%' and id=?", 1)
+				// ds.Select(
+				// 	//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
+				// 	"if(left(username,3)='admin',?,?) name", 12.3, 14.4,
+				// ) //.Where("username like 'user-''p%' and id=?", 1)
 				ds.ToData()
 			}
 
@@ -125,4 +125,16 @@ BenchmarkDsCounntPg/single-16         	    6302	    167549 ns/op	   12864 B/op	 
 BenchmarkDsCounntPg/paralell-16       	    3372	    305192 ns/op	   16154 B/op	     271 allocs/op
 PASS
 ok  	github.com/vn-go/dx/test	3.654s
+*/
+/*
+Running tool: C:\Golang\bin\go.exe test -benchmem -run=^$ -bench ^BenchmarkDsCounntPg$ github.com/vn-go/dx/test
+
+goos: windows
+goarch: amd64
+pkg: github.com/vn-go/dx/test
+cpu: 12th Gen Intel(R) Core(TM) i7-12650H
+BenchmarkDsCounntPg/single-16         	    5510	    190764 ns/op	   12883 B/op	     264 allocs/op
+BenchmarkDsCounntPg/paralell-16       	    4845	    283300 ns/op	   16504 B/op	     271 allocs/op
+PASS
+ok  	github.com/vn-go/dx/test	5.918s
 */
