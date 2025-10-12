@@ -9,19 +9,20 @@ import (
 )
 
 func TestDsCounntPg(t *testing.T) {
-	// db, err := dx.Open("postgres", pgDsn)
-	// if err != nil {
-	// 	t.Fail()
-	// }
-	db, err := dx.Open("mysql", mySqlDsn)
+	db, err := dx.Open("postgres", pgDsn)
 	if err != nil {
 		t.Fail()
 	}
+	// db, err := dx.Open("mysql", mySqlDsn)
+	// if err != nil {
+	// 	t.Fail()
+	// }
 	ds := db.ModelDatasource("user")
 	//count(if(id<=1,'a',id<=2,?)) ok
 	ds.Select(
-		"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
-	).Where("username like 'user-''p%' and id=?", 1)
+		//"id, count(concat(username,'user-''p%',?,?,'''x')) nameTest, concat(username,'-',email) name2", "b", "OK",
+		"if(username='admin',0,1) name",
+	) //.Where("username like 'user-''p%' and id=?", 1)
 	psql, err := ds.ToSql()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, psql.Sql)
@@ -32,10 +33,10 @@ func TestDsCounntPg(t *testing.T) {
 	// assert.NotEmpty(t, psql)
 	// assert.Equal(t, len(psql.Args), 6)
 	// fmt.Println(psql.Sql)
-	_, err = ds.ToDict()
+	d, err := ds.ToDict()
 	fmt.Println(err)
 	assert.NoError(t, err)
-	//assert.NotEmpty(t, d)
+	t.Log(d)
 
 }
 func BenchmarkDsCounntPg(b *testing.B) {
