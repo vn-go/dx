@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
@@ -137,7 +136,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 				Value:      dialect.ToBool(x.Name.String()),
 			})
 			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indexOfArs),
+				Expr:       dialect.ToParam(indexOfArs, sqlparser.BitVal),
 				IsConstant: true,
 			}, nil
 		}
@@ -165,93 +164,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 	// --- 4. SQL Value (Constant or Parameter) ---
 	case *sqlparser.SQLVal:
-		v := string(x.Val)
-
-		// Handle parameters (e.g., :v1)
-		if strings.HasPrefix(v, ":v") {
-			pIndex, err := internal.Helper.ToInt(v[2:])
-			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
-			}
-			indexOfParam := len(*args) + startSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:   internal.PARAM_TYPE_DEFAULT,
-				IndexInSql:  indexOfParam,
-				IndexInArgs: pIndex - 1 + startOdDynamicArg,
-			})
-
-			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indexOfParam),
-				FieldExpr:  dialect.ToParam(indexOfParam),
-				IsConstant: true,
-			}, nil
-		}
-
-		// Handle specific literal types
-		if x.Type == sqlparser.StrVal || internal.Helper.IsString(v) {
-			indexInSql := len(*args) + startSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:  internal.PARAM_TYPE_CONSTANT,
-				IndexInSql: indexInSql,
-				Value:      v,
-			})
-			return &CompilerFilterTypeResult{
-				Expr:      dialect.ToParam(indexInSql),
-				FieldExpr: "?",
-
-				IsConstant: true,
-			}, nil
-		}
-		if internal.Helper.IsBool(v) {
-			indeInSql := len(*args) + startSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:  internal.PARAM_TYPE_CONSTANT,
-				IndexInSql: indeInSql,
-				Value:      internal.Helper.ToBool(v),
-			})
-			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indeInSql),
-				FieldExpr:  "?",
-				IsConstant: true,
-			}, nil
-		}
-		if internal.Helper.IsNumber(v) {
-			fValue, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
-			}
-			indexInSql := len(*args) + startSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:  internal.PARAM_TYPE_CONSTANT,
-				IndexInSql: indexInSql,
-				Value:      fValue,
-			})
-			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indexInSql),
-				FieldExpr:  "?",
-				IsConstant: true,
-			}, nil
-		}
-		if internal.Helper.IsFloatNumber(v) {
-			fValue, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
-			}
-			indexInSql := len(*args) + startSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:  internal.PARAM_TYPE_CONSTANT,
-				IndexInSql: indexInSql,
-				Value:      fValue,
-			})
-			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indexInSql),
-				FieldExpr:  "?",
-				IsConstant: true,
-			}, nil
-		}
-
-		// Invalid value error
-		return nil, NewCompilerError(fmt.Sprintf("Invalid literal value '%s' in expression '%s'. The value type is unrecognized.", v, strFilter))
+		return cmp.ResolveParams(dialect, strFilter, fields, x, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
 
 	// --- 5. Logical AND Expression (AndExpr) ---
 	case *sqlparser.AndExpr:
@@ -342,8 +255,8 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 				IndexInArgs: index + numberOfPreviuos2Apostrophe,
 			})
 			return &CompilerFilterTypeResult{
-				Expr:       dialect.ToParam(indexInSql),
-				FieldExpr:  dialect.ToParam(indexInSql),
+				Expr:       dialect.ToParam(indexInSql, sqlparser.StrVal),
+				FieldExpr:  dialect.ToParam(indexInSql, sqlparser.StrVal),
 				IsConstant: true,
 			}, nil
 		}

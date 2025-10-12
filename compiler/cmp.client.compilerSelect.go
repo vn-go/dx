@@ -139,7 +139,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 				IndexInArgs: index + startOf2ApostropheArgs,
 			})
 			return &FieldSelect{
-				Expr:          dialect.ToParam(indexInSql),
+				Expr:          dialect.ToParam(indexInSql, sqlparser.StrVal),
 				FieldExprType: FieldExprType_Expression,
 			}, nil
 		}
@@ -166,100 +166,8 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 
 	}
 	if x, ok := n.(*sqlparser.SQLVal); ok {
-		v := string(x.Val)
-		if strings.HasPrefix(v, ":v") {
-			index, err := internal.Helper.ToInt(v[2:])
-			if err != nil {
-				return nil, NewCompilerError(fmt.Sprintf("%s is invalid ", selector))
-			}
-			indexInSql := len(*args) + startOfSqlIndex + 1
-			*args = append(*args, internal.SqlArg{
-				ParamType:   internal.PARAM_TYPE_DEFAULT,
-				IndexInSql:  indexInSql,
-				IndexInArgs: index - 1,
-			})
-			return &FieldSelect{
-				Expr:         dialect.ToParam(indexInSql),
-				OriginalExpr: "?",
-			}, nil
+		return cmp.resolveValue(dialect, x, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
 
-		} else {
-			if x.Type == sqlparser.StrVal {
-				indexInSql := len(*args) + startOfSqlIndex + 1
-				*args = append(*args, internal.SqlArg{
-					ParamType:  internal.PARAM_TYPE_CONSTANT,
-					IndexInSql: indexInSql,
-					Value:      v,
-				})
-				return &FieldSelect{
-					Expr:         dialect.ToParam(indexInSql),
-					OriginalExpr: "'" + v + "'",
-				}, nil
-				//return dialect.ToText(v), nil
-			}
-			if internal.Helper.IsString(v) {
-				indexInSql := len(*args) + startOfSqlIndex + 1
-				*args = append(*args, internal.SqlArg{
-					ParamType:  internal.PARAM_TYPE_CONSTANT,
-					IndexInSql: indexInSql,
-					Value:      v,
-				})
-
-				return &FieldSelect{
-					Expr:         dialect.ToParam(indexInSql),
-					OriginalExpr: "'" + v + "'",
-				}, nil
-				//return dialect.ToText(v), nil
-			} else if internal.Helper.IsBool(v) {
-				indexInSql := len(*args) + startOfSqlIndex + 1
-				*args = append(*args, internal.SqlArg{
-					ParamType:  internal.PARAM_TYPE_CONSTANT,
-					IndexInSql: indexInSql,
-					Value:      internal.Helper.ToBool(v),
-				})
-
-				return &FieldSelect{
-					Expr:         dialect.ToParam(indexInSql),
-					OriginalExpr: v,
-				}, nil
-				//return dialect.ToBool(v), nil
-			} else if internal.Helper.IsFloatNumber(v) {
-				fx, err := internal.Helper.ToFloat(v)
-				if err != nil {
-					return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", selector))
-				}
-				indexInSql := len(*args) + startOfSqlIndex + 1
-				*args = append(*args, internal.SqlArg{
-					ParamType:  internal.PARAM_TYPE_CONSTANT,
-					IndexInSql: indexInSql,
-					Value:      fx,
-				})
-				return &FieldSelect{
-					Expr:         dialect.ToParam(indexInSql),
-					OriginalExpr: v,
-				}, nil
-				//return v, nil
-			} else if internal.Helper.IsNumber(v) {
-				fx, err := internal.Helper.ToInt(v)
-				if err != nil {
-					return nil, NewCompilerError(fmt.Sprintf("%s is invalid expression", cmp.originalSelector))
-				}
-				indexInSql := len(*args) + startOfSqlIndex + 1
-				*args = append(*args, internal.SqlArg{
-					ParamType:  internal.PARAM_TYPE_CONSTANT,
-					IndexInSql: indexInSql,
-					Value:      fx,
-				})
-				return &FieldSelect{
-					Expr:         dialect.ToParam(indexInSql),
-					OriginalExpr: v,
-				}, nil
-				//return v, nil
-			} else {
-				return nil, NewCompilerError(fmt.Sprintf("'%s' in '%s' is invalid value", v, cmp.originalSelector))
-			}
-
-		}
 	}
 	if _, ok := n.(*sqlparser.StarExpr); ok {
 		return nil, NewCompilerError(fmt.Sprintf("%s' in '%s' is invalid expression, use CountAll instead", "count(*)", cmp.originalSelector))

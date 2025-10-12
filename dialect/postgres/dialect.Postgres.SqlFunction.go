@@ -97,7 +97,7 @@ var pgAggregateFunc = map[string]string{
 
 func (d *postgresDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
-	if fnName == "left" {
+	if fnName == "left" || fnName == "right" {
 		return d.sqlLeftFunc(delegator)
 	}
 	if ret, ok := pgFunc[fnName]; ok {

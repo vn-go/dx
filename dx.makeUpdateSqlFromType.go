@@ -7,6 +7,7 @@ import (
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/model"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type initMakeUpdateSqlFromTypeItem struct {
@@ -39,14 +40,14 @@ func makeUpdateSqlFromTypeWithCache(db *DB, typ reflect.Type) (*initMakeUpdateSq
 		for i, col := range model.Entity.Cols {
 			if col.PKName != "" || col.IsAuto {
 				if col.PKName != "" {
-					conditional = append(conditional, dialect.Quote(col.Name)+" = "+dialect.ToParam(i+1))
+					conditional = append(conditional, dialect.Quote(col.Name)+" = "+dialect.ToParam(i+1, sqlparser.ValArg))
 					ret.keyFieldIndex = append(ret.keyFieldIndex, col.IndexOfField)
 
 				}
 				continue
 
 			}
-			strPlaceHoldesr = append(strPlaceHoldesr, col.Name+" = "+dialect.ToParam(i+1))
+			strPlaceHoldesr = append(strPlaceHoldesr, col.Name+" = "+dialect.ToParam(i+1, sqlparser.ValArg))
 			ret.fieldIndex = append(ret.fieldIndex, col.IndexOfField)
 
 		}

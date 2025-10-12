@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/microsoft/go-mssqldb"
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type mssqlDialect struct {
@@ -87,7 +88,7 @@ func (d *mssqlDialect) GetTableAndColumnsDictionary(db *sql.DB) (map[string]stri
 func (d *mssqlDialect) ToText(value string) string {
 	return fmt.Sprintf("N'%s'", value)
 }
-func (d *mssqlDialect) ToParam(index int) string {
+func (d *mssqlDialect) ToParam(index int, pType sqlparser.ValType) string {
 	return fmt.Sprintf("@p%d", index)
 }
 

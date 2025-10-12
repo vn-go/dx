@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type mySqlDialect struct {
@@ -45,7 +46,7 @@ func (d *mySqlDialect) GetTableAndColumnsDictionary(db *sql.DB) (map[string]stri
 func (d *mySqlDialect) ToText(value string) string {
 	return fmt.Sprintf("'%s'", value)
 }
-func (d *mySqlDialect) ToParam(index int) string {
+func (d *mySqlDialect) ToParam(index int, pType sqlparser.ValType) string {
 	return fmt.Sprintf("{%d}", index)
 	//return "?"
 }

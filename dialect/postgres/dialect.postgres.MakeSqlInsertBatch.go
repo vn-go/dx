@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type makePostgresSqlInsertInit struct {
@@ -54,7 +55,7 @@ func (d *postgresDialect) makeSqlInsert(tableName string, columns []entity.Colum
 			continue
 		}
 		strFields = append(strFields, d.Quote(col.Name))
-		strValues = append(strValues, d.ToParam(i))
+		strValues = append(strValues, d.ToParam(i, sqlparser.ValArg))
 		i++
 	}
 

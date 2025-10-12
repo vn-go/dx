@@ -23,7 +23,7 @@ func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *
 			IndexInSql:  indexInSql,
 			IndexInArgs: index,
 		})
-		return cmp.dialect.ToParam(indexInSql), nil
+		return cmp.dialect.ToParam(indexInSql, sqlparser.StrVal), nil
 	}
 	for _, arg := range expr.Exprs {
 		strArg, err := cmp.resolve(arg, C_FUNC, args)

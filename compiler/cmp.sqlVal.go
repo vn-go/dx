@@ -16,7 +16,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			Value:      internal.Helper.TrimStringLiteral(string(expr.Val)), //cmp.dialect.ToText(string(expr.Val)),
 			IndexInSql: indexInSql,
 		})
-		return cmp.dialect.ToParam(indexInSql), nil
+		return cmp.dialect.ToParam(indexInSql, expr.Type), nil
 	case sqlparser.IntVal:
 		if cmpType == C_LIMIT || cmpType == C_OFFSET {
 			return string(expr.Val), nil
@@ -31,7 +31,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			Value:      intVal,
 			IndexInSql: indexInSql,
 		})
-		return cmp.dialect.ToParam(indexInSql), nil
+		return cmp.dialect.ToParam(indexInSql, expr.Type), nil
 	case sqlparser.FloatVal:
 		floatVal, err := internal.Helper.ToFloatFormBytes(expr.Val)
 		if err != nil {
@@ -43,7 +43,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			Value:      floatVal,
 			IndexInSql: indexInSql,
 		})
-		return cmp.dialect.ToParam(indexInSql), nil
+		return cmp.dialect.ToParam(indexInSql, expr.Type), nil
 
 	case sqlparser.ValArg:
 		strIndex := string(expr.Val[2:])
@@ -58,7 +58,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 			IndexInSql:  indexInSql,
 			IndexInArgs: index - 1,
 		})
-		return cmp.dialect.ToParam(index), nil
+		return cmp.dialect.ToParam(index, expr.Type), nil
 
 	}
 

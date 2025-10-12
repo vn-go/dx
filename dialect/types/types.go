@@ -20,6 +20,7 @@ import (
 type DialectDelegateFunction struct {
 	FuncName string
 	Args     []string
+	ArgTypes []sqlparser.ValType
 	// is aggregate function
 	IsAggregate      bool
 	HandledByDialect bool // ✅ Indicates if this function is allowed to be delegated to the dialect
@@ -98,7 +99,7 @@ type Dialect interface {
 	GetTableAndColumnsDictionary(db *sql.DB) (map[string]string, error)
 	ToText(value string) string
 	ToBool(value string) string
-	ToParam(index int) string
+	ToParam(index int, pType sqlparser.ValType) string
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
 	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
 	NewDataBase(db *db.DB, dbName string) (string, error)

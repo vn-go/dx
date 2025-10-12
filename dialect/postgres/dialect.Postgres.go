@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type postgresDialect struct {
@@ -47,10 +48,22 @@ func (d *postgresDialect) GetTableAndColumnsDictionary(db *sql.DB) (map[string]s
 func (d *postgresDialect) ToText(value string) string {
 	return fmt.Sprintf("'%s'::citext", value)
 }
-func (d *postgresDialect) ToParam(index int) string {
+func (d *postgresDialect) ToParam(index int, pType sqlparser.ValType) string {
+	// switch pType {
+	// case sqlparser.BitVal:
+	// 	return fmt.Sprintf("$%d::boolean", index)
+	// case sqlparser.FloatVal:
+	// 	return fmt.Sprintf("$%d::float8", index)
+	// case sqlparser.IntVal:
+	// 	return fmt.Sprintf("$%d::bigint", index)
+	// case sqlparser.StrVal:
+	// 	return fmt.Sprintf("$%d::text", index)
+	// default:
+	// 	return fmt.Sprintf("$%d", index)
+	// }
 	return fmt.Sprintf("$%d", index)
-}
 
+}
 
 var postgresDialectInstance = &postgresDialect{
 	cacheMakeSqlInsert: sync.Map{},

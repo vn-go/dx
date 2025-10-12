@@ -2,6 +2,7 @@ package dx
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -295,6 +296,14 @@ type datasourceTypeSql struct {
 	Sql  string
 	Args []any
 }
+
+func (ds *datasourceTypeSql) fixPostgresParamType() *datasourceTypeSql {
+
+	sql := internal.Helper.FixPostgresParamType(ds.Sql, ds.Args)
+	ds.Sql = sql
+	return ds
+}
+
 type sqlParseStruct struct {
 	sqlParse *types.SqlParse
 	where    *compiler.CompilerFilterTypeResult
@@ -444,11 +453,157 @@ func (ds *datasourceType) ToSql() (*datasourceTypeSql, error) {
 		Sql:  sqlParse.sqlParse.Sql,
 		Args: args,
 	}
+	if ds.db.DriverName == "postgres" {
+		ret = ret.fixPostgresParamType()
+	}
 
 	return ret, nil
 
 }
+
+func (ds *datasourceType) ToData() (any, error) {
+	if ds.err != nil {
+		return nil, ds.err
+	}
+
+	db := ds.db
+	ctx := ds.ctx
+	sqlCompiled, err := ds.ToSql()
+	if err != nil {
+		return nil, compiler.NewCompilerError(err.Error())
+	}
+
+	// Đảm bảo có context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Fix param cho MySQL (vì placeholder khác PostgreSQL)
+	if db.DriverName == "mysql" {
+		sqlCompiled.Sql, sqlCompiled.Args, err = internal.Helper.FixParam(sqlCompiled.Sql, sqlCompiled.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if Options.ShowSql {
+		fmt.Println("------------- SQL -------------")
+		fmt.Println(sqlCompiled.Sql)
+		fmt.Println("------------- ARGS ------------")
+		fmt.Printf("%#v\n", sqlCompiled.Args)
+		fmt.Println("-------------------------------")
+	}
+
+	return ds.db.fecthItemsToSliceVal(sqlCompiled.Sql, ds.ctx, nil, false, sqlCompiled.Args...)
+}
 func (ds *datasourceType) ToDict() ([]map[string]any, error) {
+	if ds.err != nil {
+		return nil, ds.err
+	}
+
+	db := ds.db
+	ctx := ds.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	sqlCompiled, err := ds.ToSql()
+	if err != nil {
+		return nil, compiler.NewCompilerError(err.Error())
+	}
+
+	// Fix MySQL param syntax
+	if db.DriverName == "mysql" {
+		sqlCompiled.Sql, sqlCompiled.Args, err = internal.Helper.FixParam(sqlCompiled.Sql, sqlCompiled.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if Options.ShowSql {
+		fmt.Println("-------------")
+		fmt.Println(sqlCompiled.Sql)
+		fmt.Println("-------------")
+	}
+
+	// Prepare statement for better performance (DB may reuse plan)
+	stmt, err := db.PrepareContext(ctx, sqlCompiled.Sql)
+	if err != nil {
+		return nil, fmt.Errorf("prepare: %w", err)
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx, sqlCompiled.Args...)
+	if err != nil {
+		errParse := factory.DialectFactory.Create(db.DriverName).ParseError(nil, err)
+		if dbErr := Errors.IsDbError(errParse); dbErr != nil && dbErr.ErrorType == Errors.ERR_SYNTAX {
+			return nil, compiler.NewCompilerError("Error syntax")
+		}
+		return nil, fmt.Errorf("query exec: %w", err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("columns: %w", err)
+	}
+	if len(cols) == 0 {
+		return nil, errors.New("no columns returned")
+	}
+
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, fmt.Errorf("colTypes: %w", err)
+	}
+
+	// Cache mapping column type → reflect.Type
+	cacheKey := ds.db.DriverName + "://" + sqlCompiled.Sql
+	colTypeInfo, _ := internal.OnceCall(cacheKey, func() (any, error) {
+		return internal.Helper.CreateRowsFromSqlColumnType(sqlCompiled.Sql, colTypes), nil
+	})
+
+	typeRowVals := colTypeInfo.([]reflect.Value)
+
+	// Reuse buffers
+	dest := make([]any, len(typeRowVals))
+	for i := range typeRowVals {
+		dest[i] = reflect.New(typeRowVals[i].Type()).Interface()
+	}
+
+	results := make([]map[string]any, 0, 64)
+
+	for rows.Next() {
+		if err := rows.Scan(dest...); err != nil {
+			return nil, fmt.Errorf("scan row: %w", err)
+		}
+
+		rowMap := make(map[string]any, len(cols))
+		for i, cn := range cols {
+			v := dest[i]
+			switch val := v.(type) {
+			case *sql.RawBytes:
+				rowMap[cn] = string(*val)
+			case *[]byte:
+				if val == nil {
+					rowMap[cn] = nil
+				} else {
+					rowMap[cn] = string(*val)
+				}
+			default:
+				rowMap[cn] = reflect.ValueOf(v).Elem().Interface()
+			}
+		}
+		results = append(results, rowMap)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+
+	return results, nil
+}
+
+func (ds *datasourceType) ToDictOld() ([]map[string]any, error) {
 	if ds.err != nil {
 		return nil, ds.err
 	}
@@ -501,18 +656,20 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 	if len(cols) == 0 {
 		return nil, errors.New("no columns returned")
 	}
-
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, fmt.Errorf("columns: %w", err)
+	}
 	// 5) Iterate over all rows
 	var results []map[string]any
 	for rows.Next() {
-		// prepare scan destinations
-		values := make([]any, len(cols))
-		dest := make([]any, len(cols))
-		for i := range dest {
-			dest[i] = &values[i]
+
+		destVals := internal.Helper.CreateRowsFromSqlColumnType(sqlCompiled.Sql, colTypes) //<-- return []relect.Value
+		dest := make([]any, len(colTypes))
+		for i, v := range destVals {
+			dest[i] = v.Interface()
 		}
 
-		// scan one row
 		if err := rows.Scan(dest...); err != nil {
 			return nil, fmt.Errorf("scan row: %w", err)
 		}
@@ -520,16 +677,9 @@ func (ds *datasourceType) ToDict() ([]map[string]any, error) {
 		// convert row into map[column]value
 		rowMap := make(map[string]any, len(cols))
 		for i, cn := range cols {
-			v := values[i]
-			switch vv := v.(type) {
-			case nil:
-				rowMap[cn] = nil
-			case []byte:
-				// normalize []byte → string
-				rowMap[cn] = string(vv)
-			default:
-				rowMap[cn] = vv
-			}
+			//v := dest[i]
+			rowMap[cn] = dest[i]
+
 		}
 		results = append(results, rowMap)
 	}
