@@ -159,8 +159,9 @@ const (
 )
 
 type FiedlExpression struct {
-	ExprContent string
-	ExprType    EXPR_TYPE
+	ExprContent          string
+	ExprType             EXPR_TYPE
+	FieldMapNotInAggFunc map[string]string
 }
 type OutputExpr struct {
 	SqlNode           sqlparser.SQLNode

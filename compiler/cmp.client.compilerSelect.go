@@ -24,6 +24,7 @@ type FieldSelect struct {
 	Args          internal.SqlArgs
 	FieldStat     map[string]FieldExprTypeEnum
 	OriginalExpr  string
+	FieldMap      map[string]string
 }
 type FieldSelects []FieldSelect
 type ResolevSelectorResult struct {
@@ -58,7 +59,8 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 			SqlNode:   x,
 			FieldName: f.Expr,
 			Expr: types.FiedlExpression{
-				ExprContent: f.Expr,
+				ExprContent:          f.Expr,
+				FieldMapNotInAggFunc: f.FieldMap,
 			},
 			IsInAggregateFunc: f.FieldExprType == FieldExprType_AggregateFunctionCall,
 		}
@@ -99,6 +101,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 				Expr:         x.Name.String(),
 				Alias:        x.Name.String(),
 				OriginalExpr: originalField,
+				FieldMap:     map[string]string{x.Name.Lowered(): originalField},
 			}, nil
 		}
 		if f, ok := (*outputFields)[x.Name.Lowered()]; ok {
@@ -108,6 +111,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 					Expr:         f.Expr.ExprContent,
 					FieldStat:    map[string]FieldExprTypeEnum{x.Name.Lowered(): FieldExprType_Field},
 					OriginalExpr: originalField,
+					FieldMap:     map[string]string{x.Name.Lowered(): f.Expr.ExprContent},
 				}, nil
 			}
 
@@ -115,6 +119,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 				Expr:         f.Expr.ExprContent,
 				Alias:        x.Name.String(),
 				OriginalExpr: originalField,
+				FieldMap:     map[string]string{x.Name.Lowered(): originalField},
 			}, nil
 			//return f + " " + dialect.Quote(x.Name.String()), nil
 		} else {
@@ -162,6 +167,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 			FieldExprType: fieldExprType,
 			Args:          argsInFunc,
 			OriginalExpr:  ret.originalFuncCall,
+			FieldMap:      ret.fieldMap,
 		}, nil
 
 	}
@@ -256,6 +262,7 @@ type resolveFuncExprResult struct {
 	isAggFuncCall    bool
 	fieldStats       map[string]FieldExprTypeEnum
 	originalFuncCall string
+	fieldMap         map[string]string
 }
 
 func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
@@ -305,6 +312,7 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 	}
 	fieldStats := map[string]FieldExprTypeEnum{}
 	originalArgs := []string{}
+	fieldMap := map[string]string{}
 	for _, e := range x.Exprs {
 		ex, err := cmp.resolve(dialect, outputFields, e, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
 		if err != nil {
@@ -314,6 +322,7 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 		fieldStats = internal.UnionMap(fieldStats, ex.FieldStat)
 
 		strArgs = append(strArgs, ex.Expr)
+		fieldMap = internal.UnionMap(fieldMap, ex.FieldMap)
 	}
 	originalFuncCall := fmt.Sprintf("%s(%s)", x.Name, strings.Join(originalArgs, ","))
 	dialectDelegateFunction := types.DialectDelegateFunction{
@@ -339,11 +348,15 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 		return nil, err
 	}
 	if dialectDelegateFunction.HandledByDialect {
+		if dialectDelegateFunction.IsAggregate {
+			fieldMap = map[string]string{}
+		}
 		return &resolveFuncExprResult{
 			expr:             ret,
 			isAggFuncCall:    dialectDelegateFunction.IsAggregate,
 			fieldStats:       fieldStats,
 			originalFuncCall: originalFuncCall,
+			fieldMap:         fieldMap,
 		}, nil
 
 		//return ret, nil
@@ -365,13 +378,18 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 			isAggFuncCall:    dialectDelegateFunction.IsAggregate,
 			fieldStats:       fieldStats,
 			originalFuncCall: originalFuncCall,
+			fieldMap:         fieldMap,
 		}, nil
+	}
+	if dialectDelegateFunction.IsAggregate {
+		fieldMap = map[string]string{}
 	}
 	return &resolveFuncExprResult{
 		expr:             dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")",
 		isAggFuncCall:    dialectDelegateFunction.IsAggregate,
 		fieldStats:       fieldStats,
 		originalFuncCall: originalFuncCall,
+		fieldMap:         fieldMap,
 	}, nil
 	//return dialectDelegateFunction.FuncName + "(" + strings.Join(dialectDelegateFunction.Args, ", ") + ")", nil
 }

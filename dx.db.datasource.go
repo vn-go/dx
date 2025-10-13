@@ -156,7 +156,7 @@ func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct, args *internal.SqlA
 	}
 	return nil
 }
-func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) *compiler.CompilerFilterTypeResult {
+func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string, strWhere string, skipCheck bool, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) *compiler.CompilerFilterTypeResult {
 
 	if strWhere == "" {
 		return nil
@@ -190,11 +190,17 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool, startOf2Ap
 	}
 	ds.whereIsInHaving = ok || strWhereNew.HasAggregateFunc
 	if ds.whereIsInHaving {
+		strGroupByItems := []string{}
+		mapGroupByItems := map[string]bool{}
 		for k := range fields {
 			if _, ok = ds.aggExpr[strings.ToLower(k)]; !ok {
 				if _, ok := ds.selector[strings.ToLower(k)]; !ok {
 					if !skipCheck {
-						ds.strGroupBy += "," + k
+						if _, ok := mapGroupByItems[k]; !ok {
+							strGroupByItems = append(strGroupByItems, k)
+							mapGroupByItems[k] = true
+						}
+
 					} else {
 						ds.err = compiler.NewCompilerError(fmt.Sprintf("'%s' has field '%s', but not found in '%s", ds.strWhereOrigin, k, ds.strSelectOrigin))
 						return nil
@@ -204,7 +210,14 @@ func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool, startOf2Ap
 
 			}
 		}
+		for _, x := range selectorFieldNotInAggFuns {
+			if _, ok := mapGroupByItems[x]; !ok {
+				strGroupByItems = append(strGroupByItems, x)
+				mapGroupByItems[x] = true
+			}
+		}
 
+		ds.strGroupBy += strings.Join(strGroupByItems, ",")
 	}
 	return strWhereNew
 }
@@ -264,6 +277,7 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 			if x.FieldExprType != compiler.FieldExprType_AggregateFunctionCall {
 				// if current selector is agg function call
 				groupByItems = append(groupByItems, x.Expr)
+
 				ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
 			} else {
 				if ds.aggExpr == nil {
@@ -325,14 +339,18 @@ func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex in
 		if err != nil {
 			return nil, err
 		}
+		selectorFieldNotInAggFuns := map[string]string{}
 		if selector != nil {
 			sqlInfo.StrSelect = selector.StrSelectors
 			args = append(args, selector.Args...)
 			apostropheArgs = append(apostropheArgs, selector.ApostropheArg...)
+			for _, x := range selector.Selectors {
+				selectorFieldNotInAggFuns = internal.UnionMap(selectorFieldNotInAggFuns, x.FieldMap)
+			}
 
 		}
 
-		where := ds.buildWhere(ds.strWhereOrigin, false, len(apostropheArgs), len(args), len(*args.GetDynamicArgs()))
+		where := ds.buildWhere(selectorFieldNotInAggFuns, ds.strWhereOrigin, false, len(apostropheArgs), len(args), len(*args.GetDynamicArgs()))
 
 		if ds.err != nil {
 			return nil, ds.err

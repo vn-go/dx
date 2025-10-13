@@ -18,6 +18,12 @@ func (d *mssqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {
 			return d.Error2627(dbSchema, mssqlErr)
 		case 2628:
 			return d.Error2628(dbSchema, mssqlErr)
+		case 102:
+			return &errors.DbErr{
+				Err:          err,
+				ErrorType:    errors.ERR_SYNTAX,
+				ErrorMessage: "Error syntax near",
+			}
 		default:
 			panic(fmt.Sprintf("unhandled error: %v,code=%d,see file %s", mssqlErr, mssqlErr.Number, `dialect\mssql\dialect.mssql.ParseError.go`))
 		}

@@ -220,7 +220,24 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 			Fields:           fieldsSelected,
 			HasAggregateFunc: left.HasAggregateFunc || right.HasAggregateFunc,
 		}, nil
+	case *sqlparser.IsExpr:
 
+		left, err := cmp.Resolve(dialect, strFilter, fields, x.Expr, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
+		if err != nil {
+			return nil, err
+		}
+
+		// RULE CHECK: The negated expression must be a Field or Expression (not Constant).
+		if left.IsConstant {
+			return nil, NewCompilerError(fmt.Sprintf("Invalid negation '%s': Operator 'NOT' must be applied to a Field or Expression, not a constant value.", strFilter))
+		}
+
+		return &CompilerFilterTypeResult{
+			Expr:             left.Expr + " " + x.Operator,
+			FieldExpr:        left.FieldExpr + " " + x.Operator,
+			Fields:           left.Fields,
+			HasAggregateFunc: left.HasAggregateFunc,
+		}, nil
 	// --- 7. Logical NOT Expression (NotExpr) ---
 	case *sqlparser.NotExpr:
 		left, err := cmp.Resolve(dialect, strFilter, fields, x.Expr, args, numberOfPreviuos2Apostrophe, startSqlIndex, startOdDynamicArg)
