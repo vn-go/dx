@@ -61,7 +61,9 @@ func (c *helperType) extractLiterals(expr string) (string, []string) {
 	return buf.String(), params
 }
 func (m *helperType) GetDefaultValue(defaultValue string, defaultValueByFromDbTag map[string]string) (string, error) {
-	if strings.Contains(defaultValue, "'") {
+	if val, ok := defaultValueByFromDbTag[defaultValue]; ok {
+		return val, nil
+	} else if strings.Contains(defaultValue, "'") {
 		return defaultValue, nil
 	}
 	if m.IsFloatNumber(defaultValue) {
@@ -73,8 +75,6 @@ func (m *helperType) GetDefaultValue(defaultValue string, defaultValueByFromDbTa
 	} else if m.IsBool(defaultValue) {
 		return defaultValue, nil
 
-	} else if val, ok := defaultValueByFromDbTag[defaultValue]; ok {
-		return val, nil
 	} else {
 		return "", fmt.Errorf("not support default value from %s, review GetGetDefaultValueByFromDbTag() function in %s", defaultValue, reflect.TypeOf(m).Elem())
 	}

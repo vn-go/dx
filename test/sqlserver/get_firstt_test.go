@@ -1,0 +1,77 @@
+package sqlserver
+
+import (
+	"testing"
+
+	jsoniter "github.com/json-iterator/go"
+	"github.com/vn-go/dx"
+	"github.com/vn-go/dx/test/models"
+)
+
+var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
+
+func TestConnectDb(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	var user models.User
+	err = db.First(&user)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
+
+}
+func TestInsertUser(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	user, err := dx.NewDTO[models.User]()
+	if err != nil {
+		t.Error(err)
+	}
+	user.Username = "test"
+	user.Email = dx.Ptr("test@test.com")
+	user.Phone = dx.Ptr("test@test.com")
+	user.IsActive = true
+	user.IsSysAdmin = false
+	user.CreatedBy = "admin"
+	user.HashPassword = "123456"
+	err = db.Insert(user)
+	if err != nil {
+		t.Error(err)
+	}
+}
+func TestDataSourceFromModelMssql(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	ds := db.ModelDatasource("user")
+	sql, err := ds.ToSql()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(sql.Sql)
+	t.Log(sql.Args)
+	user, err := ds.ToData()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(user)
+	bff, err := jsoniter.Marshal(user)
+	if err != nil {
+		t.Error(err)
+	}
+	dictData := []map[string]any{}
+	err = jsoniter.Unmarshal(bff, &dictData)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(dictData)
+}

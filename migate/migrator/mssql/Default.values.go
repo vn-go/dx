@@ -39,6 +39,8 @@ func (m *migratorMssql) GetGetDefaultValueByFromDbTag() map[string]string {
 		"now()":  "GETDATE()", //<-- chỗ này sẽ mở rộng cho các case cụ thể về sau
 		"uuid()": "NEWID()",
 		"''":     "''",
+		"true":   "1",
+		"false":  "0",
 	}
 }
 
