@@ -48,7 +48,8 @@ type datasourceType struct {
 	selector        map[string]bool
 	// serve for error message
 	strSelectOrigin string
-	strGroupBy      string
+	//strGroupBy      string
+	//GroupByExprs []string
 
 	key string
 	// autoGroupbyField map[string]string
@@ -210,14 +211,14 @@ func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string
 
 			}
 		}
-		for _, x := range selectorFieldNotInAggFuns {
-			if _, ok := mapGroupByItems[x]; !ok {
-				strGroupByItems = append(strGroupByItems, x)
-				mapGroupByItems[x] = true
-			}
-		}
-
-		ds.strGroupBy += strings.Join(strGroupByItems, ",")
+		// for _, x := range selectorFieldNotInAggFuns {
+		// 	if _, ok := mapGroupByItems[x]; !ok {
+		// 		strWhereNew.GroupByExprs = append(strWhereNew.GroupByExprs, x)
+		// 		mapGroupByItems[x] = true
+		// 	}
+		// }
+		strWhereNew.GroupByExprs = strGroupByItems
+		// ds.strGroupBy += strings.Join(strGroupByItems, ",")
 	}
 	return strWhereNew
 }
@@ -262,11 +263,12 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 
 		return nil, err
 	}
-	groupByItems := []string{}
+
 	ds.selector = map[string]bool{}
 	for _, selector := range selectors.Selectors {
 		if selector.FieldExprType != compiler.FieldExprType_Field {
 			if selector.Alias == "" {
+				//return nil, nil
 				ds.err = compiler.NewCompilerError(fmt.Sprintf("'%s' require alias, expression is '%s'", selector.OriginalExpr, sqlSelect))
 
 			}
@@ -274,9 +276,9 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 	}
 	if selectors.Selectors.HasAggregateFunction() {
 		for _, x := range selectors.Selectors {
-			if x.FieldExprType != compiler.FieldExprType_AggregateFunctionCall {
+			if x.FieldExprType == compiler.FieldExprType_Field {
 				// if current selector is agg function call
-				groupByItems = append(groupByItems, x.Expr)
+				selectors.GroupByExprs = append(selectors.GroupByExprs, x.Expr)
 
 				ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
 			} else {
@@ -292,8 +294,6 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 			ds.selector[strings.ToLower(x.Alias)] = true
 		}
 	}
-
-	ds.strGroupBy = strings.Join(groupByItems, ",")
 
 	return selectors, nil
 
@@ -401,17 +401,28 @@ func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex in
 
 			}
 		}
-
-		if ds.strGroupBy != "" {
-
-			if sqlInfo.StrGroupBy == "" {
-				sqlInfo.StrGroupBy = ds.strGroupBy
-			} else {
-				sqlInfo.StrGroupBy += "," + ds.strGroupBy
-
-			}
-
+		groupByExprs := []string{}
+		if selector != nil {
+			groupByExprs = internal.UnionList(groupByExprs, selector.GroupByExprs)
 		}
+		if where != nil {
+			groupByExprs = internal.UnionList(groupByExprs, where.GroupByExprs)
+		}
+
+		if len(groupByExprs) > 0 {
+			sqlInfo.StrGroupBy = strings.Join(groupByExprs, ",")
+		}
+		//internal.UnionList(ds.GroupByExprs, selectors.)
+		// if ds.strGroupBy != "" {
+
+		// 	if sqlInfo.StrGroupBy == "" {
+		// 		sqlInfo.StrGroupBy = ds.strGroupBy
+		// 	} else {
+		// 		sqlInfo.StrGroupBy += "," + ds.strGroupBy
+
+		// 	}
+
+		// }
 
 		sqlParse, er := factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
 		if er != nil {

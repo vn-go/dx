@@ -21,6 +21,7 @@ type CompilerFilterTypeResult struct {
 	Args             internal.SqlArgs //[]interface{}
 	HasAggregateFunc bool
 	ApostropheArg    []string
+	GroupByExprs     []string
 }
 
 //	func (c *CompilerFilterTypeResult) GetExpr() string {

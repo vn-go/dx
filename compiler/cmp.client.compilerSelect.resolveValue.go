@@ -37,15 +37,17 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 		}
 		indexInSql := newArgs(index)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: "?",
+			FieldExprType: FieldExprType_Expression,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  "?",
 		}, nil
 	case sqlparser.StrVal:
 		value := string(x.Val)
 		indexInSql := newConst(value)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: "'" + value + "'",
+			FieldExprType: FieldExprType_Expression,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  "'" + value + "'",
 		}, nil
 	case sqlparser.IntVal:
 		value, err := internal.Helper.ToIntFormBytes(x.Val)
@@ -54,8 +56,9 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 		}
 		indexInSql := newConst(value)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: string(x.Val),
+			FieldExprType: FieldExprType_Constant,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  string(x.Val),
 		}, nil
 	case sqlparser.FloatVal:
 		value, err := internal.Helper.ToFloatFormBytes(x.Val)
@@ -64,8 +67,9 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 		}
 		indexInSql := newConst(value)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: string(x.Val),
+			FieldExprType: FieldExprType_Expression,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  string(x.Val),
 		}, nil
 
 	case sqlparser.BitVal:
@@ -73,15 +77,17 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 
 		indexInSql := newConst(value)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: string(x.Val),
+			FieldExprType: FieldExprType_Expression,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  string(x.Val),
 		}, nil
 	default:
 		value := string(x.Val)
 		indexInSql := newConst(value)
 		return &FieldSelect{
-			Expr:         dialect.ToParam(indexInSql, x.Type),
-			OriginalExpr: "'" + value + "'",
+			FieldExprType: FieldExprType_Expression,
+			Expr:          dialect.ToParam(indexInSql, x.Type),
+			OriginalExpr:  "'" + value + "'",
 		}, nil
 	}
 	// v := string(x.Val)

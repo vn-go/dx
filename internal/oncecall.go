@@ -90,3 +90,15 @@ func UnionMap[T any](a, b map[string]T) map[string]T {
 	}
 	return ret
 }
+func UnionList[T any](a, b []T) []T {
+	check := map[any]bool{}
+	for _, v := range a {
+		check[v] = true
+	}
+	for _, v := range b {
+		if _, ok := check[v]; !ok {
+			a = append(a, v)
+		}
+	}
+	return a
+}

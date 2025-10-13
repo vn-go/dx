@@ -17,6 +17,7 @@ type cmpSelectorType struct {
 	aggregateExpr map[string]bool
 	//args             internal.CompilerArgs
 	originalSelector string
+	//compilerStack    internal.Stack[COMPILER]
 }
 
 var CompilerSelect = &cmpSelectorType{}
@@ -54,7 +55,9 @@ func (cmp *cmpSelectorType) MakeSelect(dialect types.Dialect, outputFields *map[
 // }
 
 func (cmpTyp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputFields *map[string]types.OutputExpr, selectors string, startOf2ApostropheArgs, startOfSqlIndex int) (*ResolevSelectorResult, error) {
-	cmp := &cmpSelectorType{}
+	cmp := &cmpSelectorType{
+		//compilerStack: internal.Stack[COMPILER]{},
+	}
 	cmp.originalSelector = selectors
 	sqlPreprocess := "select " + selectors + " from t	mp"
 	sql, apostropheArg := internal.Helper.InspectStringParam(sqlPreprocess)
@@ -74,7 +77,7 @@ func (cmpTyp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputF
 	}
 	//*sqlparser.Select
 	if selectExpr, ok := sqlExpr.(*sqlparser.Select); ok {
-		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &args, startOf2ApostropheArgs, startOfSqlIndex)
+		ret, err := cmp.resolevSelector(dialect, outputFields, selectExpr.SelectExprs, selectors, &args, startOf2ApostropheArgs, startOfSqlIndex, apostropheArg)
 		if err == nil {
 			//no error get all args after compiler
 			ret.Args = args

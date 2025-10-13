@@ -15,6 +15,7 @@ const (
 	FieldExprType_Field                 FieldExprTypeEnum = iota // = 0
 	FieldExprType_Expression                                     // = 1
 	FieldExprType_AggregateFunctionCall                          // = 2
+	FieldExprType_Constant                                       // = 3
 )
 
 type FieldSelect struct {
@@ -33,6 +34,7 @@ type ResolevSelectorResult struct {
 	Args         internal.SqlArgs
 	// all text constant in query has double apostrophe whill be exract here
 	ApostropheArg []string
+	GroupByExprs  []string
 }
 
 func (c *FieldSelects) HasAggregateFunction() bool {
@@ -43,13 +45,13 @@ func (c *FieldSelects) HasAggregateFunction() bool {
 	}
 	return false
 }
-func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields *map[string]types.OutputExpr, n sqlparser.SelectExprs, selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int) (*ResolevSelectorResult, error) {
+func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields *map[string]types.OutputExpr, n sqlparser.SelectExprs, selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int, ListOf2ApostropheArgs []string) (*ResolevSelectorResult, error) {
 
 	strFields := []string{}
 	selectors := []FieldSelect{}
 
 	for _, x := range n {
-		f, err := cmp.resolve(dialect, outputFields, x, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		f, err := cmp.resolve(dialect, outputFields, x, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -78,16 +80,24 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 
 func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 	outputFields *map[string]types.OutputExpr, n sqlparser.SQLNode,
-	selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int) (*FieldSelect, error) {
+	selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int,
+	ListOf2ApostropheArgs []string) (*FieldSelect, error) {
 	if x, ok := n.(*sqlparser.AliasedExpr); ok {
-		ret, err := cmp.resolve(dialect, outputFields, x.Expr, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		ret, err := cmp.resolve(dialect, outputFields, x.Expr, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
 
-		if !x.As.IsEmpty() && ret.Alias == "" {
-			ret.Alias = x.As.String()
+		if x.As.IsEmpty() && ret.FieldExprType == FieldExprType_Expression && cmp.cmpType == C_SELECT {
+			//return nil, nil
+			return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression, alias is required. Expression is '%s'", ret.OriginalExpr, selector))
+		} else {
+			if !x.As.IsEmpty() && ret.Alias == "" {
+				ret.Alias = x.As.String()
+			}
+
 		}
+
 		return ret, nil
 
 	}
@@ -146,14 +156,12 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 			return &FieldSelect{
 				Expr:          dialect.ToParam(indexInSql, sqlparser.StrVal),
 				FieldExprType: FieldExprType_Expression,
+				OriginalExpr:  ListOf2ApostropheArgs[index],
 			}, nil
 		}
-		defer func() {
-			cmp.cmpType = C_SELECT
-		}()
-		cmp.cmpType = C_FUNC
+
 		argsInFunc := internal.SqlArgs{}
-		ret, err := cmp.resolveFuncExpr(dialect, outputFields, x, selector, &argsInFunc, startOf2ApostropheArgs, startOfSqlIndex)
+		ret, err := cmp.resolveFuncExpr(dialect, outputFields, x, selector, &argsInFunc, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		*args = append(*args, argsInFunc...)
 		if err != nil {
 			return nil, err
@@ -180,11 +188,11 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 
 	}
 	if x, ok := n.(*sqlparser.BinaryExpr); ok {
-		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -196,11 +204,11 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 		}, nil
 	}
 	if x, ok := n.(*sqlparser.AndExpr); ok {
-		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -215,11 +223,11 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 		}, nil
 	}
 	if x, ok := n.(*sqlparser.OrExpr); ok {
-		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -234,11 +242,11 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 		}, nil
 	}
 	if x, ok := n.(*sqlparser.ComparisonExpr); ok {
-		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		left, err := cmp.resolve(dialect, outputFields, x.Left, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
-		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		right, err := cmp.resolve(dialect, outputFields, x.Right, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -267,10 +275,11 @@ type resolveFuncExprResult struct {
 
 func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 	outputFields *map[string]types.OutputExpr, x *sqlparser.FuncExpr,
-	selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int) (*resolveFuncExprResult, error) {
-	oldCmpTYpe := cmp.cmpType
+	selector string, args *internal.SqlArgs, startOf2ApostropheArgs, startOfSqlIndex int, ListOf2ApostropheArgs []string) (*resolveFuncExprResult, error) {
+	oldCmpType := cmp.cmpType
+
 	defer func() {
-		cmp.cmpType = oldCmpTYpe
+		cmp.cmpType = oldCmpType
 	}()
 	cmp.cmpType = C_FUNC
 	strArgs := []string{}
@@ -281,7 +290,7 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 		}
 
 		for _, e := range x.Exprs {
-			ex, err := cmp.resolve(dialect, outputFields, e, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+			ex, err := cmp.resolve(dialect, outputFields, e, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 			if err != nil {
 				return nil, err
 			}
@@ -314,7 +323,7 @@ func (cmp *cmpSelectorType) resolveFuncExpr(dialect types.Dialect,
 	originalArgs := []string{}
 	fieldMap := map[string]string{}
 	for _, e := range x.Exprs {
-		ex, err := cmp.resolve(dialect, outputFields, e, selector, args, startOf2ApostropheArgs, startOfSqlIndex)
+		ex, err := cmp.resolve(dialect, outputFields, e, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
 		if err != nil {
 			return nil, err
 		}
