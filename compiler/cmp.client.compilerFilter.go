@@ -120,8 +120,9 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 		fieldsSelected := internal.UnionMap(left.Fields, right.Fields)
 
 		return &CompilerFilterTypeResult{
-			Expr:   expr,
-			Fields: fieldsSelected,
+			Expr:             expr,
+			Fields:           fieldsSelected,
+			HasAggregateFunc: left.HasAggregateFunc || right.HasAggregateFunc,
 		}, nil
 
 	// --- 3. Column Name (Field or Boolean Literal) ---

@@ -83,10 +83,10 @@ func TestDataSourceFromModel(t *testing.T) {
 	}
 	defer db.Close()
 	dsName := "user"
-	selector := "1-2-3 FX,concat(username,'-',email) ok"
+	selector := "concat(username,'-',email) ok"
 	// selector = "sum(if(concat(username,'-',email)='m',1,0)) Total"
 	// selector = "1 OK,id,sum(if(concat(username,'-',email)='m',1,0)) Total"
-	filter := "count(id)>0 and email is not null and id<1000"
+	filter := "count(id)+count(email)>0"
 	// filter = "id>0 and email is not null and count(id)+max(id)>1000"
 	// filter = "id>0 and email is  null and Total>1"
 	source := db.ModelDatasource(dsName)
