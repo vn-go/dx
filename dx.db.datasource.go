@@ -192,13 +192,13 @@ func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string
 	if ds.whereIsInHaving {
 		strGroupByItems := []string{}
 		mapGroupByItems := map[string]bool{}
-		for k := range fields {
+		for k, v := range fields {
 			if _, ok = ds.aggExpr[strings.ToLower(k)]; !ok {
 				if _, ok := ds.selector[strings.ToLower(k)]; !ok {
 					if !skipCheck {
-						if _, ok := mapGroupByItems[k]; !ok {
-							strGroupByItems = append(strGroupByItems, k)
-							mapGroupByItems[k] = true
+						if _, ok := mapGroupByItems[v.Expr.ExprContent]; !ok {
+							strGroupByItems = append(strGroupByItems, v.Expr.ExprContent)
+							mapGroupByItems[v.Expr.ExprContent] = true
 						}
 
 					} else {
