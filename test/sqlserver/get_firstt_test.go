@@ -88,7 +88,7 @@ func TestDataSourceFromModel(t *testing.T) {
 	selector = "1 OK,id,sum(if(concat(username,'-',email)='m',1,0)) Total"
 	filter := "count(id)>0 and email is not null"
 	filter = "id>0 and email is not null and count(id)+max(id)>1000"
-	filter = "id>0 and email is not null and Total>1000"
+	filter = "id>0 and email is  null and Total>1"
 	source := db.ModelDatasource(dsName)
 	source.ToSql()
 	if selector != "" {
