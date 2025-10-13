@@ -294,6 +294,9 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 			ds.selector[strings.ToLower(x.Alias)] = true
 		}
 	}
+	for _, v := range selectors.FieldNotInAggFunc {
+		selectors.GroupByExprs = append(selectors.GroupByExprs, v)
+	}
 
 	return selectors, nil
 

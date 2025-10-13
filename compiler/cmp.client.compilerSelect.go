@@ -33,8 +33,9 @@ type ResolevSelectorResult struct {
 	Selectors    FieldSelects
 	Args         internal.SqlArgs
 	// all text constant in query has double apostrophe whill be exract here
-	ApostropheArg []string
-	GroupByExprs  []string
+	ApostropheArg     []string
+	GroupByExprs      []string
+	FieldNotInAggFunc map[string]string
 }
 
 func (c *FieldSelects) HasAggregateFunction() bool {
@@ -49,6 +50,7 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 
 	strFields := []string{}
 	selectors := []FieldSelect{}
+	fieldMap := map[string]string{}
 
 	for _, x := range n {
 		f, err := cmp.resolve(dialect, outputFields, x, selector, args, startOf2ApostropheArgs, startOfSqlIndex, ListOf2ApostropheArgs)
@@ -67,12 +69,14 @@ func (cmp *cmpSelectorType) resolevSelector(dialect types.Dialect, outputFields 
 			IsInAggregateFunc: f.FieldExprType == FieldExprType_AggregateFunctionCall,
 		}
 		strFields = append(strFields, fmt.Sprintf("%s %s", f.Expr, dialect.Quote(f.Alias)))
+		fieldMap = internal.UnionMap(fieldMap, f.FieldMap)
 
 	}
 
 	ret := &ResolevSelectorResult{
-		StrSelectors: strings.Join(strFields, ","),
-		Selectors:    selectors,
+		StrSelectors:      strings.Join(strFields, ","),
+		Selectors:         selectors,
+		FieldNotInAggFunc: fieldMap,
 	}
 
 	return ret, nil
