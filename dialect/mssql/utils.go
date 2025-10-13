@@ -32,6 +32,7 @@ func FindUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult
 	return init.val
 }
 
+// find contains the logic to find the UK constraint in the database schema
 func findUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult {
 	var colInfo *types.ColumnsInfo
 	if data, ok := dbSchema.UniqueKeys[strings.ToLower(name)]; ok {
