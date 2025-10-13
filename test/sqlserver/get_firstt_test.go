@@ -75,3 +75,27 @@ func TestDataSourceFromModelMssql(t *testing.T) {
 	}
 	t.Log(dictData)
 }
+func TestDataSourceFromModel(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("sqlserver", cnn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	dsName := "user"
+	selector := "concat(username,'-',email) ok"
+	filter := "count(id)>0 and email is not null"
+	source := db.ModelDatasource(dsName)
+	source.ToSql()
+	if selector != "" {
+		source.Select(selector)
+	}
+	if filter != "" {
+		source.Where(filter)
+	}
+	data, err := source.ToDict()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(data)
+}
