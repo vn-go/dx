@@ -1,22 +1,24 @@
 package mssql
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/vn-go/dx/errors"
+	"github.com/vn-go/dx/migate/loader/types"
 
 	_ "github.com/microsoft/go-mssqldb"
 
 	mssql "github.com/microsoft/go-mssqldb"
 )
 
-func (d *mssqlDialect) Error2627(err mssql.Error) *errors.DbErr {
+func (d *mssqlDialect) Error2627(dbSchema *types.DbSchema, err mssql.Error) *errors.DbErr {
 
 	if strings.Contains(err.Message, "'") {
 		constraint := strings.Split(err.Message, "'")[1]
 		constraint = strings.Split(constraint, "'")[0]
 
-		result := FindUKConstraint(constraint)
+		result := FindUKConstraint(dbSchema, constraint)
 		if result != nil {
 			cols := []string{}
 			fields := []string{}
@@ -38,5 +40,6 @@ func (d *mssqlDialect) Error2627(err mssql.Error) *errors.DbErr {
 
 	}
 	// errorMsg := err.Message
-	panic("not implemented")
+	//panic("not implemented")
+	panic(fmt.Sprintf("not implemented for error code %d: %s. See file %s", err.Number, err.Message, "dialect/mssql/dialect.mssql.ParseError.2627.go"))
 }

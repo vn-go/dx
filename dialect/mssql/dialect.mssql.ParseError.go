@@ -8,7 +8,7 @@ import (
 func (d *mssqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {
 	//go-mssqldb.Error
 	if mssqlErr, ok := err.(mssql.Error); ok {
-		return d.Error2627(mssqlErr)
+		return d.Error2627(dbSchema, mssqlErr)
 	}
 
 	return err

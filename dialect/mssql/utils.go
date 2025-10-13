@@ -1,9 +1,11 @@
 package mssql
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/migate/loader/types"
 	"github.com/vn-go/dx/model"
 )
 
@@ -21,31 +23,49 @@ type UKConstraintResult struct {
 
 var cacheFindUKConstraint sync.Map
 
-func FindUKConstraint(name string) *UKConstraintResult {
+func FindUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult {
 	actual, _ := cacheFindUKConstraint.LoadOrStore(name, &initFindUKConstraint{})
 	init := actual.(*initFindUKConstraint)
 	init.once.Do(func() {
-		init.val = findUKConstraint(name)
+		init.val = findUKConstraint(dbSchema, name)
 	})
 	return init.val
 }
 
-func findUKConstraint(name string) *UKConstraintResult {
-	for _, model := range model.ModelRegister.GetAllModels() {
-		uk := model.Entity.UniqueConstraints
-		if _, ok := uk[name]; ok {
-			ret := UKConstraintResult{
-				TableName: model.Entity.TableName,
-				Columns:   uk[name].Cols,
-			}
-			for _, col := range uk[name].Cols {
-				ret.DbCols = append(ret.DbCols, col.Name)
-				ret.Fields = append(ret.Fields, col.Field.Name)
-			}
-			return &ret
+func findUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult {
+	var colInfo *types.ColumnsInfo
+	if data, ok := dbSchema.UniqueKeys[strings.ToLower(name)]; ok {
+		colInfo = &data
+	} else if data, ok := dbSchema.PrimaryKeys[strings.ToLower(name)]; ok {
+		colInfo = &data
+	}
+	if colInfo == nil {
+		return nil
+	}
+	dbCols := make([]string, len(colInfo.Columns))
+	for i, col := range colInfo.Columns {
+		dbCols[i] = col.Name
+	}
+	retConstraint := UKConstraintResult{
+		TableName: colInfo.TableName,
+		DbCols:    dbCols,
+	}
+	entityRet := model.ModelRegister.FindEntityByName(colInfo.TableName)
+	if entityRet == nil {
+
+		return &retConstraint
+	}
+	retConstraint.Columns = []entity.ColumnDef{}
+	retConstraint.Fields = []string{}
+	for _, col := range entityRet.Cols {
+		if col.Name == colInfo.Columns[0].Name {
+			retConstraint.Columns = append(retConstraint.Columns, col)
+			retConstraint.Fields = append(retConstraint.Fields, col.Field.Name)
+
 		}
 	}
-	return nil
+
+	return &retConstraint
 }
 
 type FKConstraintResult struct {

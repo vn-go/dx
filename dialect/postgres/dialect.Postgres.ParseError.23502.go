@@ -34,5 +34,5 @@ func (d *postgresDialect) ParseError23502(dbSchame *types.DbSchema, err *pq.Erro
 	// 	}
 	// }
 
-	return err
+	//return err
 }
