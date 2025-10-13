@@ -14,6 +14,7 @@ type initFindUKConstraint struct {
 	val  *UKConstraintResult
 }
 type UKConstraintResult struct {
+	ModelName string
 	TableName string
 	Columns   []entity.ColumnDef
 	DbCols    []string
@@ -32,7 +33,6 @@ func FindUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult
 	return init.val
 }
 
-// find contains the logic to find the UK constraint in the database schema
 func findUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult {
 	var colInfo *types.ColumnsInfo
 	if data, ok := dbSchema.UniqueKeys[strings.ToLower(name)]; ok {
@@ -48,6 +48,7 @@ func findUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult
 		dbCols[i] = col.Name
 	}
 	retConstraint := UKConstraintResult{
+
 		TableName: colInfo.TableName,
 		DbCols:    dbCols,
 	}
@@ -56,6 +57,7 @@ func findUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult
 
 		return &retConstraint
 	}
+	retConstraint.ModelName = entityRet.EntityType.Name()
 	retConstraint.Columns = []entity.ColumnDef{}
 	retConstraint.Fields = []string{}
 	for _, col := range entityRet.Cols {

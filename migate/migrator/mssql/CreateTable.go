@@ -83,8 +83,11 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 			panic(errMsg)
 		}
 		sqlType := mapType[fieldType]
+
 		if col.Length != nil {
 			sqlType = fmt.Sprintf("%s(%d)", sqlType, *col.Length)
+		} else if sqlType == "nvarchar" {
+			sqlType = "ntext"
 		}
 
 		colDef := m.Quote(col.Name) + " " + sqlType
