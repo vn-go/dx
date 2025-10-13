@@ -15,6 +15,7 @@ const (
 	ERR_SYSTEM
 	ERR_NOT_FOUND
 	ERR_SYNTAX
+	ERR_LIMIT_FIELD_SIZE
 )
 
 func ErrorMessage(t DB_ERR) string {
