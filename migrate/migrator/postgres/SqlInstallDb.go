@@ -1,6 +1,6 @@
 package postgres
 
-func (m *MigratorPostgres) GetSqlInstallDb() ([]string, error) {
+func (m *MigratorPostgres) GetSqlInstallDb(shema string) ([]string, error) {
 	return []string{
 		/*
 			-- Enable GIN index support via pg_trgm (for full text search)

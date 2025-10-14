@@ -8,7 +8,7 @@ import (
 	"github.com/vn-go/dx/migrate/loader/types"
 )
 
-func (m *MigratorLoaderMysql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
     LOWER(s.INDEX_NAME) AS INDEX_NAME,

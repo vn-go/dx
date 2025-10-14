@@ -9,7 +9,7 @@ import (
 	miragteTypes "github.com/vn-go/dx/migrate/migrator/types"
 )
 
-func fkIfNotExists(constraintName, tableName, sqlFk string) string {
+func fkIfNotExists(constraintName, tableName, sqlFk, schema string) string {
 	ret := fmt.Sprintf(`
 				IF NOT EXISTS (
 					SELECT 1
@@ -23,20 +23,20 @@ func fkIfNotExists(constraintName, tableName, sqlFk string) string {
 				`, constraintName, tableName, sqlFk)
 	return ret
 }
-func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
+func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB, schema string) ([]string, error) {
 	ret := []string{}
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return nil, err
 	}
 
 	for fk, info := range miragteTypes.ForeignKeyRegistry.FKMap {
-		if _, ok := schema.ForeignKeys[strings.ToLower(fk)]; !ok {
+		if _, ok := schemaData.ForeignKeys[strings.ToLower(fk)]; !ok {
 
 			formCols := "[" + strings.Join(info.FromCols, "],[") + "]"
 			toCols := "[" + strings.Join(info.ToCols, "],[") + "]"
 			script := fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", m.Quote(info.FromTable), m.Quote(fk), formCols, m.Quote(info.ToTable), toCols)
-			schema.ForeignKeys[strings.ToLower(fk)] = types.DbForeignKeyInfo{
+			schemaData.ForeignKeys[strings.ToLower(fk)] = types.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.ToTable,
 				Columns:        info.FromCols,
@@ -49,7 +49,7 @@ func (m *migratorMssql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			if info.Cascade.OnUpdate {
 				script += " ON UPDATE CASCADE"
 			}
-			scriptIfNotExit := fkIfNotExists(fk, info.FromTable, script)
+			scriptIfNotExit := fkIfNotExists(fk, info.FromTable, script, schema)
 			ret = append(ret, scriptIfNotExit)
 		}
 	}

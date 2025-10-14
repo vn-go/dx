@@ -28,7 +28,7 @@ struct ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderPostgres) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllPrimaryKey(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			tc.constraint_name,

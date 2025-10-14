@@ -477,3 +477,10 @@ git tag -a v1.0.75 -m "fix auto group by and having"
 git push origin v1.0.75
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.75
+---
+git add .
+git commit -m "fix auto group by and having"
+git tag -a v1.0.76 -m "fix auto group by and having"
+git push origin v1.0.76
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.76

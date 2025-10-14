@@ -7,37 +7,21 @@ import (
 	"github.com/vn-go/dx/migrate/loader/types"
 )
 
-/*
-	 this function will all table in Pg database and return a map of table name and column info
-
-	 #colum info struct
-
-		type ColumnInfo struct {
-
-			Name string //Db field name
-
-			DbType string //Db field type
-
-			Nullable bool
-
-			Length int
-		}
-		tenantDB.TenantDB is sql.DB
-*/
-func (m *MigratorOraclePostgres) LoadAllTable(db *db.DB) (map[string]map[string]types.ColumnInfo, error) {
+// LoadAllTable truy vấn tất cả bảng và cột trong schema hiện tại (Oracle)
+// LoadAllTable queries all tables and columns in the current schema (Oracle)
+func (m *MigratorOracle) LoadAllTable(db *db.DB, schema string) (map[string]map[string]types.ColumnInfo, error) {
+	// Lưu ý: Oracle dùng USER_TAB_COLUMNS thay cho information_schema.columns
 	query := `
 		SELECT 
-			table_name, 
-			column_name, 
-			data_type, 
-			is_nullable, 
-			COALESCE(character_maximum_length, 0) AS length
+			t.table_name,
+			t.column_name,
+			t.data_type,
+			CASE t.nullable WHEN 'Y' THEN 1 ELSE 0 END AS is_nullable,
+			COALESCE(t.char_length, t.data_length, 0) AS length
 		FROM 
-			information_schema.columns
-		WHERE 
-			table_schema = 'public'
+			user_tab_columns t
 		ORDER BY 
-			table_name, ordinal_position;
+			t.table_name, t.column_id
 	`
 
 	rows, err := db.Query(query)
@@ -53,7 +37,7 @@ func (m *MigratorOraclePostgres) LoadAllTable(db *db.DB) (map[string]map[string]
 			tableName  string
 			columnName string
 			dataType   string
-			isNullable string
+			isNullable int
 			length     int
 		)
 
@@ -68,7 +52,7 @@ func (m *MigratorOraclePostgres) LoadAllTable(db *db.DB) (map[string]map[string]
 		result[tableName][columnName] = types.ColumnInfo{
 			Name:     columnName,
 			DbType:   dataType,
-			Nullable: isNullable == "YES",
+			Nullable: isNullable == 1,
 			Length:   length,
 		}
 	}
@@ -78,5 +62,4 @@ func (m *MigratorOraclePostgres) LoadAllTable(db *db.DB) (map[string]map[string]
 	}
 
 	return result, nil
-
 }

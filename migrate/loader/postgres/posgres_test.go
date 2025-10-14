@@ -13,7 +13,7 @@ func TestPostgres(t *testing.T) {
 	Db, err := db.Open("postgres", pgDsn)
 	assert.NoError(t, err)
 	m := NewPosgresSchemaLoader()
-	schema, err := m.LoadFullSchema(Db)
+	schema, err := m.LoadFullSchema(Db, m.GetDefaultSchema())
 	assert.NoError(t, err)
 	assert.NotNil(t, schema)
 }

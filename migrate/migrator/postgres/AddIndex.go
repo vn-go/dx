@@ -10,11 +10,11 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorPostgres) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorPostgres) GetSqlAddIndex(db *db.DB, typ reflect.Type, shema string) (string, error) {
 	scripts := []string{}
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schema, err := m.loader.LoadFullSchema(db, shema)
 	if err != nil {
 		return "", err
 	}

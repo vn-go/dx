@@ -17,16 +17,16 @@ type initPostgresLoadFullSchema struct {
 	err  error
 }
 
-func (m *MigratorLoaderPostgres) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
-	cacheKey := db.DbName + "@" + db.DriverName
+func (m *MigratorLoaderPostgres) LoadFullSchema(db *db.DB, schema string) (*types.DbSchema, error) {
+	cacheKey := db.DbName + "@" + db.DriverName + "/" + schema
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initPostgresLoadFullSchema{})
 	init := actual.(*initPostgresLoadFullSchema)
 	init.once.Do(func() {
-		init.val, init.err = m.loadFullSchema(db)
+		init.val, init.err = m.loadFullSchema(db, schema)
 	})
 	return init.val, init.err
 }
-func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
+func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB, schema string) (*types.DbSchema, error) {
 	if types.SkipLoadSchemaOnMigrate {
 		return &types.DbSchema{
 			DbName:      db.DbName,
@@ -37,48 +37,51 @@ func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB) (*types.DbSchema, err
 			ForeignKeys: map[string]types.DbForeignKeyInfo{},
 		}, nil
 	}
-	tables, err := m.LoadAllTable(db)
+	tables, err := m.LoadAllTable(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	pks, err := m.LoadAllPrimaryKey(db)
+	pks, err := m.LoadAllPrimaryKey(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	uks, err := m.LoadAllUniIndex(db)
+	uks, err := m.LoadAllUniIndex(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	idxs, err := m.LoadAllIndex(db)
+	idxs, err := m.LoadAllIndex(db, schema)
 	if err != nil {
 		return nil, err
 	}
 
 	dbName := db.DbName
-	schema := &types.DbSchema{
+	schemaData := &types.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
 		UniqueKeys:  uks,
 		Indexes:     idxs,
 	}
-	foreignKeys, err := m.LoadForeignKey(db)
+	foreignKeys, err := m.LoadForeignKey(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]types.DbForeignKeyInfo{}
+	schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
-		schema.ForeignKeys[fk.ConstraintName] = fk
+		schemaData.ForeignKeys[fk.ConstraintName] = fk
 	}
 	for table, columns := range tables {
 		cols := make(map[string]bool)
 		for col := range columns {
 			cols[col] = true
 		}
-		schema.Tables[table] = cols
+		schemaData.Tables[table] = cols
 	}
 
-	return schema, nil
+	return schemaData, nil
+}
+func (m *MigratorLoaderPostgres) GetDefaultSchema() string {
+	return "public"
 }
 
 var migratorLoaderPostgresInstance = &MigratorLoaderPostgres{

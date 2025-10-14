@@ -22,16 +22,16 @@ type initMySqlLoadFullSchema struct {
 	schema *types.DbSchema
 }
 
-func (m *MigratorLoaderMysql) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
-	cacheKey := db.Info.DbName + "@" + db.DriverName
+func (m *MigratorLoaderMysql) LoadFullSchema(db *db.DB, schema string) (*types.DbSchema, error) {
+	cacheKey := db.Info.DbName + "@" + db.DriverName + "$" + schema
 	actual, _ := m.cacheLoadFullSchema.LoadOrStore(cacheKey, &initMySqlLoadFullSchema{})
 	initSchema := actual.(*initMySqlLoadFullSchema)
 	initSchema.once.Do(func() {
-		initSchema.schema, initSchema.err = m.loadFullSchema(db)
+		initSchema.schema, initSchema.err = m.loadFullSchema(db, schema)
 	})
 	return initSchema.schema, initSchema.err
 }
-func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error) {
+func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB, schema string) (*types.DbSchema, error) {
 	if types.SkipLoadSchemaOnMigrate {
 		return &types.DbSchema{
 			DbName:      db.DbName,
@@ -42,48 +42,52 @@ func (m *MigratorLoaderMysql) loadFullSchema(db *db.DB) (*types.DbSchema, error)
 			ForeignKeys: map[string]types.DbForeignKeyInfo{},
 		}, nil
 	}
-	tables, err := m.LoadAllTable(db)
+	tables, err := m.LoadAllTable(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	pks, err := m.LoadAllPrimaryKey(db)
+	pks, err := m.LoadAllPrimaryKey(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	uks, err := m.LoadAllUniIndex(db)
+	uks, err := m.LoadAllUniIndex(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	idxs, err := m.LoadAllIndex(db)
+	idxs, err := m.LoadAllIndex(db, schema)
 	if err != nil {
 		return nil, err
 	}
 
 	dbName := db.DbName
-	schema := &types.DbSchema{
+	schemaData := &types.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
 		UniqueKeys:  uks,
 		Indexes:     idxs,
 	}
-	foreignKeys, err := m.LoadForeignKey(db)
+	foreignKeys, err := m.LoadForeignKey(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]types.DbForeignKeyInfo{}
+	schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
-		schema.ForeignKeys[strings.ToLower(fk.ConstraintName)] = fk
+		schemaData.ForeignKeys[strings.ToLower(fk.ConstraintName)] = fk
 	}
 	for table, columns := range tables {
 		cols := make(map[string]bool)
 		for col := range columns {
 			cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
 		}
-		schema.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
+		schemaData.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
 	}
 
-	return schema, nil
+	return schemaData, nil
+}
+func (m *MigratorLoaderMysql) GetDefaultSchema() string {
+	return "public"
+
 }
 
 var migratorLoaderMysqlInstance = &MigratorLoaderMysql{

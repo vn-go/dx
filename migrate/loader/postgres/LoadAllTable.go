@@ -24,7 +24,7 @@ import (
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderPostgres) LoadAllTable(db *db.DB) (map[string]map[string]types.ColumnInfo, error) {
+func (m *MigratorLoaderPostgres) LoadAllTable(db *db.DB, schema string) (map[string]map[string]types.ColumnInfo, error) {
 	query := `
 		SELECT 
 			table_name, 

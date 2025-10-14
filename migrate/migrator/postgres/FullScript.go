@@ -13,25 +13,25 @@ type postgresGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *MigratorPostgres) GetFullScript(db *db.DB) ([]string, error) {
-	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
+func (m *MigratorPostgres) GetFullScript(db *db.DB, shema string) ([]string, error) {
+	key := fmt.Sprintf("%s_%s_%s", db.DbName, db.DriverName, shema)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &postgresGetFullScriptInit{})
 	init := actual.(*postgresGetFullScriptInit)
 	var err error
 	init.once.Do(func() {
-		init.ret, err = m.getFullScript(db)
+		init.ret, err = m.getFullScript(db, shema)
 	})
 	return init.ret, err
 }
-func (m *MigratorPostgres) getFullScript(db *db.DB) ([]string, error) {
+func (m *MigratorPostgres) getFullScript(db *db.DB, shema string) ([]string, error) {
 
-	sqlInstall, err := m.GetSqlInstallDb()
+	sqlInstall, err := m.GetSqlInstallDb(shema)
 	if err != nil {
 		return nil, err
 	}
 	scripts := sqlInstall
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlCreateTable(db, entity.Entity.EntityType)
+		script, err := m.GetSqlCreateTable(db, entity.Entity.EntityType, shema)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +42,7 @@ func (m *MigratorPostgres) getFullScript(db *db.DB) ([]string, error) {
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
 
-		script, err := m.GetSqlAddColumn(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddColumn(db, entity.Entity.EntityType, shema)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +52,7 @@ func (m *MigratorPostgres) getFullScript(db *db.DB) ([]string, error) {
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
 		//m.GetSqlAddUniqueIndex()
-		script, err := m.GetSqlAddUniqueIndex(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddUniqueIndex(db, entity.Entity.EntityType, shema)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func (m *MigratorPostgres) getFullScript(db *db.DB) ([]string, error) {
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
 		//m.GetSqlAddUniqueIndex()
-		script, err := m.GetSqlAddIndex(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddIndex(db, entity.Entity.EntityType, shema)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +70,7 @@ func (m *MigratorPostgres) getFullScript(db *db.DB) ([]string, error) {
 			scripts = append(scripts, script)
 		}
 	}
-	scriptForeignKey, err := m.GetSqlAddForeignKey(db)
+	scriptForeignKey, err := m.GetSqlAddForeignKey(db, shema)
 	if err != nil {
 		return nil, err
 	}

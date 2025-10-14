@@ -24,6 +24,9 @@ func NewMigrator() migartorType.IMigrator {
 		loader: loaderMysql.NewMysqlMigratorLoader(),
 	}
 }
+func (m *MigratorMySql) GetDefaultSchema() string {
+	return "public"
+}
 func (m *MigratorMySql) GetLoader() types.IMigratorLoader {
 	return m.loader
 }
@@ -43,7 +46,7 @@ type dbKey struct {
 	DriverName string
 }
 
-func (m *MigratorMySql) DoMigrates(db *db.DB) error {
+func (m *MigratorMySql) DoMigrates(db *db.DB, schema string) error {
 
 	//key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	key := dbKey{
@@ -56,7 +59,7 @@ func (m *MigratorMySql) DoMigrates(db *db.DB) error {
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript(db)
+		scripts, err := m.GetFullScript(db, schema)
 		if err != nil {
 			return
 		}

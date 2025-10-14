@@ -24,11 +24,11 @@ func ixIfNoExist(constraintName, tableName, sqlAddIX string) string {
 				`, constraintName, tableName, sqlAddIX)
 	return ret
 }
-func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -49,7 +49,7 @@ func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, err
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
-		if _, ok := schema.Indexes[strings.ToLower(constraintName)]; !ok {
+		if _, ok := schemaData.Indexes[strings.ToLower(constraintName)]; !ok {
 			constraint := fmt.Sprintf("CREATE INDEX %s ON %s (%s)", m.Quote(constraintName), m.Quote(entityItem.Entity.TableName), strings.Join(colNames, ", "))
 			constraintIfNotExist := ixIfNoExist(constraintName, entityItem.Entity.TableName, constraint)
 			scripts = append(scripts, constraintIfNotExist)

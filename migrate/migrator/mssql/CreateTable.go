@@ -34,7 +34,7 @@ Hàm này là 1 implementation của interface .
 		GetSqlCreateTable(entityType reflect.Type) (string, error)
 	}
 */
-func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, error) {
+func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()                      // load mapping data type from migrator
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag() // load mapping default value from db tag
 	schemaLoader := m.GetLoader()                                //<-- get the schema loader injected from the migrator
@@ -42,7 +42,7 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 		return "", fmt.Errorf("schema loader is nil, please set it by call SetLoader() function in %s", reflect.TypeOf(m).Elem())
 	}
 	// Load database schema hiện tại
-	schema, err := schemaLoader.LoadFullSchema(db) //<-- Load schema from the database. LoadFullSchema is called only once per database
+	schemaData, err := schemaLoader.LoadFullSchema(db, schema) //<-- Load schema from the database. LoadFullSchema is called only once per database
 	if err != nil {
 		return "", err
 	}
@@ -60,7 +60,7 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 
 	tableName := entityItem.Entity.TableName
 
-	if _, ok := schema.Tables[strings.ToLower(tableName)]; ok {
+	if _, ok := schemaData.Tables[strings.ToLower(tableName)]; ok {
 		/*
 			If the table already exists in the database, there is no need to create it .
 		*/
@@ -150,7 +150,7 @@ func (m *migratorMssql) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, 
 
 	sql := tableIfNotExist(tableName, sqlCreateTable)
 	if !types.SkipLoadSchemaOnMigrate {
-		schema.Tables[strings.ToLower(tableName)] = newTableMap
+		schemaData.Tables[strings.ToLower(tableName)] = newTableMap
 	}
 
 	return sql, nil

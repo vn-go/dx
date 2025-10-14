@@ -10,7 +10,7 @@ import (
 	miragteTypes "github.com/vn-go/dx/migrate/migrator/types"
 )
 
-func addFkIfNotExist(constraintName, tableName, sqlAddFK string) string {
+func addFkIfNotExist(constraintName, tableName, sqlAddFK, schema string) string {
 	ret := fmt.Sprintf(`
 		DO $$
 			BEGIN
@@ -27,16 +27,16 @@ func addFkIfNotExist(constraintName, tableName, sqlAddFK string) string {
 	return ret
 
 }
-func (m *MigratorOracle) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
+func (m *MigratorOracle) GetSqlAddForeignKey(db *db.DB, schema string) ([]string, error) {
 	ret := []string{}
 
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return nil, err
 	}
 
 	for fk, info := range miragteTypes.ForeignKeyRegistry.FKMap {
-		if _, ok := schema.ForeignKeys[fk]; !ok {
+		if _, ok := schemaData.ForeignKeys[fk]; !ok {
 			// Quote cột
 			fromCols := []string{}
 			for _, col := range info.FromCols {
@@ -62,11 +62,11 @@ func (m *MigratorOracle) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			if info.Cascade.OnUpdate {
 				scriptAddFK += " ON UPDATE CASCADE"
 			}
-			script := addFkIfNotExist(fk, info.FromTable, scriptAddFK)
+			script := addFkIfNotExist(fk, info.FromTable, scriptAddFK, schema)
 			ret = append(ret, script)
 
 			// Cập nhật lại schema cache
-			schema.ForeignKeys[fk] = types.DbForeignKeyInfo{
+			schemaData.ForeignKeys[fk] = types.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.FromTable,
 				Columns:        info.FromCols,

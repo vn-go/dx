@@ -27,7 +27,7 @@ columnInfo is struct
 
 @db is a pointer to the TenantDB object tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderMysql) LoadAllTable(db *db.DB) (map[string]map[string]types.ColumnInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllTable(db *db.DB, schema string) (map[string]map[string]types.ColumnInfo, error) {
 	query := `
 		SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH
 		FROM INFORMATION_SCHEMA.COLUMNS

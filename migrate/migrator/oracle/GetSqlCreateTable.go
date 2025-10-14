@@ -21,7 +21,7 @@ This ensures that any type implementing the interface can be used interchangeabl
 		GetSqlCreateTable(entityType reflect.Type) (string, error)
 	}
 */
-func (m *MigratorOracle) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorOracle) GetSqlCreateTable(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 	schemaLoader := m.GetLoader()
@@ -29,7 +29,7 @@ func (m *MigratorOracle) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string,
 		return "", fmt.Errorf("schema loader is nil, please set it by call SetLoader() function in %s", reflect.TypeOf(m).Elem())
 	}
 
-	schema, err := schemaLoader.LoadFullSchema(db)
+	schemaData, err := schemaLoader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (m *MigratorOracle) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string,
 	}
 
 	tableName := entityItem.Entity.TableName
-	if _, ok := schema.Tables[tableName]; ok {
+	if _, ok := schemaData.Tables[tableName]; ok {
 		return "", nil
 	}
 
@@ -135,7 +135,7 @@ func (m *MigratorOracle) GetSqlCreateTable(db *db.DB, typ reflect.Type) (string,
 
 	sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n  %s\n);", m.Quote(tableName), strings.Join(strCols, ",\n  "))
 	if !types.SkipLoadSchemaOnMigrate {
-		schema.Tables[tableName] = newTableMap
+		schemaData.Tables[tableName] = newTableMap
 	}
 
 	sqlCiText := "CREATE EXTENSION IF NOT EXISTS citext"

@@ -11,20 +11,22 @@ import (
 )
 
 type IMigrator interface {
+	GetDefaultSchema() string
 	GetLoader() types.IMigratorLoader
 	Quote(names ...string) string
-	GetSqlInstallDb() ([]string, error)
+	GetSqlInstallDb(schema string) ([]string, error)
+	// create new map Go type and db type
 	GetColumnDataTypeMapping() map[reflect.Type]string
 	GetGetDefaultValueByFromDbTag() map[string]string
-	GetSqlCreateTable(db *db.DB, entityType reflect.Type) (string, error)
-	GetSqlAddColumn(db *db.DB, entityType reflect.Type) (string, error)
-	GetSqlAddIndex(db *db.DB, entityType reflect.Type) (string, error)
-	GetSqlAddUniqueIndex(db *db.DB, entityType reflect.Type) (string, error)
+	GetSqlCreateTable(db *db.DB, entityType reflect.Type, schema string) (string, error)
+	GetSqlAddColumn(db *db.DB, entityType reflect.Type, schema string) (string, error)
+	GetSqlAddIndex(db *db.DB, entityType reflect.Type, schema string) (string, error)
+	GetSqlAddUniqueIndex(db *db.DB, entityType reflect.Type, schema string) (string, error)
 	//GetSqlMigrate(entityType reflect.Type) ([]string, error)
-	GetSqlAddForeignKey(db *db.DB) ([]string, error)
-	GetFullScript(db *db.DB) ([]string, error)
+	GetSqlAddForeignKey(db *db.DB, schema string) ([]string, error)
+	GetFullScript(db *db.DB, schema string) ([]string, error)
 	//DoMigrate(entityType reflect.Type) error
-	DoMigrates(db *db.DB) error
+	DoMigrates(db *db.DB, schema string) error
 }
 
 type migratorInit struct {

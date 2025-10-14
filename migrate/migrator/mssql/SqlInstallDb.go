@@ -1,6 +1,6 @@
 package mssql
 
-func (m *migratorMssql) GetSqlInstallDb() ([]string, error) {
+func (m *migratorMssql) GetSqlInstallDb(schema string) ([]string, error) {
 	return []string{}, nil
 
 }

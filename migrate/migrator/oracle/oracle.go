@@ -24,6 +24,9 @@ func NewMigrator() migartorType.IMigrator {
 		loader: loaderOracle.NewOracleSchemaLoader(),
 	}
 }
+func (m *MigratorOracle) GetDefaultSchema() string {
+	return "app"
+}
 func (m *MigratorOracle) GetLoader() types.IMigratorLoader {
 	return m.loader
 }
@@ -38,7 +41,7 @@ type postgresInitDoMigrates struct {
 
 var cacheMigratorPostgresMigratorPostgres sync.Map
 
-func (m *MigratorOracle) DoMigrates(db *db.DB) error {
+func (m *MigratorOracle) DoMigrates(db *db.DB, schema string) error {
 	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheMigratorPostgresMigratorPostgres.LoadOrStore(key, &postgresInitDoMigrates{})
 
@@ -46,7 +49,7 @@ func (m *MigratorOracle) DoMigrates(db *db.DB) error {
 	var err error
 	mi.once.Do(func() {
 		var scripts []string
-		scripts, err = m.GetFullScript(db)
+		scripts, err = m.GetFullScript(db, schema)
 		if err != nil {
 			return
 		}

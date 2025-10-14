@@ -13,7 +13,7 @@ func (m *migratorType) GetSql(db *db.DB) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return migate.GetFullScript(db)
+	return migate.GetFullScript(db, migate.GetDefaultSchema())
 }
 
 var Migrator = &migratorType{}

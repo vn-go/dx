@@ -10,11 +10,11 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorOracle) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorOracle) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +40,7 @@ func (m *MigratorOracle) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, er
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu index chưa tồn tại trong schema
-		if _, ok := schema.Indexes[constraintName]; !ok {
+		if _, ok := schemaData.Indexes[constraintName]; !ok {
 			// PostgreSQL mặc định dùng BTREE, có thể thêm USING nếu cần
 			sql := fmt.Sprintf(
 				"CREATE INDEX IF NOT EXISTS %s ON %s (%s)",

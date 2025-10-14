@@ -12,12 +12,12 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorOracle) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorOracle) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 
 	// Load current schema
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +36,7 @@ func (m *MigratorOracle) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, e
 
 	for _, col := range entityItem.Entity.Cols {
 		// Column chưa tồn tại thì mới thêm
-		if _, ok := schema.Tables[entityItem.Entity.TableName][col.Name]; !ok {
+		if _, ok := schemaData.Tables[entityItem.Entity.TableName][col.Name]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -87,7 +87,7 @@ func (m *MigratorOracle) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, e
 
 			// Update schema cache
 			if !types.SkipLoadSchemaOnMigrate {
-				schema.Tables[entityItem.Entity.TableName][col.Name] = true
+				schemaData.Tables[entityItem.Entity.TableName][col.Name] = true
 			}
 
 		}

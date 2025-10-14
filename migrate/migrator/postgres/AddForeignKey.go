@@ -10,7 +10,7 @@ import (
 	miragteTypes "github.com/vn-go/dx/migrate/migrator/types"
 )
 
-func addFkIfNotExist(constraintName, tableName, sqlAddFK string) string {
+func addFkIfNotExist(constraintName, tableName, sqlAddFK string, schema string) string {
 	ret := fmt.Sprintf(`
 		DO $$
 			BEGIN
@@ -27,10 +27,10 @@ func addFkIfNotExist(constraintName, tableName, sqlAddFK string) string {
 	return ret
 
 }
-func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
+func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB, shema string) ([]string, error) {
 	ret := []string{}
 
-	schema, err := m.loader.LoadFullSchema(db)
+	schema, err := m.loader.LoadFullSchema(db, shema)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (m *MigratorPostgres) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			if info.Cascade.OnUpdate {
 				scriptAddFK += " ON UPDATE CASCADE"
 			}
-			script := addFkIfNotExist(fk, info.FromTable, scriptAddFK)
+			script := addFkIfNotExist(fk, info.FromTable, scriptAddFK, shema)
 			ret = append(ret, script)
 
 			// Cập nhật lại schema cache

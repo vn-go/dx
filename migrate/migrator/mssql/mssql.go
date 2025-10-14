@@ -27,6 +27,9 @@ func NewMigrator() migartorType.IMigrator {
 func (m *migratorMssql) Quote(names ...string) string {
 	return "[" + strings.Join(names, "].[") + "]"
 }
+func (m *migratorMssql) GetDefaultSchema() string {
+	return "dbo"
+}
 
 type mssqlInitDoMigrates struct {
 	once sync.Once
@@ -35,7 +38,7 @@ type mssqlInitDoMigrates struct {
 
 var cacheDoMigrates sync.Map
 
-func (m *migratorMssql) DoMigrates(db *db.DB) error {
+func (m *migratorMssql) DoMigrates(db *db.DB, schema string) error {
 
 	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheDoMigrates.LoadOrStore(key, &mssqlInitDoMigrates{})
@@ -44,7 +47,7 @@ func (m *migratorMssql) DoMigrates(db *db.DB) error {
 
 	mi.once.Do(func() {
 
-		scripts, err := m.GetFullScript(db)
+		scripts, err := m.GetFullScript(db, schema)
 		if err != nil {
 			mi.err = err
 			return

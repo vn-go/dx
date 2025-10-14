@@ -28,33 +28,27 @@ struct ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorOraclePostgres) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorOracle) LoadAllPrimaryKey(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
+	// Sử dụng USER_CONSTRAINTS và USER_CONS_COLUMNS (Oracle)
+	// USe USER_CONSTRAINTS (Oracle) and USER_CONS_COLUMNS (Oracle)
 	query := `
-		SELECT
-			tc.constraint_name,
-			tc.table_name,
-			kcu.column_name,
-			format_type(a.atttypid, a.atttypmod) AS data_type,
-			NOT a.attnotnull AS is_nullable,
-			COALESCE(NULLIF(a.atttypmod, -1), 0) AS length
+		SELECT 
+			uc.constraint_name,
+			uc.table_name,
+			ucc.column_name,
+			c.data_type,
+			CASE c.nullable WHEN 'Y' THEN 1 ELSE 0 END AS is_nullable,
+			COALESCE(c.char_length, c.data_length, 0) AS length
 		FROM 
-			information_schema.table_constraints AS tc
-		JOIN 
-			information_schema.key_column_usage AS kcu 
-			ON tc.constraint_name = kcu.constraint_name 
-			AND tc.table_name = kcu.table_name
-			AND tc.constraint_schema = kcu.constraint_schema
-		JOIN 
-			pg_class t ON t.relname = tc.table_name
-		JOIN 
-			pg_namespace ns ON ns.nspname = tc.constraint_schema
-		JOIN 
-			pg_attribute a ON a.attrelid = t.oid AND a.attname = kcu.column_name
+			user_constraints uc
+			JOIN user_cons_columns ucc 
+				ON uc.constraint_name = ucc.constraint_name
+			JOIN user_tab_columns c
+				ON c.table_name = ucc.table_name AND c.column_name = ucc.column_name
 		WHERE 
-			tc.constraint_type = 'PRIMARY KEY' 
-			AND tc.constraint_schema = 'public'
+			uc.constraint_type = 'P'
 		ORDER BY 
-			tc.constraint_name, kcu.ordinal_position;
+			uc.constraint_name, ucc.position
 	`
 
 	rows, err := db.Query(query)

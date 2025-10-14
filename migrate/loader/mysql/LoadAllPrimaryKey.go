@@ -29,7 +29,7 @@ struct ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllPrimaryKey(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			LOWER(kcu.CONSTRAINT_NAME),

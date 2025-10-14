@@ -10,7 +10,7 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func createNotExistUniqueIndex(constrantName string, tableName string, sql string) string {
+func createNotExistUniqueIndex(constrantName, tableName, sql, shema string) string {
 	ret := fmt.Sprintf(`
 		DO $$
 		BEGIN
@@ -26,11 +26,11 @@ func createNotExistUniqueIndex(constrantName string, tableName string, sql strin
 		`, constrantName, tableName, sql)
 	return ret
 }
-func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load current schema
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -54,14 +54,14 @@ func (m *MigratorPostgres) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (st
 		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa có trong schema
-		if _, ok := schema.UniqueKeys[constraintName]; !ok {
+		if _, ok := schemaData.UniqueKeys[constraintName]; !ok {
 			sqlAddCon := fmt.Sprintf(
 				`ALTER TABLE %s ADD CONSTRAINT  %s UNIQUE (%s)`,
 				m.Quote(entityItem.Entity.TableName),
 				m.Quote(constraintName),
 				strings.Join(colNames, ", "),
 			)
-			sql := createNotExistUniqueIndex(constraintName, entityItem.Entity.TableName, sqlAddCon)
+			sql := createNotExistUniqueIndex(constraintName, entityItem.Entity.TableName, sqlAddCon, schema)
 			scripts = append(scripts, sql)
 		}
 	}

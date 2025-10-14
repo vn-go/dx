@@ -14,24 +14,24 @@ type mysqlGetFullScriptInit struct {
 	ret  []string
 }
 
-func (m *MigratorMySql) GetFullScript(db *db.DB) ([]string, error) {
-	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
+func (m *MigratorMySql) GetFullScript(db *db.DB, schema string) ([]string, error) {
+	key := fmt.Sprintf("%s_%s_%s", db.DbName, db.DriverName, schema)
 	actual, _ := m.cacheGetFullScript.LoadOrStore(key, &mysqlGetFullScriptInit{})
 	init := actual.(*mysqlGetFullScriptInit)
 	var err error
 	init.once.Do(func() {
-		init.ret, err = m.getFullScript(db)
+		init.ret, err = m.getFullScript(db, schema)
 	})
 	return init.ret, err
 }
-func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
-	sqlInstall, err := m.GetSqlInstallDb()
+func (m *MigratorMySql) getFullScript(db *db.DB, schema string) ([]string, error) {
+	sqlInstall, err := m.GetSqlInstallDb(schema)
 	if err != nil {
 		return nil, err
 	}
 	scripts := sqlInstall
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlCreateTable(db, entity.Entity.EntityType)
+		script, err := m.GetSqlCreateTable(db, entity.Entity.EntityType, schema)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlAddColumn(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddColumn(db, entity.Entity.EntityType, schema)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +50,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 		}
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlAddIndex(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddIndex(db, entity.Entity.EntityType, schema)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +59,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 		}
 	}
 	for _, entity := range model.ModelRegister.GetAllModels() {
-		script, err := m.GetSqlAddUniqueIndex(db, entity.Entity.EntityType)
+		script, err := m.GetSqlAddUniqueIndex(db, entity.Entity.EntityType, schema)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func (m *MigratorMySql) getFullScript(db *db.DB) ([]string, error) {
 			scripts = append(scripts, strings.Split(script, ";\n")...)
 		}
 	}
-	scriptForeignKey, err := m.GetSqlAddForeignKey(db)
+	scriptForeignKey, err := m.GetSqlAddForeignKey(db, schema)
 	if err != nil {
 		return nil, err
 	}

@@ -38,7 +38,10 @@ type postgresInitDoMigrates struct {
 
 var cacheMigratorPostgresMigratorPostgres sync.Map
 
-func (m *MigratorPostgres) DoMigrates(db *db.DB) error {
+func (m *MigratorPostgres) GetDefaultSchema() string {
+	return "public"
+}
+func (m *MigratorPostgres) DoMigrates(db *db.DB, shema string) error {
 	key := fmt.Sprintf("%s_%s", db.DbName, db.DriverName)
 	actual, _ := cacheMigratorPostgresMigratorPostgres.LoadOrStore(key, &postgresInitDoMigrates{})
 
@@ -46,7 +49,7 @@ func (m *MigratorPostgres) DoMigrates(db *db.DB) error {
 	var err error
 	mi.once.Do(func() {
 		var scripts []string
-		scripts, err = m.GetFullScript(db)
+		scripts, err = m.GetFullScript(db, shema)
 		if err != nil {
 			return
 		}

@@ -17,7 +17,7 @@ import (
 // Returns:
 //   - A map[string]types.ColumnsInfo containing unique index details, where the key is the index name.
 //   - An error if the query or row scanning fails.
-func (m *MigratorLoaderMysql) LoadAllUniIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMysql) LoadAllUniIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	// SQL query to fetch unique index information from INFORMATION_SCHEMA.
 	// Joins STATISTICS and COLUMNS tables to get index name, table name, column name,
 	// data type, nullability, and character length for unique indexes (NON_UNIQUE = 0)

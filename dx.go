@@ -57,7 +57,7 @@ func Open(driverName string, dsn string) (*DB, error) {
 		defer retDb.Close()
 		return nil, err
 	}
-	err = m.DoMigrates(retDb)
+	err = m.DoMigrates(retDb, m.GetDefaultSchema())
 	if err != nil {
 		defer retDb.Close()
 		return nil, err

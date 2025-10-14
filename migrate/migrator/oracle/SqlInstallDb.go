@@ -1,6 +1,6 @@
 package oracle
 
-func (m *MigratorOracle) GetSqlInstallDb() ([]string, error) {
+func (m *MigratorOracle) GetSqlInstallDb(shema string) ([]string, error) {
 	return []string{
 		/*
 			-- Enable GIN index support via pg_trgm (for full text search)

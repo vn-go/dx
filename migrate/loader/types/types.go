@@ -60,8 +60,9 @@ type DbSchema struct {
 	ForeignKeys map[string]DbForeignKeyInfo
 }
 type IMigratorLoader interface {
-	LoadAllTable(db *db.DB) (map[string]map[string]ColumnInfo, error)
-	LoadAllPrimaryKey(db *db.DB) (map[string]ColumnsInfo, error)
+	GetDefaultSchema() string
+	LoadAllTable(db *db.DB, schema string) (map[string]map[string]ColumnInfo, error)
+	LoadAllPrimaryKey(db *db.DB, schema string) (map[string]ColumnsInfo, error)
 	/*
 		Heed: for SQL Server, we need to use the following query to get the unique keys:
 			SELECT
@@ -71,13 +72,13 @@ type IMigratorLoader interface {
 			JOIN sys.tables t ON i.object_id = t.object_id
 			WHERE i.type_desc = 'NONCLUSTERED' and is_unique_constraint=1
 	*/
-	LoadAllUniIndex(db *db.DB) (map[string]ColumnsInfo, error)
+	LoadAllUniIndex(db *db.DB, schema string) (map[string]ColumnsInfo, error)
 	/*
 
 	 */
-	LoadAllIndex(db *db.DB) (map[string]ColumnsInfo, error)
-	LoadFullSchema(db *db.DB) (*DbSchema, error)
-	LoadForeignKey(db *db.DB) ([]DbForeignKeyInfo, error)
+	LoadAllIndex(db *db.DB, schema string) (map[string]ColumnsInfo, error)
+	LoadFullSchema(db *db.DB, schema string) (*DbSchema, error)
+	LoadForeignKey(db *db.DB, schema string) ([]DbForeignKeyInfo, error)
 }
 
 var SkipLoadSchemaOnMigrate bool

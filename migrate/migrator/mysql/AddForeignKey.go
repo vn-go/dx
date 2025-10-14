@@ -9,16 +9,16 @@ import (
 	miragteTypes "github.com/vn-go/dx/migrate/migrator/types"
 )
 
-func (m *MigratorMySql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
+func (m *MigratorMySql) GetSqlAddForeignKey(db *db.DB, schema string) ([]string, error) {
 	ret := []string{}
 
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return nil, err
 	}
 
 	for fk, info := range miragteTypes.ForeignKeyRegistry.FKMap {
-		if _, ok := schema.ForeignKeys[strings.ToLower(fk)]; !ok {
+		if _, ok := schemaData.ForeignKeys[strings.ToLower(fk)]; !ok {
 
 			// Quote column names bằng backtick cho MySQL
 			fromCols := make([]string, len(info.FromCols))
@@ -49,7 +49,7 @@ func (m *MigratorMySql) GetSqlAddForeignKey(db *db.DB) ([]string, error) {
 			ret = append(ret, script)
 
 			// Cập nhật lại schema cache
-			schema.ForeignKeys[fk] = loadeTypes.DbForeignKeyInfo{
+			schemaData.ForeignKeys[fk] = loadeTypes.DbForeignKeyInfo{
 				ConstraintName: fk,
 				Table:          info.FromTable,
 				Columns:        info.FromCols,

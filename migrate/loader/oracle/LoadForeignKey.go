@@ -7,7 +7,7 @@ import (
 	"github.com/vn-go/dx/migrate/loader/types"
 )
 
-func (m *MigratorOraclePostgres) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
+func (m *MigratorOracle) LoadForeignKey(db *db.DB, schema string) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			tc.constraint_name,

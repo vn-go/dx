@@ -7,7 +7,7 @@ import (
 	"github.com/vn-go/dx/migrate/loader/types"
 )
 
-func (m *MigratorLoaderMysql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
+func (m *MigratorLoaderMysql) LoadForeignKey(db *db.DB, schema string) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			LOWER(rc.CONSTRAINT_NAME) CONSTRAINT_NAME ,

@@ -12,7 +12,7 @@ func (db *DB) parseError(err error) error {
 	if errGetMigator != nil {
 		return err
 	}
-	schema, errLoadFullSchema := imgrate.GetLoader().LoadFullSchema(db.DB)
+	schema, errLoadFullSchema := imgrate.GetLoader().LoadFullSchema(db.DB, imgrate.GetDefaultSchema())
 	if errLoadFullSchema != nil {
 		return err
 	}

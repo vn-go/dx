@@ -13,7 +13,7 @@ func TestMisql(t *testing.T) {
 	Db, err := db.Open("mysql", mySqlDsn)
 	assert.NoError(t, err)
 	m := NewMysqlMigratorLoader()
-	schema, err := m.LoadFullSchema(Db)
+	schema, err := m.LoadFullSchema(Db, "hrm")
 	assert.NoError(t, err)
 	assert.NotNil(t, schema)
 }

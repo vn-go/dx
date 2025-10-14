@@ -1,6 +1,7 @@
 package mssql
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -13,7 +14,7 @@ type MigratorLoaderMssql struct {
 	cacheLoadFullSchema sync.Map
 }
 
-func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB) (map[string]map[string]types.ColumnInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB, schema string) (map[string]map[string]types.ColumnInfo, error) {
 	ret, err := internal.OnceCall("MigratorLoaderMssql/LoadAllTable"+db.DbName+"/"+db.DriverName, func() (map[string]map[string]types.ColumnInfo, error) {
 		query := `
 		SELECT
@@ -56,7 +57,7 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB) (map[string]map[string]typ
 
 }
 
-func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	key := "MigratorLoaderMssql/LoadAllPrimaryKey" + db.DbName + "/" + db.DriverName
 	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
 		query := `
@@ -91,7 +92,7 @@ func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB) (map[string]types.Col
 
 }
 
-func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	key := "MigratorLoaderMssql/LoadAllUniIndex" + db.DbName + "/" + db.DriverName
 	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
 		query := `
@@ -127,7 +128,7 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB) (map[string]types.Colum
 
 }
 
-func (m *MigratorLoaderMssql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorLoaderMssql) LoadAllIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	query := `
 	SELECT
 		lower(t.name) AS TableName,
@@ -159,7 +160,7 @@ func (m *MigratorLoaderMssql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsI
 	return result, nil
 }
 
-func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB) (*types.DbSchema, error) {
+func (m *MigratorLoaderMssql) loadFullSchemaInternal(db *db.DB, schema string) (*types.DbSchema, error) {
 	if types.SkipLoadSchemaOnMigrate {
 		return &types.DbSchema{
 			DbName:      db.DbName,
@@ -174,41 +175,62 @@ func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB) (*types.DbSchema, error)
 	if val, ok := m.cacheLoadFullSchema.Load(cacheKey); ok {
 		return val.(*types.DbSchema), nil
 	}
-	tables, err := m.LoadAllTable(db)
+	tables, err := m.LoadAllTable(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	pks, _ := m.LoadAllPrimaryKey(db)
-	uks, _ := m.LoadAllUniIndex(db)
-	idxs, _ := m.LoadAllIndex(db)
+	pks, _ := m.LoadAllPrimaryKey(db, schema)
+	uks, _ := m.LoadAllUniIndex(db, schema)
+	idxs, _ := m.LoadAllIndex(db, schema)
 
 	dbName := db.DbName
-	schema := &types.DbSchema{
+	schemaData := &types.DbSchema{
 		DbName:      dbName,
 		Tables:      make(map[string]map[string]bool),
 		PrimaryKeys: pks,
 		UniqueKeys:  uks,
 		Indexes:     idxs,
 	}
-	foreignKeys, err := m.LoadForeignKey(db)
+	foreignKeys, err := m.LoadForeignKey(db, schema)
 	if err != nil {
 		return nil, err
 	}
-	schema.ForeignKeys = map[string]types.DbForeignKeyInfo{}
+	schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
 	for _, fk := range foreignKeys {
-		schema.ForeignKeys[fk.ConstraintName] = fk
+		schemaData.ForeignKeys[fk.ConstraintName] = fk
 	}
 	for table, columns := range tables {
 		cols := make(map[string]bool)
 		for col := range columns {
 			cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
 		}
-		schema.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
+		schemaData.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
 	}
 	m.cacheLoadFullSchema.Store(cacheKey, schema)
-	return schema, nil
+	return schemaData, nil
 }
-func (m *MigratorLoaderMssql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInfo, error) {
+
+type initLoadFullSchema struct {
+	val  *types.DbSchema
+	err  error
+	once sync.Once
+}
+
+var initLoadFullSchemaCache sync.Map
+
+func (m *MigratorLoaderMssql) LoadFullSchema(db *db.DB, schema string) (*types.DbSchema, error) {
+	key := fmt.Sprintf("%s,%s,%s", db.DbName, db.DriverName, schema)
+	a, _ := initLoadFullSchemaCache.LoadOrStore(key, &initLoadFullSchema{})
+	i := a.(*initLoadFullSchema)
+	i.once.Do(func() {
+		i.val, i.err = m.loadFullSchemaInternal(db, schema)
+	})
+	if i.err != nil {
+		initLoadFullSchemaCache.Delete(key)
+	}
+	return i.val, i.err
+}
+func (m *MigratorLoaderMssql) LoadForeignKey(db *db.DB, schema string) ([]types.DbForeignKeyInfo, error) {
 	query := `
 		SELECT
 			lower(fk.name) AS constraint_name,
@@ -276,7 +298,9 @@ func (m *MigratorLoaderMssql) LoadForeignKey(db *db.DB) ([]types.DbForeignKeyInf
 
 	return result, nil
 }
-
+func (m *MigratorLoaderMssql) GetDefaultSchema() string {
+	return "dbo"
+}
 func NewMssqlSchemaLoader() types.IMigratorLoader {
 	return &MigratorLoaderMssql{
 		cacheLoadFullSchema: sync.Map{},

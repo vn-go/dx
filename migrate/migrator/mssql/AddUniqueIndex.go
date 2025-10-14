@@ -11,7 +11,7 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func uqIfNotExist(constraintName, tableName, sqlCmd string) string {
+func uqIfNotExist(constraintName, tableName, sqlCmd, schema string) string {
 	sql := fmt.Sprintf(`
 			IF NOT EXISTS (
 				SELECT 1
@@ -25,11 +25,11 @@ func uqIfNotExist(constraintName, tableName, sqlCmd string) string {
 	`, constraintName, tableName, sqlCmd)
 	return sql
 }
-func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -52,7 +52,7 @@ func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (strin
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
-		if _, ok := schema.UniqueKeys[strings.ToLower(constraintName)]; !ok {
+		if _, ok := schemaData.UniqueKeys[strings.ToLower(constraintName)]; !ok {
 			constraint := fmt.Sprintf("CONSTRAINT %s UNIQUE (%s)", m.Quote(constraintName), strings.Join(colNames, ", "))
 			if strWhere, cols, ok := m.getWhere(cols.Cols); ok {
 				sqlCreateConstraint := fmt.Sprintf("CREATE UNIQUE INDEX [%s] ON [%s] (%s) WHERE %s", constraintName, entityItem.Entity.TableName, cols, strWhere)
@@ -65,14 +65,14 @@ func (m *migratorMssql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (strin
 				// 				BEGIN
 				// 					%s;
 				// 				END;`, constraintName, entityItem.Entity.TableName, sqlCreateConstraint)
-				sql := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlCreateConstraint)
+				sql := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlCreateConstraint, schema)
 				//sql := fmt.Sprintf("ALTER TABLE [%s] DROP CONSTRAINT [%s];", entityItem.Entity.TableName, constraintName)
 				//sql += fmt.Sprintf("CREATE UNIQUE INDEX [%s] ON [%s] (%s) WHERE %s;", constraintName, entityItem.Entity.TableName, cols, strWhere)
 				scripts = append(scripts, sql)
 			} else {
 
 				sqlAddCon := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(entityItem.Entity.TableName), constraint)
-				script := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlAddCon)
+				script := uqIfNotExist(constraintName, entityItem.Entity.TableName, sqlAddCon, schema)
 				scripts = append(scripts, script)
 			}
 

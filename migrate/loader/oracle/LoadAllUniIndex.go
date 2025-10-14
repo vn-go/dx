@@ -28,7 +28,7 @@ struct ColumnsInfo  below:
 		}
 		tenantDB.TenantDB is sql.DB
 */
-func (m *MigratorOraclePostgres) LoadAllUniIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+func (m *MigratorOracle) LoadAllUniIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
 	query := `
 		SELECT
 			i.relname AS index_name,

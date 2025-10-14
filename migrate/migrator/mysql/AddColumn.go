@@ -13,11 +13,11 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -35,7 +35,7 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 	tableName := entityItem.Entity.TableName
 
 	for _, col := range entityItem.Entity.Cols {
-		if _, ok := schema.Tables[tableName][col.Name]; !ok {
+		if _, ok := schemaData.Tables[tableName][col.Name]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -84,7 +84,7 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 			stmt := fmt.Sprintf("ALTER TABLE %s ADD %s", m.Quote(tableName), colDef)
 			scripts = append(scripts, stmt)
 			if !types.SkipLoadSchemaOnMigrate {
-				schema.Tables[tableName][col.Name] = true
+				schemaData.Tables[tableName][col.Name] = true
 			}
 			// Update schema cache
 

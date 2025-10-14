@@ -13,7 +13,7 @@ func TestMssql(t *testing.T) {
 	Db, err := db.Open("sqlserver", sqlServerDns)
 	assert.NoError(t, err)
 	m := NewMssqlSchemaLoader()
-	schema, err := m.LoadFullSchema(Db)
+	schema, err := m.LoadFullSchema(Db, "dbo")
 	assert.NoError(t, err)
 	assert.NotNil(t, schema)
 }

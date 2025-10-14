@@ -10,11 +10,11 @@ import (
 	"github.com/vn-go/dx/model"
 )
 
-func (m *MigratorMySql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorMySql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +40,7 @@ func (m *MigratorMySql) GetSqlAddUniqueIndex(db *db.DB, typ reflect.Type) (strin
 
 		//constraintName := fmt.Sprintf("UQ_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "___"))
 
-		if _, ok := schema.UniqueKeys[strings.ToLower(constraintName)]; !ok {
+		if _, ok := schemaData.UniqueKeys[strings.ToLower(constraintName)]; !ok {
 			script := fmt.Sprintf(
 				"CREATE UNIQUE INDEX %s ON %s (%s)",
 				m.Quote(constraintName),

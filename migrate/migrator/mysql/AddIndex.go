@@ -11,11 +11,11 @@ import (
 	_ "github.com/vn-go/dx/model"
 )
 
-func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, error) {
+func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	scripts := []string{}
 
 	// Load schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +41,7 @@ func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type) (string, err
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa tồn tại index này trong schema
-		if _, ok := schema.Indexes[strings.ToLower(constraintName)]; !ok {
+		if _, ok := schemaData.Indexes[strings.ToLower(constraintName)]; !ok {
 			stmt := fmt.Sprintf(
 				"CREATE INDEX %s ON %s (%s)",
 				m.Quote(constraintName),

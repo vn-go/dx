@@ -61,7 +61,7 @@ func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context) erro
 		if err1 != nil {
 			return err
 		}
-		schema, err1 := m.GetLoader().LoadFullSchema(db)
+		schema, err1 := m.GetLoader().LoadFullSchema(db, m.GetDefaultSchema())
 		if err1 != nil {
 			return err
 		}

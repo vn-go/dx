@@ -24,12 +24,12 @@ func colIfNotExist(tableName, colName, sqlAddColumn string) string {
 		END`, tableName, colName, sqlAddColumn)
 	return ret
 }
-func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, error) {
+func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema string) (string, error) {
 	mapType := m.GetColumnDataTypeMapping()
 	defaultValueByFromDbTag := m.GetGetDefaultValueByFromDbTag()
 
 	// Load database schema hiện tại
-	schema, err := m.loader.LoadFullSchema(db)
+	schemaData, err := m.loader.LoadFullSchema(db, schema)
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +45,7 @@ func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 	scripts := []string{}
 	for _, col := range entityItem.Entity.Cols {
 
-		if _, ok := schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)]; !ok {
+		if _, ok := schemaData.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)]; !ok {
 			fieldType := col.Field.Type
 			if fieldType.Kind() == reflect.Ptr {
 				fieldType = fieldType.Elem()
@@ -81,7 +81,7 @@ func (m *migratorMssql) GetSqlAddColumn(db *db.DB, typ reflect.Type) (string, er
 			sqlAddColumnIfNotExist := colIfNotExist(entityItem.Entity.TableName, col.Name, sqlAddColumn)
 			scripts = append(scripts, sqlAddColumnIfNotExist)
 			if !types.SkipLoadSchemaOnMigrate {
-				schema.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)] = true
+				schemaData.Tables[strings.ToLower(entityItem.Entity.TableName)][strings.ToLower(col.Name)] = true
 			}
 
 		}
