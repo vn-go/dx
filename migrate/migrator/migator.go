@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/vn-go/dx/db"
-	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migrate/migrator/mssql"
 	"github.com/vn-go/dx/migrate/migrator/mysql"
@@ -23,7 +22,8 @@ func GetMigator(db *db.DB) (types.IMigrator, error) {
 		if db.Info.DriverName == "postgres" {
 			return postgres.NewMigrator(), nil
 		}
-		return nil, errors.NewUnsupportedError(fmt.Sprintf("%s is not supported", db.Info.DriverName))
+		panic(fmt.Sprintf("%s is not supported in func db.DB.GetMigator. source file \"%s\" ", db.Info.DriverName, `migrate\migrator\migator.go`))
+		//return nil, errors.NewUnsupportedError(fmt.Sprintf("%s is not supported", db.Info.DriverName))
 	})
 	return ret, err
 
