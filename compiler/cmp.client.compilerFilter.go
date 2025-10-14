@@ -153,6 +153,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 						Expr: v.Expr,
 					},
 				},
+				HasAggregateFunc: v.IsInAggregateFunc,
 			}, nil
 		}
 

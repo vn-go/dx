@@ -28,3 +28,18 @@ func TestGetFirst(t *testing.T) {
 	}
 
 }
+func TestDataSourceFromModel(t *testing.T) {
+	db, err := dx.Open("mysql", dsn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+
+	ds := db.ModelDatasource("user").Select("count(id) as Count,sum(id) Sum")
+	ds = ds.Where("Count+Sum >?", 100)
+	sql, err := ds.ToSql()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(sql.Sql)
+}
