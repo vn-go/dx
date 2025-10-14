@@ -332,6 +332,7 @@ type sqlParseStruct struct {
 }
 
 func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex int) (*sqlParseStruct, error) {
+	fmt.Println(ds.key)
 	return internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*sqlParseStruct, error) {
 		var db = ds.db
 		var args internal.SqlArgs = []internal.SqlArg{}
@@ -766,7 +767,7 @@ type getDefaultSelectOfModelByModelNameResult struct {
 }
 
 func (db *DB) getDefaultSelectOfModelByModelName(modleName string) (*getDefaultSelectOfModelByModelNameResult, error) {
-	return internal.OnceCall(fmt.Sprintf("%s/$getDefaultSelectOfModelByModelName", dbTypeFullName), func() (*getDefaultSelectOfModelByModelNameResult, error) {
+	return internal.OnceCall(fmt.Sprintf("%s/$getDefaultSelectOfModelByModelName/%s", dbTypeFullName, modleName), func() (*getDefaultSelectOfModelByModelNameResult, error) {
 
 		// var err error
 

@@ -43,4 +43,11 @@ func TestDataSourceFromModel(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(sql)
+	ds1 := db.ModelDatasource("xxx").Select("count(id) as Count,sum(id) Sum")
+	ds1 = ds1.Where("Count*Sum >? and username='admin'", 100)
+	sq2, err := ds1.ToDict()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(sq2)
 }
