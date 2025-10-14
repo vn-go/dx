@@ -149,9 +149,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 				Expr:      v.Expr.ExprContent,
 				FieldExpr: dialect.Quote(x.Name.String()),
 				Fields: map[string]types.OutputExpr{
-					name: {
-						Expr: v.Expr,
-					},
+					name: v,
 				},
 				HasAggregateFunc: v.IsInAggregateFunc,
 			}, nil

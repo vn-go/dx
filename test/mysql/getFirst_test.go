@@ -29,6 +29,7 @@ func TestGetFirst(t *testing.T) {
 
 }
 func TestDataSourceFromModel(t *testing.T) {
+	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", dsn)
 	if err != nil {
 		t.Error(err)
@@ -36,10 +37,10 @@ func TestDataSourceFromModel(t *testing.T) {
 	defer db.Close()
 
 	ds := db.ModelDatasource("user").Select("count(id) as Count,sum(id) Sum")
-	ds = ds.Where("Count+Sum >?", 100)
-	sql, err := ds.ToSql()
+	ds = ds.Where("Count*Sum >? and username='admin'", 100)
+	sql, err := ds.ToDict()
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(sql.Sql)
+	t.Log(sql)
 }

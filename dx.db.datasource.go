@@ -194,6 +194,9 @@ func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string
 		strGroupByItems := []string{}
 		mapGroupByItems := map[string]bool{}
 		for k, v := range fields {
+			if v.IsInAggregateFunc {
+				continue
+			}
 			if _, ok = ds.aggExpr[strings.ToLower(k)]; !ok {
 				if _, ok := ds.selector[strings.ToLower(k)]; !ok {
 					if !skipCheck {
