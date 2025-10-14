@@ -274,29 +274,29 @@ func (ds *datasourceType) buildSelect(sqlSelect string, strartOf2ApostropheArgs,
 			}
 		}
 	}
-	if selectors.Selectors.HasAggregateFunction() {
-		for _, x := range selectors.Selectors {
-			if x.FieldExprType == compiler.FieldExprType_Field {
-				// if current selector is agg function call
-				selectors.GroupByExprs = append(selectors.GroupByExprs, x.Expr)
+	// if selectors.Selectors.HasAggregateFunction() {
+	// 	for _, x := range selectors.Selectors {
+	// 		if x.FieldExprType == compiler.FieldExprType_Field {
+	// 			// if current selector is agg function call
+	// 			selectors.GroupByExprs = append(selectors.GroupByExprs, x.Expr)
 
-				ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
-			} else {
-				if ds.aggExpr == nil {
-					ds.aggExpr = map[string]exprWithArgs{}
-				}
-				ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
-					Expr: x.Expr,
-					Args: x.Args,
-				}
+	// 			ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
+	// 		} else {
+	// 			if ds.aggExpr == nil {
+	// 				ds.aggExpr = map[string]exprWithArgs{}
+	// 			}
+	// 			ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
+	// 				Expr: x.Expr,
+	// 				Args: x.Args,
+	// 			}
 
-			}
-			ds.selector[strings.ToLower(x.Alias)] = true
-		}
-	}
-	for _, v := range selectors.FieldNotInAggFunc {
-		selectors.GroupByExprs = append(selectors.GroupByExprs, v)
-	}
+	// 		}
+	// 		ds.selector[strings.ToLower(x.Alias)] = true
+	// 	}
+	// }
+	// for _, v := range selectors.FieldNotInAggFunc {
+	// 	selectors.GroupByExprs = append(selectors.GroupByExprs, v)
+	// }
 
 	return selectors, nil
 
@@ -415,17 +415,6 @@ func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex in
 		if len(groupByExprs) > 0 {
 			sqlInfo.StrGroupBy = strings.Join(groupByExprs, ",")
 		}
-		//internal.UnionList(ds.GroupByExprs, selectors.)
-		// if ds.strGroupBy != "" {
-
-		// 	if sqlInfo.StrGroupBy == "" {
-		// 		sqlInfo.StrGroupBy = ds.strGroupBy
-		// 	} else {
-		// 		sqlInfo.StrGroupBy += "," + ds.strGroupBy
-
-		// 	}
-
-		// }
 
 		sqlParse, er := factory.DialectFactory.Create(db.DriverName).BuildSqlNoCache(sqlInfo)
 		if er != nil {

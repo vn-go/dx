@@ -6,7 +6,7 @@ import (
 
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/vn-go/dx/errors"
-	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migrate/loader/types"
 	"github.com/vn-go/dx/model"
 )
 

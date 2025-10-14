@@ -2,7 +2,7 @@ package mysql
 
 import (
 	"github.com/go-sql-driver/mysql"
-	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migrate/loader/types"
 )
 
 func (d *mySqlDialect) ParseError(dbSchema *types.DbSchema, err error) error {

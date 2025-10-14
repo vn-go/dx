@@ -4,7 +4,7 @@ import (
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/errors"
-	loaderTypes "github.com/vn-go/dx/migate/loader/types"
+	loaderTypes "github.com/vn-go/dx/migrate/loader/types"
 )
 
 func (r *inserter) parseDbError(schema *loaderTypes.DbSchema, dialect types.Dialect, err error, repoType *entity.Entity) error {

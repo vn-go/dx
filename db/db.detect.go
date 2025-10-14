@@ -25,7 +25,7 @@ func detect(info *Info, db *sql.DB) error {
 		"mysql":     "SELECT @@VERSION",
 		"sqlite":    "SELECT sqlite_version()",
 		"tidb":      "SELECT tidb_version()",
-		"oracle":    "SELECT * FROM v$version",
+		"oracle":    "SELECT BANNER  FROM v$version",
 		"cockroach": "SELECT version()",
 		"greenplum": "SELECT version()",
 		"sqlserver": "SELECT @@VERSION",

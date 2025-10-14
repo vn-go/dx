@@ -8,7 +8,7 @@ import (
 
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/errors"
-	"github.com/vn-go/dx/migate/migrator/types"
+	"github.com/vn-go/dx/migrate/migrator/types"
 )
 
 type CascadeOption struct {

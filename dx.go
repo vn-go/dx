@@ -9,8 +9,8 @@ import (
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
 	dxErrors "github.com/vn-go/dx/errors"
-	migrateLoaderTypes "github.com/vn-go/dx/migate/loader/types"
-	"github.com/vn-go/dx/migate/migrator"
+	migrateLoaderTypes "github.com/vn-go/dx/migrate/loader/types"
+	"github.com/vn-go/dx/migrate/migrator"
 	"github.com/vn-go/dx/model"
 )
 

@@ -2,7 +2,7 @@ package dx
 
 import (
 	"github.com/vn-go/dx/db"
-	"github.com/vn-go/dx/migate/migrator"
+	"github.com/vn-go/dx/migrate/migrator"
 )
 
 type migratorType struct {

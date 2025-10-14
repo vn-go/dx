@@ -10,7 +10,7 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/internal"
-	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migrate/loader/types"
 	"github.com/vn-go/dx/sqlparser"
 )
 

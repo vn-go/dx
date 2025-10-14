@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/lib/pq"
-	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migrate/loader/types"
 )
 
 func (d *postgresDialect) ParseError(dbSchema *types.DbSchema, err error) error {

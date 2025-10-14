@@ -2,7 +2,7 @@ package dx
 
 import (
 	"github.com/vn-go/dx/dialect/factory"
-	"github.com/vn-go/dx/migate/migrator"
+	"github.com/vn-go/dx/migrate/migrator"
 )
 
 func (db *DB) parseError(err error) error {

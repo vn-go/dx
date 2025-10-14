@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/errors"
-	"github.com/vn-go/dx/migate/loader/types"
+	"github.com/vn-go/dx/migrate/loader/types"
 
 	_ "github.com/microsoft/go-mssqldb"
 

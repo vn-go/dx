@@ -8,7 +8,7 @@ import (
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/internal"
-	"github.com/vn-go/dx/migate/migrator"
+	"github.com/vn-go/dx/migrate/migrator"
 	"github.com/vn-go/dx/model"
 )
 

@@ -1,0 +1,83 @@
+package mysql
+
+import (
+	"database/sql"
+	"fmt"
+
+	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/migrate/loader/types"
+)
+
+func (m *MigratorLoaderMysql) LoadAllIndex(db *db.DB) (map[string]types.ColumnsInfo, error) {
+	query := `
+		SELECT
+    LOWER(s.INDEX_NAME) AS INDEX_NAME,
+    s.TABLE_NAME,
+    s.COLUMN_NAME,
+    c.DATA_TYPE,
+    c.IS_NULLABLE,
+    c.CHARACTER_MAXIMUM_LENGTH
+		FROM INFORMATION_SCHEMA.STATISTICS s
+		JOIN INFORMATION_SCHEMA.COLUMNS c
+			ON s.TABLE_SCHEMA = c.TABLE_SCHEMA
+		AND s.TABLE_NAME = c.TABLE_NAME
+		AND s.COLUMN_NAME = c.COLUMN_NAME
+		LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			ON s.TABLE_SCHEMA = k.TABLE_SCHEMA
+		AND s.TABLE_NAME = k.TABLE_NAME
+		AND s.COLUMN_NAME = k.COLUMN_NAME
+		AND s.INDEX_NAME = k.CONSTRAINT_NAME
+		LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS r
+			ON k.CONSTRAINT_SCHEMA = r.CONSTRAINT_SCHEMA
+		AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME
+		WHERE
+			s.INDEX_NAME != 'PRIMARY'
+			AND s.NON_UNIQUE = 1
+			AND r.CONSTRAINT_NAME IS NULL  
+			AND s.TABLE_SCHEMA = DATABASE()
+		ORDER BY s.INDEX_NAME, s.SEQ_IN_INDEX;
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query indexes: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]types.ColumnsInfo)
+
+	for rows.Next() {
+		var indexName, tableName, columnName, dataType, isNullable string
+		var charMaxLength sql.NullInt64
+
+		if err := rows.Scan(&indexName, &tableName, &columnName, &dataType, &isNullable, &charMaxLength); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		col := types.ColumnInfo{
+			Name:     columnName,
+			DbType:   dataType,
+			Nullable: isNullable == "YES",
+			Length:   0,
+		}
+		if charMaxLength.Valid {
+			col.Length = int(charMaxLength.Int64)
+		}
+
+		if _, exists := result[indexName]; !exists {
+			result[indexName] = types.ColumnsInfo{
+				TableName: tableName,
+				Columns:   []types.ColumnInfo{col},
+			}
+		} else {
+			cols := result[indexName].Columns
+			cols = append(cols, col)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return result, nil
+}
