@@ -169,7 +169,15 @@ type OutputExpr struct {
 	Expr              FiedlExpression
 	IsInAggregateFunc bool
 }
-
+type ArgsData struct {
+	ArgWhere   []any
+	ArgsSelect []any
+	ArgJoin    []any
+	ArgGroup   []any
+	ArgHaving  []any
+	ArgOrder   []any
+	ArgSetter  []any
+}
 type SqlInfo struct {
 	OutputFields map[string]OutputExpr
 	SqlType      SQL_TYPE
@@ -192,8 +200,9 @@ type SqlInfo struct {
 	UnionType     string
 	UnionLast     *SqlInfo
 	// all arg is "?"
-	Args      internal.CompilerArgs
-	SqlSource string
+	Args         internal.CompilerArgs
+	ArgumentData ArgsData
+	SqlSource    string
 }
 
 func (info *SqlInfo) GetKey() string {

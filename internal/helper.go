@@ -10,19 +10,36 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	"github.com/vn-go/dx/sqlparser"
 )
 
 type helperType struct {
 	SkipDefaulValue string
 	keywords        map[string]bool
+	keywords2       map[string]bool
 	funcWhitelist   map[string]bool
+	funcWhitelist2  map[string]bool
 
-	reSingleQuote *regexp.Regexp
-	reFieldAccess *regexp.Regexp
-	reFuncCall    *regexp.Regexp
-	reFromJoin    *regexp.Regexp
-	reAsAlias     *regexp.Regexp
-	bufPool       *sync.Pool
+	reSingleQuote          *regexp.Regexp
+	reFieldAccess          *regexp.Regexp
+	reFuncCall             *regexp.Regexp
+	reFromJoin             *regexp.Regexp
+	reAsAlias              *regexp.Regexp
+	bufPool                *sync.Pool
+	mapGoTypeToSqlNodeType map[reflect.Type]sqlparser.ValType
+}
+
+func (h *helperType) GetSqlTypeFfromGoType(fieldType reflect.Type) sqlparser.ValType {
+	typ := fieldType
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if ret, ok := h.mapGoTypeToSqlNodeType[typ]; ok {
+		return ret
+	} else {
+		return -1
+	}
 }
 
 // if s is "true" or "false" retun true
@@ -217,6 +234,77 @@ func (c *helperType) QuoteExpression(expr string) (string, error) {
 				continue
 			}
 			if c.funcWhitelist[strings.ToLower(strings.Split(token, ".")[0])] {
+				continue
+			}
+
+			// write content before token
+			buf.WriteString(exprNoStr[lastPos:start])
+
+			// Quote token
+			parts := strings.Split(token, ".")
+			for i, p := range parts {
+				if i > 0 {
+					buf.WriteByte('.')
+				}
+				buf.WriteString("`")
+				buf.WriteString(p)
+				buf.WriteString("`")
+			}
+
+			lastPos = end
+		}
+
+		// Ghi phần còn lại
+		_, err := buf.WriteString(exprNoStr[lastPos:])
+		if err != nil {
+			return "", err
+		}
+
+		// Khôi phục các chuỗi literal
+		out := buf.String()
+		for i, val := range literals {
+			placeholder := "<" + strconv.Itoa(i) + ">"
+			out = strings.ReplaceAll(out, placeholder, "'"+val+"'")
+		}
+
+		// Chuyển [] sang ``
+		out = strings.ReplaceAll(out, "[", "`")
+		out = strings.ReplaceAll(out, "]", "`")
+
+		// Cache kết quả
+		//out = strings.ReplaceAll(out, "\\'", "%27")
+		return out, nil
+	})
+
+}
+func (c *helperType) QuoteExpression2(expr string) (string, error) {
+
+	return OnceCall("helperType/QuoteExpression2/"+expr, func() (string, error) {
+		expr = strings.ReplaceAll(expr, "\n", " ")
+		expr = strings.ReplaceAll(expr, "\t", " ")
+		expr = strings.TrimSpace(expr)
+		expr = strings.TrimSuffix(expr, ",")
+
+		exprNoStr, literals := c.extractLiterals(expr)
+
+		// Lấy từng token và vị trí
+		matches := c.reFieldAccess.FindAllStringIndex(exprNoStr, -1)
+
+		// Sử dụng buffer để build lại chuỗi
+		buf := c.bufPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		defer c.bufPool.Put(buf)
+
+		lastPos := 0
+		for _, match := range matches {
+			start, end := match[0], match[1]
+			token := exprNoStr[start:end]
+
+			lowered := strings.ToLower(token)
+			if c.keywords2[lowered] {
+				continue
+			}
+			if c.funcWhitelist2[strings.ToLower(strings.Split(token, ".")[0])] {
 				continue
 			}
 
@@ -491,7 +579,23 @@ func newHelper() *helperType {
 			"delete": true, "update": true, "set": true,
 			FnMarkSpecialTextArgs: true,
 		},
+		keywords2: map[string]bool{
+			"as": true, "and": true, "or": true, "not": true,
+			"case": true, "when": true, "then": true, "else": true, "end": true,
+			"inner": true, "left": true, "right": true, "full": true,
+			"on": true, "using": true, "group": true, "by": true,
+			"like":  true,
+			"limit": true, "having": true, "is": true, "null": true, "offset": true,
+			"delete": true, "update": true, "set": true,
+			FnMarkSpecialTextArgs: true,
+		},
 		funcWhitelist: map[string]bool{
+			"min": true, "max": true, "abs": true, "len": true,
+			"sum": true, "avg": true, "count": true, "coalesce": true,
+			"lower": true, "upper": true, "trim": true, "ltrim": true, "rtrim": true,
+			"date_format": true, "date_add": true, "date_sub": true, "date": true,
+			"year": true, "month": true, "day": true, "hour": true, "minute": true,
+		}, funcWhitelist2: map[string]bool{
 			"min": true, "max": true, "abs": true, "len": true,
 			"sum": true, "avg": true, "count": true, "coalesce": true,
 			"lower": true, "upper": true, "trim": true, "ltrim": true, "rtrim": true,
@@ -512,5 +616,22 @@ func newHelper() *helperType {
 	ret.reFromJoin = regexp.MustCompile(`(?i)(FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b`)
 	ret.reAsAlias = regexp.MustCompile(`(?i)\bAS\s+([a-zA-Z_][a-zA-Z0-9_]*)\b`)
 	ret.bufPool = &sync.Pool{New: func() any { return new(bytes.Buffer) }}
+	ret.mapGoTypeToSqlNodeType = map[reflect.Type]sqlparser.ValType{
+		reflect.TypeOf(int(0)):      sqlparser.IntVal,
+		reflect.TypeOf(int8(0)):     sqlparser.IntVal,
+		reflect.TypeOf(int16(0)):    sqlparser.IntVal,
+		reflect.TypeOf(int32(0)):    sqlparser.IntVal,
+		reflect.TypeOf(int64(0)):    sqlparser.IntVal,
+		reflect.TypeOf(uint(0)):     sqlparser.IntVal,
+		reflect.TypeOf(uint8(0)):    sqlparser.IntVal,
+		reflect.TypeOf(uint16(0)):   sqlparser.IntVal,
+		reflect.TypeOf(uint32(0)):   sqlparser.IntVal,
+		reflect.TypeOf(uint64(0)):   sqlparser.IntVal,
+		reflect.TypeOf(float32(0)):  sqlparser.FloatVal,
+		reflect.TypeOf(float64(0)):  sqlparser.FloatVal,
+		reflect.TypeOf(bool(false)): sqlparser.BitVal,
+		reflect.TypeOf(string("")):  sqlparser.StrVal,
+	}
+
 	return ret
 }

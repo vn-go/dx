@@ -103,3 +103,25 @@ func TestDataSourceFromModel(t *testing.T) {
 	}
 	t.Log(data)
 }
+
+// func TestSqlSkeleton(t *testing.T) {
+// 	db, err := dx.Open("sqlserver", cnn)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	defer db.Close()
+// 	//source, err := sqlinspector.DoInspectSource(db.DB, "select id from user")
+// 	source, err := sqlinspector.DoInspectSource(db.DB, "select id from user u inner join department d on u.depid=d.id where username='admin' and userid=1")
+// 	//sqlinspector.DoInspectSource(db.DB, "select id from user u where username='admin' and userid=1")
+// 	// sqlinspector.DoInspectSource(db.DB, `select id from user where username='admin' and userid=1
+// 	// 									union all
+// 	// 									select id from user where username='admin' and userid=1`)
+// 	//sqlinspector.DoInspectSource(db.DB, `select id from (select id from user where username='admin' and userid=1) ,user`)
+// 	//sk, err := sqlskeleton.Scannner.NewSkeletonInfo(db.DB, "select id from user u inner join department d on u.depid=d.id where username='admin' and userid=1")
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	t.Log(source)
+// 	// sk.Init()
+// 	// sk.ScanFrom()
+// }
