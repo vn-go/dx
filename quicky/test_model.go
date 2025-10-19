@@ -11,6 +11,7 @@ type IncrementDetail struct {
 	ID          int `db:"pk;auto"`
 	IncrementID int
 	ItemID      int
+	Amount      float64
 }
 type Decrement struct {
 	ID int `db:"pk;auto"`
@@ -24,6 +25,11 @@ type Item struct {
 	ID   int `db:"pk;auto"`
 	Name string
 }
+type Customers struct {
+	ID   int `db:"pk;auto"`
+	Name string
+	Age  int
+}
 
 func init() {
 	dx.AddModels(
@@ -32,6 +38,7 @@ func init() {
 		&Decrement{},
 		&DecrementDetail{},
 		&Item{},
+		&Customers{},
 	)
 
 }

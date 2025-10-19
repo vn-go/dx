@@ -28,7 +28,12 @@ func (r *Resolve) Resolve(n sqlparser.SQLNode, dialect types.Dialect, textParams
 		}
 		if cmpType == C_TYPE_SELECT {
 			if n.As.IsEmpty() {
-				ret += " " + dialect.Quote((*field)[ret].Alias)
+				if alias, ok := (*field)[ret]; ok {
+					ret += " " + dialect.Quote(alias.Alias)
+				} else {
+					return "", newParseError("'%s' requires alias", ret)
+				}
+
 			} else {
 				ret += " " + dialect.Quote(n.As.String())
 			}
@@ -39,6 +44,9 @@ func (r *Resolve) Resolve(n sqlparser.SQLNode, dialect types.Dialect, textParams
 		return r.ComparisonExpr(n, dialect, textParams, dynamicArgs, arg, field, dict, cmpType)
 	case *sqlparser.ColName:
 		return r.ColName(n, dialect, textParams, dynamicArgs, arg, field, dict, cmpType)
+	case *sqlparser.FuncExpr:
+		return r.FuncExpr(n, dialect, textParams, dynamicArgs, arg, field, dict, cmpType)
+
 	}
 	panic(fmt.Sprintf("unhandled node type %T. See Resolve.Resolve '%s'", n, `quicky\resolve.go`))
 }

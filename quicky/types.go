@@ -1,7 +1,7 @@
 package quicky
 
 import (
-	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -49,6 +49,7 @@ type Dictionanry struct {
 	FieldMap        map[string]DictionanryItem
 	AliasMap        map[string]string
 	AliasMapReverse map[string]string
+	Entities        map[string]*entity.Entity
 }
 type JoinNode struct {
 	Node     sqlparser.SQLNode
@@ -56,7 +57,7 @@ type JoinNode struct {
 	Next     *JoinNode
 }
 
-func newSqlParser(db *db.DB) *SqlParser {
+func newSqlParser() *SqlParser {
 	return &SqlParser{}
 
 }

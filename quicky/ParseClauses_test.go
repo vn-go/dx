@@ -12,17 +12,29 @@ import (
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 
 func TestParseClauses0(t *testing.T) {
-	data, _, err := Clause.Inspect(`
-	from(customers)
-	select(name, age)
-	where(age > 30)
-	orderby(age desc)
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	data, textParams, err := Clause.Inspect(`
+	from(incrementDetail)
+	select(id,sum(amount) TotalAmount)
+	where(id > 30)
+	orderby(id desc)
 `)
 	assert.NoError(t, err)
 	t.Log(data)
+	assert.NoError(t, err)
+	t.Log(data)
+	sqlParser := newSqlParser()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	sqlParser.Parse(data, dialect, textParams, 10000, 20000)
+	fmt.Println(sqlParser.Statement)
 }
 func TestParseClauses1(t *testing.T) {
-	data, _, err := Clause.Inspect(`
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	data, textParams, err := Clause.Inspect(`
 	from(user u,department d,department d2,u.id=d.id,d1.id=d2.id)
 	select(name, age)
 	where(age > 30)
@@ -30,6 +42,10 @@ func TestParseClauses1(t *testing.T) {
 `)
 	assert.NoError(t, err)
 	t.Log(data)
+	sqlParser := newSqlParser()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	sqlParser.Parse(data, dialect, textParams, 10000, 20000)
+	fmt.Println(sqlParser.Statement)
 }
 func TestParseClauses2(t *testing.T) {
 	// fix requirement
@@ -90,7 +106,7 @@ func TestParseClauses5(t *testing.T) {
 
 	assert.NoError(t, err)
 	t.Log(data)
-	sqlParser := newSqlParser(db.DB)
+	sqlParser := newSqlParser()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 	err = sqlParser.Parse(data, dialect, textParams, 10000, 20000)
 	assert.NoError(t, err)
@@ -163,9 +179,11 @@ func TestParseClauses9(t *testing.T) {
 					) 
 			where(inc.day=12 and no='a''bc') 
 					
-			union alls
+			union all
 					select(	
-						decrement(year(createdOn) day) dec, decrementDetail(itemId, quantity*(-1)) decDetail,items(name, price) itm,
+						decrement(year(createdOn) day) dec, 
+						decrementDetail(itemId, quantity*(-1)) 
+						decDetail,items(name, price) itm,
 						dec.id=decDetail.incrementId , decDetail.itemId=itm.id
 					) 
 			where (dec.day=12 and dec.day<?)
@@ -175,7 +193,7 @@ func TestParseClauses9(t *testing.T) {
 	`)
 	assert.NoError(t, err)
 	t.Log(data)
-	sqlParser := newSqlParser(db.DB)
+	sqlParser := newSqlParser()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 	sqlParser.Parse(data, dialect, textParams, 10000, 20000)
 	fmt.Println(sqlParser.Statement)
