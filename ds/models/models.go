@@ -1,4 +1,4 @@
-package quicky
+package models
 
 import (
 	"github.com/vn-go/dx"

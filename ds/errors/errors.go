@@ -1,4 +1,4 @@
-package quicky
+package errors
 
 import "fmt"
 
@@ -11,7 +11,7 @@ type ParseError struct {
 func (e *ParseError) Error() string {
 	return e.Message
 }
-func newParseError(message string, args ...interface{}) error {
+func NewParseError(message string, args ...interface{}) error {
 	return &ParseError{
 		Message:         fmt.Sprintf(message, args...),
 		OriginalMessage: message,
