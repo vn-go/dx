@@ -147,7 +147,6 @@ func GetAllElemetsByType[TType any](args []any) []TType {
 	return ret
 }
 
-
 type CompilerArgs struct {
 	ArgWhere   SqlArgs
 	ArgsSelect SqlArgs

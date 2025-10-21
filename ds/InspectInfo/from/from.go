@@ -6,6 +6,7 @@ import (
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/ds/common"
+	"github.com/vn-go/dx/ds/errors"
 	"github.com/vn-go/dx/ds/helper"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -34,12 +35,12 @@ type InjectInfo struct {
 	TextArgs    []string
 	Dialect     types.Dialect
 	Scope       common.AccessScope
+	Dict        *Dictionary
 }
 
 func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect types.Dialect, texts []string, args []any) (
 	string, []any, *Dictionary, error) {
 
-	dict := NewDictionary()
 	var err error
 	var navigateFromClauseInfo *fromClauseInfo
 	var fromClauseInfo *fromClauseInfo
@@ -49,17 +50,18 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 		TextArgs:    texts,
 		Dialect:     dialect,
 		Scope:       scope,
+		Dict:        NewDictionary(),
 	}
 	sourceTables := []string{}
-	for key, node := range nodes {
+	for _, node := range nodes {
 		switch node := node.(type) {
 		case *sqlparser.AliasedExpr:
 			switch expr := node.Expr.(type) {
 			case *sqlparser.ColName:
-				dict.BuildByAliasTableName(dialect, node.As.String(), expr.Name.String())
-				if entityName, ok := dict.Entities[strings.ToLower(expr.Name.String())]; ok {
+				injectInfo.Dict.BuildByAliasTableName(dialect, node.As.String(), expr.Name.String())
+				if entityName, ok := injectInfo.Dict.Entities[strings.ToLower(expr.Name.String())]; ok {
 					tableName := entityName.TableName
-					if alias, ok := dict.TableAlias[strings.ToLower(tableName)]; ok {
+					if alias, ok := injectInfo.Dict.TableAlias[strings.ToLower(tableName)]; ok {
 						if alias != "" {
 							sourceTables = append(sourceTables, dialect.Quote(tableName)+" "+dialect.Quote(alias))
 						} else {
@@ -109,8 +111,8 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 			}
 		case *helper.InspectInfo:
 			// suquery builder
-			fmt.Println(key)
-			sql, err := f.ResolveQuery(scope, dialect, node, dict)
+
+			sql, err := f.ResolveQuery(scope, dialect, node, injectInfo.Dict)
 			if err != nil {
 				return "", nil, nil, err
 			}
@@ -124,14 +126,42 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 	if fromClauseInfo == nil {
 		ret := strings.Join(sourceTables, ", ")
 
-		return ret, nil, dict, nil
+		return ret, nil, injectInfo.Dict, nil
 	}
 
-	return fromClauseInfo.String(), nil, dict, nil
+	return fromClauseInfo.String(), nil, injectInfo.Dict, nil
 }
+
 //fromClauseType.buildFromClauseInfoByComparisonExpr.go
 
-
 func (f *fromClauseType) buildFromClauseInfo(expr *sqlparser.FuncExpr, injectInfo *InjectInfo) (*fromClauseInfo, error) {
-	panic("unimplemented")
+	fnName := strings.ToLower(expr.Name.String())
+	switch fnName {
+	case "left", "right":
+		return f.buildFromClauseInfoByExpr(expr.Exprs[0], injectInfo, strings.ToUpper(fnName))
+	case "leftouter":
+		return f.buildFromClauseInfoByExpr(expr.Exprs[0], injectInfo, "LEFT OUTER")
+	case "rightouter":
+		return f.buildFromClauseInfoByExpr(expr.Exprs[0], injectInfo, "RIGHT OUTER")
+	case "fullouter":
+		return f.buildFromClauseInfoByExpr(expr.Exprs[0], injectInfo, "FULL OUTER")
+	default:
+		return nil, errors.NewParseError("unrecognized join type: %s", fnName)
+	}
+}
+
+func (f *fromClauseType) buildFromClauseInfoByExpr(node sqlparser.SQLNode, injectInfo *InjectInfo, fnName string) (*fromClauseInfo, error) {
+	switch node := node.(type) {
+	case *sqlparser.AliasedExpr:
+		return f.buildFromClauseInfoByExpr(node.Expr, injectInfo, fnName)
+	case *sqlparser.ComparisonExpr:
+		ret, err := f.buildFromClauseInfoByComparisonExpr(node, injectInfo)
+		if err != nil {
+			return nil, err
+		}
+		ret.joinType = fnName
+		return ret, nil
+
+	}
+	panic(fmt.Sprintf("unimplemented: %T, see fromClauseType.buildFromClauseInfoByExpr", node))
 }

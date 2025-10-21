@@ -81,6 +81,28 @@ type SqlParse struct {
 	ArgIndex      []reflect.StructField
 	Args          internal.CompilerArgs
 	ApstropheArgs []string
+	/*
+		Use for Dictionary-Compiler build for next step
+
+		- Key is expression (lower case).
+
+		- Value is alias of expression
+
+	*/
+	SelectCols map[string]string
+	/*
+		Use for Dictionary-Compiler build for next step
+
+		- Key is expression  (lower case).
+
+		- Value is alias of expression
+
+	*/
+	SelectColsReverse map[string]string
+	/*
+		all Arguments after compiled
+	*/
+	Arguments internal.SqlArgs
 }
 type SqlFncType struct {
 	Expr        string

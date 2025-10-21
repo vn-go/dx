@@ -15,6 +15,69 @@ import (
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 
+func TestParseClausesFromInSelect(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	query := `
+				select(item(id,name) )  /* -> select id,name from item*/
+					
+		`
+
+	sql, err := ds.Compile(
+		common.AccessScope{},
+		dialect,
+		query,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(sql.Sql)
+}
+func TestParseClausesFromInSelect1(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	query := `
+				select(item(id,name) incData )  /* -> select id,name from item*/
+					
+		`
+
+	sql, err := ds.Compile(
+		common.AccessScope{},
+		dialect,
+		query,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(sql.Sql)
+}
+func TestParseClausesFromInSelec1t2(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	query := `
+				select(
+				item(id ID,name Name) incData,
+				incrementDetail(amount) incDetail, 
+				incData.id=incDetail.itemId)  /* -> select id,name from item*/
+					
+		`
+
+	sql, err := ds.Compile(
+		common.AccessScope{},
+		dialect,
+		query,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(sql.Sql)
+}
 func TestParseClauses0(t *testing.T) {
 	db, err := dx.Open("sqlserver", cnn)
 	assert.NoError(t, err)
@@ -128,8 +191,11 @@ func TestParseClauses3(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
-	query := `	from(
-						increment.id=incrementDetal.incrementId
+	query := `	from( 	
+						increment INC,
+						increment.id=incrementDetail.incrementId
+						/*left(increment.id=incrementDetail.incrementId),
+						leftOuter(incrementDetail.itemId=item.id),*/
 					)
 				select(TotalAmount)
 						

@@ -29,11 +29,11 @@ func (d *Dictionary) BuildByAliasTableName(dialect types.Dialect, alias, table s
 	d.Entities[strings.ToLower(table)] = ent
 	d.AliasMap[strings.ToLower(table)] = ent.TableName
 	d.AliasMapReverse[strings.ToLower(ent.TableName)] = table
-	d.TableAlias[ent.TableName] = alias
+	d.TableAlias[ent.TableName] = strings.ToLower(alias)
 	if alias != "" {
 		d.Entities[strings.ToLower(alias)] = d.Entities[strings.ToLower(table)]
 		d.AliasMap[strings.ToLower(alias)] = ent.TableName
-		d.AliasMapReverse[strings.ToLower(ent.TableName)] = alias
+		d.AliasMapReverse[strings.ToLower(ent.TableName)] = strings.ToLower(alias)
 	}
 	for _, col := range ent.Cols {
 		key := strings.ToLower(fmt.Sprintf("%s.%s", table, col.Field.Name))
@@ -43,7 +43,11 @@ func (d *Dictionary) BuildByAliasTableName(dialect types.Dialect, alias, table s
 			Alias:   col.Field.Name,
 		}
 		key2 := strings.ToLower(fmt.Sprintf("%s.%s", alias, col.Field.Name))
-		d.FieldMap[key2] = d.FieldMap[key]
+		d.FieldMap[key2] = DictionaryItem{
+			Content: fmt.Sprintf("%s.%s", dialect.Quote(strings.ToLower(alias)), dialect.Quote(col.Name)),
+			DbType:  internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
+			Alias:   col.Field.Name,
+		}
 	}
 	return nil
 }

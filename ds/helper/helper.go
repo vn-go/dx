@@ -28,6 +28,10 @@ type InspectInfo struct {
 	*/
 	InspectData MapSqlNode
 }
+type ContentInfo struct {
+	Content         string
+	OriginalContent string
+}
 
 const GET_PARAMS_FUNC = "dx__GetParams"
 

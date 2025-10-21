@@ -44,14 +44,21 @@ func (f *fromClauseType) ResolveQuery(scope common.AccessScope, dialect types.Di
 				return nil, err
 			}
 			return dialect.BuildSql(sqlInfo)
+		} else if k == "select" {
+			sqlInfo.From, sqlInfo.ArgumentData.ArgJoin, dict, err = f.ResolveInSelect(v.Nodes, scope, dialect, info.Texts, info.Args, dict)
+			if err != nil {
+				return nil, err
+			}
+			return dialect.BuildSql(sqlInfo)
 		} else if f.KeyIsSubquery(strings.ToLower(k)) {
-
+			k = strings.ToLower(strings.TrimSpace(k))
 			info := v.Nodes[0].(*helper.InspectInfo)
 			sql := &types.SqlParse{}
 			strSql := []string{}
 			//argsSql := internal.CompilerArgs{}
 			for info != nil {
 				sqlNext, err := f.ResolveQuery(scope, dialect, info, dict)
+
 				if err != nil {
 					return nil, err
 				}
@@ -61,10 +68,12 @@ func (f *fromClauseType) ResolveQuery(scope common.AccessScope, dialect types.Di
 			}
 			sql.Sql = strings.Join(strSql, " \n ")
 
-			sql.Sql = "(" + sql.Sql + ") " + dialect.Quote(strings.TrimRight(strings.TrimLeft(k, " "), " "))
+			sql.Sql = "(" + sql.Sql + ") " + dialect.Quote(k)
 			return sql, nil
 		}
 	}
 	return nil, nil
 
 }
+
+
