@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+<<<<<<< HEAD
+=======
 	"github.com/vn-go/dx/dialect/types"
+>>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 	"github.com/vn-go/dx/ds/common"
 	"github.com/vn-go/dx/ds/helper"
 	"github.com/vn-go/dx/sqlparser"
@@ -18,25 +21,25 @@ type fromClauseTypefromClauseTypeTable struct {
 /*
 this function try inspect the from clause and resolve the table name to a table object
 */
-func (f *fromClauseType) ResolveInSelect(nodes []any, scope common.AccessScope, dialect types.Dialect, texts []string, args []any, dict *Dictionary) (string, []any, *Dictionary, error) {
+func (f *fromClauseType) ResolveInSelect(nodes []any,  injectInfo *common.InjectInfo) (string, error) {
 	sourceTables := []string{}
 	var navigateFromClauseInfo *fromClauseInfo
 	var fromClauseInfo *fromClauseInfo
 	var err error
-	injectInfo := &InjectInfo{
-		Args:        []common.ArgScaner{},
-		DyanmicArgs: args,
-		TextArgs:    texts,
-		Dialect:     dialect,
-		Scope:       scope,
-		Dict:        dict,
-	}
+	// injectInfo := &InjectInfo{
+	// 	Args:        []common.ArgScaner{},
+	// 	DyanmicArgs: args,
+	// 	TextArgs:    texts,
+	// 	Dialect:     dialect,
+	// 	Scope:       scope,
+	// 	Dict:        dict,
+	// }
 	for _, x := range nodes {
 		switch x := x.(type) {
 		case *helper.InspectInfo:
-			sql, err := f.ResolveQuery(scope, dialect, x, dict)
+			sql, err := f.ResolveQuery( x, injectInfo)
 			if err != nil {
-				return "", nil, nil, err
+				return "", err
 			}
 			sourceTables = append(sourceTables, sql.Sql)
 		case *sqlparser.AliasedExpr:
@@ -48,31 +51,39 @@ func (f *fromClauseType) ResolveInSelect(nodes []any, scope common.AccessScope, 
 					if navigateFromClauseInfo == nil {
 						navigateFromClauseInfo, err = f.buildFromClauseInfo(n, injectInfo)
 						if err != nil {
+<<<<<<< HEAD
+							return "", err
+=======
 							return "", nil, nil, err
+>>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 						}
 						fromClauseInfo = navigateFromClauseInfo
 					} else {
 
 						navigateFromClauseInfo.next, err = f.buildFromClauseInfo(n, injectInfo)
 						if err != nil {
+<<<<<<< HEAD
+							return "", err
+=======
 							return "", nil, nil, err
+>>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 						}
 						navigateFromClauseInfo = navigateFromClauseInfo.next
 
 					}
 				} else {
 					tableName := n.Name.String()
-					dict.BuildByAliasTableName(dialect, alias, tableName)
+					injectInfo.Dict.BuildByAliasTableName(injectInfo.Dialect, alias, tableName)
 					if entityName, ok := injectInfo.Dict.Entities[strings.ToLower(tableName)]; ok {
 						tableName := entityName.TableName
 						if alias, ok := injectInfo.Dict.TableAlias[strings.ToLower(tableName)]; ok {
 							if alias != "" {
-								sourceTables = append(sourceTables, dialect.Quote(tableName)+" "+dialect.Quote(alias))
+								sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName)+" "+injectInfo.Dialect.Quote(alias))
 							} else {
-								sourceTables = append(sourceTables, dialect.Quote(tableName))
+								sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName))
 							}
 						} else {
-							sourceTables = append(sourceTables, dialect.Quote(tableName))
+							sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName))
 						}
 					}
 				}
@@ -80,14 +91,14 @@ func (f *fromClauseType) ResolveInSelect(nodes []any, scope common.AccessScope, 
 				if navigateFromClauseInfo == nil {
 					navigateFromClauseInfo, err = f.buildFromClauseInfoByComparisonExpr(n, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					fromClauseInfo = navigateFromClauseInfo
 				} else {
 
 					navigateFromClauseInfo.next, err = f.buildFromClauseInfoByComparisonExpr(n, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					navigateFromClauseInfo = navigateFromClauseInfo.next
 
@@ -100,8 +111,8 @@ func (f *fromClauseType) ResolveInSelect(nodes []any, scope common.AccessScope, 
 	if fromClauseInfo == nil {
 		ret := strings.Join(sourceTables, ", ")
 
-		return ret, nil, injectInfo.Dict, nil
+		return ret, nil
 	}
 
-	return fromClauseInfo.String(), nil, injectInfo.Dict, nil
+	return fromClauseInfo.String(), nil
 }

@@ -12,14 +12,15 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
-type sqlNode struct {
+type SqlNode struct {
 	Nodes  []any
 	source string
 }
-type MapSqlNode map[string]sqlNode
+type MapSqlNode map[string]SqlNode
 type InspectInfo struct {
-	Texts    []string
-	Args     []any
+	Texts []string
+	Args  []any
+
 	Content  string
 	NextType string
 	Next     *InspectInfo
@@ -197,6 +198,9 @@ examale:
 				where(id > 30)`
 */
 func toMap(input string) map[string]string {
+	// fmt.Println("--------------------------------")
+	// fmt.Println(input)
+	// fmt.Println("-------------------------------")
 	result := make(map[string]string)
 	runes := []rune(input)
 	n := len(runes)
@@ -283,9 +287,7 @@ func getContentIn2Brackets(input string) (string, string) {
 	return key, ""
 }
 func toSqlNode(input string) (MapSqlNode, error) {
-	fmt.Println("--------------------------------")
-	fmt.Println(input)
-	fmt.Println("-------------------------------")
+
 	data := toMap(input)
 	result := MapSqlNode{}
 	var node any
@@ -305,7 +307,7 @@ func toSqlNode(input string) (MapSqlNode, error) {
 				return nil, errors.NewParseError("clause %s: %s, error: %s", key, value, err)
 			}
 			nodes = append(nodes, dataVal)
-			result[strings.ToLower(guestKey)] = sqlNode{
+			result[strings.ToLower(strings.TrimSpace(guestKey))] = SqlNode{
 				Nodes:  nodes,
 				source: value,
 			}
@@ -315,7 +317,7 @@ func toSqlNode(input string) (MapSqlNode, error) {
 			for _, x := range node.(*sqlparser.Select).SelectExprs {
 				nodes = append(nodes, x)
 			}
-			result[strings.ToLower(key)] = sqlNode{
+			result[strings.ToLower(strings.TrimSpace(key))] = SqlNode{
 				Nodes:  nodes,
 				source: value,
 			}

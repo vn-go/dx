@@ -9,7 +9,6 @@ import (
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/ds"
 
-	"github.com/vn-go/dx/ds/common"
 	_ "github.com/vn-go/dx/ds/models"
 )
 
@@ -26,7 +25,7 @@ func TestParseClausesFromInSelect(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -46,7 +45,7 @@ func TestParseClausesFromInSelect1(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -62,14 +61,14 @@ func TestParseClausesFromInSelec1t2(t *testing.T) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 	query := `
 				select(
-				item(id ID,name Name) incData,
-				incrementDetail(amount) incDetail, 
-				incData.id=incDetail.itemId)  /* -> select id,name from item*/
+					item(id ID,name Name) incData,
+					incrementDetail(amount) incDetail, 
+					incData.id=incDetail.itemId
+				)  /* -> select id,name from item*/
 					
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
 		dialect,
 		query,
 	)
@@ -91,7 +90,7 @@ func TestParseClauses0(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -116,7 +115,7 @@ func TestParseClauses0_1(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -146,7 +145,7 @@ func TestParseClauses1(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -177,7 +176,7 @@ func TestParseClauses2(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)
@@ -202,7 +201,7 @@ func TestParseClauses3(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-		common.AccessScope{},
+
 		dialect,
 		query,
 	)

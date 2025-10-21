@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/ds/common"
 	"github.com/vn-go/dx/ds/errors"
 	"github.com/vn-go/dx/ds/helper"
@@ -18,7 +17,7 @@ var FromClause = &fromClauseType{}
 
 type ResolveResult struct {
 	FromClause string
-	Dict       Dictionary
+	Dict       common.Dictionary
 }
 type fromClauseInfo struct {
 	left     string
@@ -29,46 +28,37 @@ type fromClauseInfo struct {
 	top      *fromClauseInfo
 }
 
-type InjectInfo struct {
-	Args        []common.ArgScaner
-	DyanmicArgs []any
-	TextArgs    []string
-	Dialect     types.Dialect
-	Scope       common.AccessScope
-	Dict        *Dictionary
-}
-
-func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect types.Dialect, texts []string, args []any) (
-	string, []any, *Dictionary, error) {
+func (f *fromClauseType) Resolve(nodes []any, injectInfo *common.InjectInfo) (
+	string, error) {
 
 	var err error
 	var navigateFromClauseInfo *fromClauseInfo
 	var fromClauseInfo *fromClauseInfo
-	injectInfo := &InjectInfo{
-		Args:        []common.ArgScaner{},
-		DyanmicArgs: args,
-		TextArgs:    texts,
-		Dialect:     dialect,
-		Scope:       scope,
-		Dict:        NewDictionary(),
-	}
+	// injectInfo := &InjectInfo{
+	// 	Args:        []common.ArgScaner{},
+	// 	DyanmicArgs: args,
+	// 	TextArgs:    texts,
+	// 	Dialect:     dialect,
+	// 	Scope:       scope,
+	// 	Dict:        NewDictionary(),
+	// }
 	sourceTables := []string{}
 	for _, node := range nodes {
 		switch node := node.(type) {
 		case *sqlparser.AliasedExpr:
 			switch expr := node.Expr.(type) {
 			case *sqlparser.ColName:
-				injectInfo.Dict.BuildByAliasTableName(dialect, node.As.String(), expr.Name.String())
+				injectInfo.Dict.BuildByAliasTableName(injectInfo.Dialect, node.As.String(), expr.Name.String())
 				if entityName, ok := injectInfo.Dict.Entities[strings.ToLower(expr.Name.String())]; ok {
 					tableName := entityName.TableName
 					if alias, ok := injectInfo.Dict.TableAlias[strings.ToLower(tableName)]; ok {
 						if alias != "" {
-							sourceTables = append(sourceTables, dialect.Quote(tableName)+" "+dialect.Quote(alias))
+							sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName)+" "+injectInfo.Dialect.Quote(alias))
 						} else {
-							sourceTables = append(sourceTables, dialect.Quote(tableName))
+							sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName))
 						}
 					} else {
-						sourceTables = append(sourceTables, dialect.Quote(tableName))
+						sourceTables = append(sourceTables, injectInfo.Dialect.Quote(tableName))
 					}
 				}
 
@@ -77,14 +67,14 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 				if navigateFromClauseInfo == nil {
 					navigateFromClauseInfo, err = f.buildFromClauseInfo(expr, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					fromClauseInfo = navigateFromClauseInfo
 				} else {
 
 					navigateFromClauseInfo.next, err = f.buildFromClauseInfo(expr, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					navigateFromClauseInfo = navigateFromClauseInfo.next
 
@@ -93,14 +83,14 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 				if navigateFromClauseInfo == nil {
 					navigateFromClauseInfo, err = f.buildFromClauseInfoByComparisonExpr(expr, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					fromClauseInfo = navigateFromClauseInfo
 				} else {
 
 					navigateFromClauseInfo.next, err = f.buildFromClauseInfoByComparisonExpr(expr, injectInfo)
 					if err != nil {
-						return "", nil, nil, err
+						return "", err
 					}
 					navigateFromClauseInfo = navigateFromClauseInfo.next
 
@@ -112,9 +102,9 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 		case *helper.InspectInfo:
 			// suquery builder
 
-			sql, err := f.ResolveQuery(scope, dialect, node, injectInfo.Dict)
+			sql, err := f.ResolveQuery(node, injectInfo)
 			if err != nil {
-				return "", nil, nil, err
+				return "", err
 			}
 
 			sourceTables = append(sourceTables, sql.Sql)
@@ -126,15 +116,15 @@ func (f *fromClauseType) Resolve(nodes []any, scope common.AccessScope, dialect 
 	if fromClauseInfo == nil {
 		ret := strings.Join(sourceTables, ", ")
 
-		return ret, nil, injectInfo.Dict, nil
+		return ret, nil
 	}
 
-	return fromClauseInfo.String(), nil, injectInfo.Dict, nil
+	return fromClauseInfo.String(), nil
 }
 
 //fromClauseType.buildFromClauseInfoByComparisonExpr.go
 
-func (f *fromClauseType) buildFromClauseInfo(expr *sqlparser.FuncExpr, injectInfo *InjectInfo) (*fromClauseInfo, error) {
+func (f *fromClauseType) buildFromClauseInfo(expr *sqlparser.FuncExpr, injectInfo *common.InjectInfo) (*fromClauseInfo, error) {
 	fnName := strings.ToLower(expr.Name.String())
 	switch fnName {
 	case "left", "right":
@@ -150,7 +140,7 @@ func (f *fromClauseType) buildFromClauseInfo(expr *sqlparser.FuncExpr, injectInf
 	}
 }
 
-func (f *fromClauseType) buildFromClauseInfoByExpr(node sqlparser.SQLNode, injectInfo *InjectInfo, fnName string) (*fromClauseInfo, error) {
+func (f *fromClauseType) buildFromClauseInfoByExpr(node sqlparser.SQLNode, injectInfo *common.InjectInfo, fnName string) (*fromClauseInfo, error) {
 	switch node := node.(type) {
 	case *sqlparser.AliasedExpr:
 		return f.buildFromClauseInfoByExpr(node.Expr, injectInfo, fnName)
