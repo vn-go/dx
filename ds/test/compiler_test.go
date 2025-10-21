@@ -25,7 +25,6 @@ func TestParseClausesFromInSelect(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-
 		dialect,
 		query,
 	)
@@ -45,7 +44,6 @@ func TestParseClausesFromInSelect1(t *testing.T) {
 		`
 
 	sql, err := ds.Compile(
-
 		dialect,
 		query,
 	)

@@ -4,10 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-<<<<<<< HEAD
-=======
-	"github.com/vn-go/dx/dialect/types"
->>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 	"github.com/vn-go/dx/ds/common"
 	"github.com/vn-go/dx/ds/helper"
 	"github.com/vn-go/dx/sqlparser"
@@ -21,7 +17,7 @@ type fromClauseTypefromClauseTypeTable struct {
 /*
 this function try inspect the from clause and resolve the table name to a table object
 */
-func (f *fromClauseType) ResolveInSelect(nodes []any,  injectInfo *common.InjectInfo) (string, error) {
+func (f *fromClauseType) ResolveInSelect(nodes []any, injectInfo *common.InjectInfo) (string, error) {
 	sourceTables := []string{}
 	var navigateFromClauseInfo *fromClauseInfo
 	var fromClauseInfo *fromClauseInfo
@@ -37,7 +33,7 @@ func (f *fromClauseType) ResolveInSelect(nodes []any,  injectInfo *common.Inject
 	for _, x := range nodes {
 		switch x := x.(type) {
 		case *helper.InspectInfo:
-			sql, err := f.ResolveQuery( x, injectInfo)
+			sql, err := f.ResolveQuery(x, injectInfo)
 			if err != nil {
 				return "", err
 			}
@@ -51,22 +47,14 @@ func (f *fromClauseType) ResolveInSelect(nodes []any,  injectInfo *common.Inject
 					if navigateFromClauseInfo == nil {
 						navigateFromClauseInfo, err = f.buildFromClauseInfo(n, injectInfo)
 						if err != nil {
-<<<<<<< HEAD
 							return "", err
-=======
-							return "", nil, nil, err
->>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 						}
 						fromClauseInfo = navigateFromClauseInfo
 					} else {
 
 						navigateFromClauseInfo.next, err = f.buildFromClauseInfo(n, injectInfo)
 						if err != nil {
-<<<<<<< HEAD
 							return "", err
-=======
-							return "", nil, nil, err
->>>>>>> e6ece9f0f257b4e730b579fa14191216e7c37370
 						}
 						navigateFromClauseInfo = navigateFromClauseInfo.next
 

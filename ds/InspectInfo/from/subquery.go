@@ -106,5 +106,3 @@ func (f *fromClauseType) ResolveQuery(info *helper.InspectInfo, injectInfo *comm
 	return dialect.BuildSql(sqlInfo)
 
 }
-
-
