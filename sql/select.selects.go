@@ -31,7 +31,16 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 	}
 	sql.selector = strings.Join(itemSelectors, ", ")
+	if expr.Where != nil {
+		r, err = where.resolve(expr.Where.Expr, injector)
+		if err != nil {
+			return nil, err
+		}
+		sql.filter = r.Content
+	}
+
 	ret.Content = sql.String()
+	ret.Args = injector.args
 	return &ret, nil
 }
 

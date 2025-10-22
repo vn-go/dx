@@ -19,11 +19,25 @@ func TestSelectOneTable(t *testing.T) {
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
-	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select id from item where id = ?", 1)
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select item.id from item where id = ? and name ='admin'", 1)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
+
+}
+func BenchmarkSelectOneTable(b *testing.B) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(b, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := sql.Compiler.Resolve(dialect, "select item.id from item where id = ? and name ='admin'", 1)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 }
 func TestSelect(t *testing.T) {
@@ -37,7 +51,7 @@ func TestSelect(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
 
 }
 func TestSelect2Table(t *testing.T) {
@@ -51,7 +65,7 @@ func TestSelect2Table(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
 
 }
 func TestSelectUnion(t *testing.T) {
@@ -71,7 +85,7 @@ func TestSelectUnion(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
 
 }
 func TestSelectSubQuery(t *testing.T) {
@@ -89,7 +103,7 @@ func TestSelectSubQuery(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
 
 }
 func TestSelectSubQueryUnion(t *testing.T) {
@@ -109,6 +123,6 @@ func TestSelectSubQueryUnion(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Println(sqlCompiled.Content)
+	fmt.Println(sqlCompiled.Query)
 
 }

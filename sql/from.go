@@ -74,7 +74,7 @@ func (f *from) AliasedTableExpr(expr *sqlparser.AliasedTableExpr, alias string, 
 		injector.dict.tableAlias[strings.ToLower(alias)] = alias
 		for _, x := range ret.selectedExprs {
 			key := strings.ToLower(fmt.Sprintf("%s.%s", alias, x.Alias))
-			injector.dict.fields[key] = dictionaryField{
+			injector.dict.fields[key] = &dictionaryField{
 				Expr:  injector.dialect.Quote(alias, x.Alias),
 				Typ:   x.Typ,
 				Alias: x.Alias,

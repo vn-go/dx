@@ -2,9 +2,11 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -12,8 +14,31 @@ import (
 Args of sql query after compiled
 */
 type argument struct {
+	/*
+		if const value passed to sql query, it will be stored here.
+	*/
+	val any
+	/*
+	 if dynamic arg this store the index of dynamic arg in args array.
+	  if not dynamic arg this store 0
+
+
+	*/
+	index int
 }
 type arguments []argument
+
+func (a arguments) ToArray(dynamicArgs []any) []any {
+	ret := make([]any, len(a))
+	for i, arg := range a {
+		if arg.index > 0 {
+			ret[i] = dynamicArgs[arg.index-1]
+		} else {
+			ret[i] = arg.val
+		}
+	}
+	return ret
+}
 
 /*
 use check permission
@@ -29,9 +54,16 @@ use check permission
 if user has permission to access this table and field
 */
 type refFields map[string]refFieldInfo
+
+func (r refFields) merge(fields refFields) refFields {
+	return internal.UnionMap(r, fields)
+}
+
 type compilerResult struct {
-	Content string
-	Args    []any
+	// use for error message. Error message should be show with original content
+	OriginalContent string
+	Content         string
+	Args            arguments
 	/*
 		use check permission
 		if user has permission to access this table and field
@@ -109,7 +141,21 @@ type dictionaryField struct {
 // this type is very important for make dynamic struct from column types
 // for db.rows.Scan()
 // ref file: sql/dictionaryFields.toDynamicStruct.go
-type dictionaryFields map[string]dictionaryField
+type dictionaryFields map[string]*dictionaryField
+
+func (d dictionaryFields) String() string {
+	items := []string{
+		"DictionaryFields",
+	}
+	for k, v := range d {
+		items = append(items, fmt.Sprintf("%s\t\t\t%s\t\t\t%s\t\t\t%t", k, v.Expr, v.Alias, v.IsInAggregateFunc))
+	}
+	return strings.Join(items, "\n")
+}
+
+func (d dictionaryFields) merge(exprs dictionaryFields) dictionaryFields {
+	return internal.UnionMap(d, exprs)
+}
 
 type dictionary struct {
 	fields dictionaryFields
@@ -146,9 +192,10 @@ type injector struct {
 		use check permission
 		if user has permission to access this table and field
 	*/
-	fields      refFields
-	textParams  []string
-	dynamicArgs []any
+	fields     refFields
+	textParams []string
+
+	args arguments
 }
 
 /*
@@ -156,19 +203,20 @@ Create a new dictionary
 */
 func newDictionary() *dictionary {
 	return &dictionary{
-		fields:        make(map[string]dictionaryField),
+		fields:        dictionaryFields{},
 		tableAlias:    make(map[string]string),
 		entities:      make(map[string]*entity.Entity),
 		aliasToEntity: make(map[string]*entity.Entity),
 	}
 }
-func newInjector(dialect types.Dialect, textParam []string, dynamicArgs []any) *injector {
+func newInjector(dialect types.Dialect, textParam []string) *injector {
 	return &injector{
-		dict:        newDictionary(),
-		dialect:     dialect,
-		fields:      refFields{},
-		textParams:  textParam,
-		dynamicArgs: dynamicArgs,
+		dict:       newDictionary(),
+		dialect:    dialect,
+		fields:     refFields{},
+		textParams: textParam,
+		//dynamicArgs: dynamicArgs,
+		args: arguments{},
 	}
 
 }
@@ -223,4 +271,9 @@ func (s *sqlComplied) String() string {
 	}
 
 	return query
+}
+
+type sqlParser struct {
+	Query string
+	Args  []any
 }

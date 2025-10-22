@@ -31,13 +31,15 @@ func (d *dictionary) Build(alias string, datasetName string, dialect types.Diale
 	d.tableAlias[strings.ToLower(ent.TableName)] = alias
 	for _, col := range ent.Cols {
 		key := strings.ToLower(alias + "." + col.Name)
+		key2 := strings.ToLower(ent.EntityType.Name() + "." + col.Name)
 		fieldExpr := dialect.Quote(alias, col.Name)
-		d.fields[key] = dictionaryField{
+		d.fields[key] = &dictionaryField{
 			Expr:        fieldExpr,
 			Typ:         internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
 			EntityField: &col,
 			Alias:       col.Field.Name,
 		}
+		d.fields[key2] = d.fields[key]
 	}
 	return &dictionaryBuildItem{
 		dbTableName: ent.TableName,
