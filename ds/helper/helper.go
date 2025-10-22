@@ -273,6 +273,7 @@ func getContentIn2Brackets(input string) (string, string) {
 
 	depth := 0
 	for i := start; i < len(input); i++ {
+
 		if input[i] == '(' {
 			depth++
 		} else if input[i] == ')' {

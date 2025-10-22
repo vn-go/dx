@@ -25,7 +25,52 @@ func TestSimpleSelect(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expectesSql := "SELECT [id], [name], [price] FROM [items]"
+	expectesSql := "SELECT [items].[id] [ID], [items].[name] [Name], [items].[price] [Price] FROM [items]"
+
+	assert.Equal(t, expectesSql, sql.Sql)
+	fmt.Println(sql.Sql)
+}
+func TestSimpleSelectAndWhere(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	sql, err := ds.Compile(
+
+		dialect,
+		`
+			select(item(id, name, price))
+			where(id = 1)
+		`,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	expectesSql := "SELECT [items].[id] [ID], [items].[name] [Name], [items].[price] [Price] FROM [items]"
+
+	assert.Equal(t, expectesSql, sql.Sql)
+	fmt.Println(sql.Sql)
+}
+func TestSimpleSelectAndWhereIsSelect(t *testing.T) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	sql, err := ds.Compile(
+
+		dialect,
+		`
+			select(item(id, name, price))
+			where(
+					id = get(select(id) from(item(id)) where(id = 1))
+				)
+		`,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	expectesSql := "SELECT [items].[id] [ID], [items].[name] [Name], [items].[price] [Price] FROM [items]"
+
 	assert.Equal(t, expectesSql, sql.Sql)
 	fmt.Println(sql.Sql)
 }
@@ -74,7 +119,8 @@ func TestSimpleSelectuUnion(t *testing.T) {
 		t.Error(err)
 	}
 	fmt.Println(sql.Sql)
-	expectesSql := "SELECT * FROM (SELECT [increment_details].[item_id], [increment_details].[amount] FROM [increment_details] \n union \n SELECT [decrement_details].[item_id], [decrement_details].[amount] * @p1 FROM [decrement_details] \n ) [imventory]"
+	expectesSql := "SELECT [imventory].[ItemID], sum([imventory].[Amount]) FROM SELECT [increment_details].[item_id] [ItemID], [increment_details].[amount] [Amount] FROM [increment_details]\n union \n SELECT [decrement_details].[item_id] [ItemID], [decrement_details].[amount] * @p1 [] FROM [decrement_details]"
+
 	assert.Equal(t, expectesSql, sql.Sql)
 
 }

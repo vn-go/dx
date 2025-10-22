@@ -563,6 +563,43 @@ func (c *helperType) ToFloatFormBytes(v []byte) (float64, error) {
 	return f, nil
 }
 
+// ReplaceQuestionMarks thay thế các dấu '?' nằm ngoài chuỗi literal
+// bằng functionName(pos), ví dụ: myFunc(1), myFunc(2), ...
+func (c *helperType) ReplaceQuestionMarks(query, functionName string) string {
+	var sb strings.Builder
+	inString := false
+	paramIndex := 1
+
+	for i := 0; i < len(query); i++ {
+		ch := query[i]
+
+		// Toggle trạng thái trong chuỗi khi gặp dấu nháy đơn
+		if ch == '\'' {
+			sb.WriteByte(ch)
+			// Xử lý trường hợp escape bằng 2 dấu nháy liên tiếp ('')
+			if i+1 < len(query) && query[i+1] == '\'' {
+				sb.WriteByte('\'')
+				i++ // bỏ qua ký tự tiếp theo
+			} else {
+				inString = !inString
+			}
+			continue
+		}
+
+		// Nếu là dấu ? và không nằm trong chuỗi literal
+		if ch == '?' && !inString {
+			sb.WriteString(fmt.Sprintf("%s(%d)", functionName, paramIndex))
+			paramIndex++
+			continue
+		}
+
+		// Mặc định: ghi lại ký tự
+		sb.WriteByte(ch)
+	}
+
+	return sb.String()
+}
+
 var Helper = newHelper()
 
 func newHelper() *helperType {

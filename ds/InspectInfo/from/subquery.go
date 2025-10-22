@@ -7,6 +7,7 @@ import (
 	"github.com/vn-go/dx/dialect/types"
 
 	"github.com/vn-go/dx/ds/InspectInfo/selectors"
+	"github.com/vn-go/dx/ds/InspectInfo/where"
 	"github.com/vn-go/dx/ds/common"
 	"github.com/vn-go/dx/ds/helper"
 )
@@ -98,6 +99,13 @@ func (f *fromClauseType) ResolveQuery(info *helper.InspectInfo, injectInfo *comm
 	}
 	if selectData, ok := info.InspectData["select"]; ok {
 		sqlInfo.StrSelect, err = selectors.Selector.Resolve(selectData.Nodes, injectInfo, f.ResolveQuery)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	if selectData, ok := info.InspectData["where"]; ok {
+		sqlInfo.StrWhere, err = where.Where.Resolve(selectData.Nodes, injectInfo, f.ResolveQuery)
 
 		if err != nil {
 			return nil, err
