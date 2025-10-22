@@ -12,6 +12,20 @@ import (
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 
+func TestSelectOneTable(t *testing.T) {
+
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select id from item where id = ?", 1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sqlCompiled.Content)
+
+}
 func TestSelect(t *testing.T) {
 
 	db, err := dx.Open("sqlserver", cnn)
@@ -20,6 +34,20 @@ func TestSelect(t *testing.T) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
 	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select * from item where id = ?", 1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sqlCompiled.Content)
+
+}
+func TestSelect2Table(t *testing.T) {
+
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select * from item, decrementDetail where item.id = ?", 1)
 	if err != nil {
 		panic(err)
 	}
@@ -54,12 +82,12 @@ func TestSelectSubQuery(t *testing.T) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
 	sqlCompiled, err := sql.Compiler.Resolve(dialect, `
-	select * from (
-			select * from hrm.employee where id = ?
+	select qr1.ItemD  from (
+			select id ItemD from item where id = ?
 			) qr1
 	`, 1)
 	if err != nil {
-		t.Error(err)
+		panic(err)
 	}
 	fmt.Println(sqlCompiled.Content)
 

@@ -24,14 +24,19 @@ func (d *dictionary) Build(alias string, datasetName string, dialect types.Diale
 	if ent == nil {
 		return nil, newCompilerError("dataset %s not found", datasetName)
 	}
+	d.entities[strings.ToLower(ent.EntityType.Name())] = ent
+	d.aliasToEntity[strings.ToLower(alias)] = ent
+
 	d.tableAlias[strings.ToLower(datasetName)] = alias
 	d.tableAlias[strings.ToLower(ent.TableName)] = alias
 	for _, col := range ent.Cols {
 		key := strings.ToLower(alias + "." + col.Name)
 		fieldExpr := dialect.Quote(alias, col.Name)
 		d.fields[key] = dictionaryField{
-			Expr: fieldExpr,
-			Typ:  internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
+			Expr:        fieldExpr,
+			Typ:         internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
+			EntityField: &col,
+			Alias:       col.Field.Name,
 		}
 	}
 	return &dictionaryBuildItem{
