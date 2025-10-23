@@ -48,6 +48,40 @@ func (d *postgresDialect) GetTableAndColumnsDictionary(db *sql.DB) (map[string]s
 func (d *postgresDialect) ToText(value string) string {
 	return fmt.Sprintf("'%s'::citext", value)
 }
+func (d *postgresDialect) GetSelectStatement(stmt types.SelectStatement) string {
+	sql := "SELECT " + stmt.Selector + " FROM " + stmt.Source
+
+	// WHERE
+	if stmt.Filter != "" {
+		sql += " WHERE " + stmt.Filter
+	}
+
+	// GROUP BY
+	if stmt.GroupBy != "" {
+		sql += " GROUP BY " + stmt.GroupBy
+	}
+
+	// HAVING
+	if stmt.Having != "" {
+		sql += " HAVING " + stmt.Having
+	}
+
+	// ORDER BY
+	if stmt.Sort != "" {
+		sql += " ORDER BY " + stmt.Sort
+	}
+
+	// LIMIT & OFFSET
+	if stmt.Limit > 0 {
+		sql += fmt.Sprintf(" LIMIT %d", stmt.Limit)
+		if stmt.Offset > 0 {
+			sql += fmt.Sprintf(" OFFSET %d", stmt.Offset)
+		}
+	}
+
+	return sql
+}
+
 func (d *postgresDialect) ToParam(index int, pType sqlparser.ValType) string {
 	// switch pType {
 	// case sqlparser.BitVal:

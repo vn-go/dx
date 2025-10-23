@@ -9,7 +9,7 @@ import (
 )
 
 // selectors.colName.go
-func (s selectors) colName(t *sqlparser.ColName, injector *injector) (*compilerResult, error) {
+func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
 		return nil, newCompilerError("'%s' is ambiguous, specify dataset	 name", t.Name.String())
 	}
@@ -65,6 +65,18 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector) (*compilerR
 			},
 			AliasOfContent: field.Alias,
 		}, nil
+	} else if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
+		if cmpField, ok := selectedExprsReverse[t.Name.String()]; ok {
+			return &compilerResult{
+				Content:           cmpField.Expr,
+				OriginalContent:   originalContent,
+				AliasOfContent:    cmpField.Alias,
+				IsInAggregateFunc: cmpField.IsInAggregateFunc,
+				IsExpression:      true,
+			}, nil
+		}
+		return nil, newCompilerError("column '%s' was not found", t.Name.String())
 	}
+
 	panic("unimplemented, see selectors.colName")
 }

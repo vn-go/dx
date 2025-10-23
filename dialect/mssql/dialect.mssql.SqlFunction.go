@@ -99,6 +99,9 @@ var aggregateFuncMSSQL = map[string]string{
 
 func (d *mssqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
+	if fnName == "text" {
+		return d.SqlFunctionText(delegator)
+	}
 	if fnName == "if" {
 		return d.SqlFunctionIf(delegator)
 	}
@@ -121,6 +124,7 @@ func (d *mssqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 	// delegator.FuncName = strings.ToUpper(delegator.FuncName)
 	// return "", nil
 }
+
 func (d *mssqlDialect) SqlFunctionIf(delegator *types.DialectDelegateFunction) (string, error) {
 	n := len(delegator.Args)
 	stmts := []string{"CASE"}

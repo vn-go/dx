@@ -91,6 +91,41 @@ func (d *mssqlDialect) ToText(value string) string {
 func (d *mssqlDialect) ToParam(index int, pType sqlparser.ValType) string {
 	return fmt.Sprintf("@p%d", index)
 }
+func (d *mssqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
+	sql := "SELECT " + stmt.Selector + " FROM " + stmt.Source
+
+	// WHERE
+	if stmt.Filter != "" {
+		sql += " WHERE " + stmt.Filter
+	}
+
+	// GROUP BY
+	if stmt.GroupBy != "" {
+		sql += " GROUP BY " + stmt.GroupBy
+	}
+
+	// HAVING
+	if stmt.Having != "" {
+		sql += " HAVING " + stmt.Having
+	}
+
+	// ORDER BY
+	if stmt.Sort != "" {
+		sql += " ORDER BY " + stmt.Sort
+	}
+
+	// OFFSET + LIMIT (SQL Server yêu cầu ORDER BY nếu có OFFSET/FETCH)
+	if stmt.Limit > 0 {
+		if stmt.Sort == "" {
+			// fallback để tránh lỗi "OFFSET requires ORDER BY clause"
+			sql += " ORDER BY (SELECT NULL)"
+		}
+
+		sql += fmt.Sprintf(" OFFSET %d ROWS FETCH NEXT %d ROWS ONLY", stmt.Offset, stmt.Limit)
+	}
+
+	return sql
+}
 
 var mssqlDialectIntance = &mssqlDialect{
 	cacheMakeSqlInsert: sync.Map{},

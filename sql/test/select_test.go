@@ -19,14 +19,50 @@ func TestSelectOneTableWithSum(t *testing.T) {
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
-	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select price,sum(item.id+1) Total  from item 
-														where total>1000 or price>100`, 1)
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select sum(item.id+1)+min(price) Total  from item 
+														where total>1000 or price>100 order by price desc`, 1)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(sqlCompiled.Query)
 
 }
+func BenchmarkSelectOneTableWithSum(b *testing.B) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(b, err)
+	defer db.Close()
+
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	query := `
+		SELECT SUM(item.id + 1) + MIN(price) AS Total 
+		FROM item
+		HAVING SUM(item.id + 1) + MIN(price) > 1000 OR price > 100
+		ORDER BY price DESC
+	`
+
+	b.Run("parallel", func(b *testing.B) {
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, err := sql.Compiler.Resolve(dialect, query)
+				if err != nil {
+					panic(err)
+				}
+			}
+		})
+	})
+
+	b.Run("sequential", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err := sql.Compiler.Resolve(dialect, query)
+			if err != nil {
+				panic(err)
+			}
+		}
+	})
+}
+
 func TestSelectOneTable(t *testing.T) {
 
 	db, err := dx.Open("sqlserver", cnn)

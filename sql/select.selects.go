@@ -2,8 +2,10 @@ package sql
 
 import (
 	"fmt"
+
 	"strings"
 
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -11,14 +13,14 @@ import (
 // select.selects.go
 func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compilerResult, error) {
 	ret := compilerResult{}
-	sql := sqlComplied{}
+	selectStatement := types.SelectStatement{}
 
 	r, err := froms.resolve(expr.From, injector)
 	if err != nil {
 		return nil, err
 	}
 	ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
-	sql.source = r.Content
+	selectStatement.Source = r.Content
 	itemSelectors := []string{}
 	for _, x := range expr.SelectExprs {
 		r, err = s.selectExpr(x, injector)
@@ -30,7 +32,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 	}
-	sql.selector = strings.Join(itemSelectors, ", ")
+	selectStatement.Selector = strings.Join(itemSelectors, ", ")
 	if expr.Where != nil {
 		resultOfWhere := []string{}
 		havingItems := []string{}
@@ -42,17 +44,27 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 			if err != nil {
 				return nil, err
 			}
+
 			if r.IsInAggregateFunc {
-				havingItems = append(havingItems, *&r.Content)
+				/*
+					If after compiling the expression, it is an aggregate function,
+					it means it cannot be used in the WHERE clause.
+					So we need to add it to the HAVING clause
+				*/
+
+				havingItems = append(havingItems, r.Content)
+				ret.selectedExprsReverse.merge(r.selectedExprsReverse) // "Fields which do not belong to an aggregate function must be added to the GROUP BY clause."
+
 			} else {
-				resultOfWhere = append(resultOfWhere, *&r.Content)
+				resultOfWhere = append(resultOfWhere, r.Content)
 			}
+			ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		}
 		if len(resultOfWhere) > 0 {
-			sql.filter = strings.Join(resultOfWhere, " AND ")
+			selectStatement.Filter = strings.Join(resultOfWhere, " AND ")
 		}
 		if len(havingItems) > 0 {
-			sql.having = strings.Join(havingItems, " AND ")
+			selectStatement.Having = strings.Join(havingItems, " AND ")
 			goupByItems := []string{}
 			checkGroupBy := map[string]bool{}
 			for k, v := range ret.selectedExprsReverse {
@@ -60,19 +72,41 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 					continue
 				}
 				if !v.IsInAggregateFunc {
-					if _, ok := checkGroupBy[v.Expr]; !ok {
-						goupByItems = append(goupByItems, v.Expr)
-						checkGroupBy[v.Expr] = true
+					if v.Children != nil && len(*v.Children) > 0 {
+						for k1, child := range *v.Children {
+							if k1 == "" { // not not hav alias skip it
+								continue
+							}
+							if _, ok := checkGroupBy[child.Expr]; !ok {
+
+								goupByItems = append(goupByItems, child.Expr)
+								checkGroupBy[child.Expr] = true
+							}
+						}
+
+					} else {
+						if _, ok := checkGroupBy[v.Expr]; !ok {
+
+							goupByItems = append(goupByItems, v.Expr)
+							checkGroupBy[v.Expr] = true
+						}
 					}
 				}
 			}
 			if len(goupByItems) > 0 {
-				sql.groupBy = strings.Join(goupByItems, ", ")
+				selectStatement.GroupBy = strings.Join(goupByItems, ", ")
 			}
 		}
 	}
-
-	ret.Content = sql.String()
+	if expr.OrderBy != nil {
+		r, err := sort.resolveOrderBy(expr.OrderBy, injector, ret.selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
+		selectStatement.Sort = r.Content
+	}
+	ret.Content = injector.dialect.GetSelectStatement(selectStatement)
 	ret.Args = injector.args
 	return &ret, nil
 }
@@ -82,7 +116,7 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 	case *sqlparser.StarExpr:
 		return s.starExpr(x, injector)
 	case *sqlparser.AliasedExpr:
-		r, err := exp.resolve(x.Expr, injector, CMP_SELECT)
+		r, err := exp.resolve(x.Expr, injector, CMP_SELECT, dictionaryFields{})
 		if err != nil {
 			return nil, err
 		}
@@ -91,15 +125,33 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 		} else if !x.As.IsEmpty() {
 			r.AliasOfContent = x.As.String()
 		}
-		r.selectedExprsReverse.merge(dictionaryFields{
-			x.As.Lowered(): &dictionaryField{
-				Expr:              r.Content,
-				IsInAggregateFunc: r.IsInAggregateFunc,
-				Alias:             x.As.String(),
+		return &compilerResult{
+			OriginalContent:    r.OriginalContent,
+			Content:            r.Content,
+			AliasOfContent:     r.AliasOfContent,
+			selectedExprs:      r.selectedExprs,
+			nonAggregateFields: r.nonAggregateFields,
+			selectedExprsReverse: dictionaryFields{
+				x.As.Lowered(): &dictionaryField{
+					Expr:              r.Content,
+					IsInAggregateFunc: r.IsInAggregateFunc,
+					Alias:             x.As.String(),
+					Children:          &r.selectedExprsReverse,
+				},
 			},
-		})
+			IsInAggregateFunc: r.IsInAggregateFunc,
+		}, nil
+		// r.selectedExprsReverse.merge(dictionaryFields{
+		// 	x.As.Lowered(): &dictionaryField{
+		// 		Expr:              r.Content,
+		// 		IsInAggregateFunc: r.IsInAggregateFunc,
+		// 		Alias:             x.As.String(),
+		// 		Children:          &r.selectedExprsReverse,
+		// 	},
+		// })
 
-		return r, nil
+		//return r, nil
+
 	default:
 		panic(fmt.Sprintf("unimplemented: %T. See selectors.selectExpr, file %s", x, `sql\select.selects.go`))
 	}

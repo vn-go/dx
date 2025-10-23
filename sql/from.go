@@ -86,7 +86,7 @@ func (f *from) AliasedTableExpr(expr *sqlparser.AliasedTableExpr, alias string, 
 	default:
 		panic(fmt.Sprintf("unsupported table expression type: %T. see from.AliasedTableExpr, %s", t, `sql\from.go`))
 	}
-	panic(fmt.Sprintf("not implemented. see from.AliasedTableExpr, %s", `sql\from.go`))
+	//panic(fmt.Sprintf("not implemented. see from.AliasedTableExpr, %s", `sql\from.go`))
 }
 
 func (f *from) selectStatement(sqlStm sqlparser.Statement, injector *injector) (*compilerResult, error) {

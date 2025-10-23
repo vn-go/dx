@@ -2,7 +2,6 @@ package sql
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
@@ -59,8 +58,9 @@ func (r refFields) String() any {
 	panic("unimplemented")
 }
 
-func (r refFields) merge(fields refFields) refFields {
-	return internal.UnionMap(r, fields)
+func (r *refFields) merge(fields refFields) refFields {
+	*r = internal.UnionMap(*r, fields)
+	return *r
 }
 
 type compilerResult struct {
@@ -146,6 +146,7 @@ type dictionaryField struct {
 	IsInAggregateFunc bool
 	Alias             string
 	EntityField       *entity.ColumnDef
+	Children          *dictionaryFields
 }
 
 // this type is very important for make dynamic struct from column types
@@ -153,15 +154,15 @@ type dictionaryField struct {
 // ref file: sql/dictionaryFields.toDynamicStruct.go
 type dictionaryFields map[string]*dictionaryField
 
-func (d dictionaryFields) String() string {
-	items := []string{
-		"DictionaryFields",
-	}
-	for k, v := range d {
-		items = append(items, fmt.Sprintf("%s\t\t\t%s\t\t\t%s\t\t\t%t", k, v.Expr, v.Alias, v.IsInAggregateFunc))
-	}
-	return strings.Join(items, "\n")
-}
+// func (d dictionaryFields) String() string {
+// 	items := []string{
+// 		"DictionaryFields",
+// 	}
+// 	for k, v := range d {
+// 		items = append(items, fmt.Sprintf("%s\t\t\t%s\t\t\t%s\t\t\t%t", k, v.Expr, v.Alias, v.IsInAggregateFunc))
+// 	}
+// 	return strings.Join(items, "\n")
+// }
 
 func (d *dictionaryFields) merge(exprs dictionaryFields) *dictionaryFields {
 	*d = internal.UnionMap(*d, exprs)
@@ -249,52 +250,52 @@ func newCompilerError(message string, args ...any) *CompilerError {
 	}
 }
 
-type sqlComplied struct {
-	source   string // from
-	selector string // select field here
-	filter   string // where clause
-	sort     string // order by clause
-	having   string
-	groupBy  string
-}
+// type sqlComplied struct {
+// 	source   string // from
+// 	selector string // select field here
+// 	filter   string // where clause
+// 	sort     string // order by clause
+// 	having   string
+// 	groupBy  string
+// }
 
-func (s *sqlComplied) String() string {
-	query := "SELECT "
+// func (s *sqlComplied) String() string {
+// 	query := "SELECT "
 
-	// SELECT fields
-	if s.selector != "" {
-		query += s.selector
-	} else {
-		query += "*"
-	}
+// 	// SELECT fields
+// 	if s.selector != "" {
+// 		query += s.selector
+// 	} else {
+// 		query += "*"
+// 	}
 
-	// FROM clause
-	if s.source != "" {
-		query += " FROM " + s.source
-	}
+// 	// FROM clause
+// 	if s.source != "" {
+// 		query += " FROM " + s.source
+// 	}
 
-	// WHERE clause
-	if s.filter != "" {
-		query += " WHERE " + s.filter
-	}
+// 	// WHERE clause
+// 	if s.filter != "" {
+// 		query += " WHERE " + s.filter
+// 	}
 
-	// GROUP BY clause
-	if s.groupBy != "" {
-		query += " GROUP BY " + s.groupBy
-	}
+// 	// GROUP BY clause
+// 	if s.groupBy != "" {
+// 		query += " GROUP BY " + s.groupBy
+// 	}
 
-	// HAVING clause
-	if s.having != "" {
-		query += " HAVING " + s.having
-	}
+// 	// HAVING clause
+// 	if s.having != "" {
+// 		query += " HAVING " + s.having
+// 	}
 
-	// ORDER BY clause
-	if s.sort != "" {
-		query += " ORDER BY " + s.sort
-	}
+// 	// ORDER BY clause
+// 	if s.sort != "" {
+// 		query += " ORDER BY " + s.sort
+// 	}
 
-	return query
-}
+// 	return query
+// }
 
 type sqlParser struct {
 	Query string

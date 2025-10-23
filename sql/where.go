@@ -36,16 +36,18 @@ func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExp
 				IsInAggregateFunc: fx.IsInAggregateFunc,
 			}, nil
 		}
-		return selector.colName(x, injector)
+		return selector.colName(x, injector, CMP_WHERE, selectedExprsReverse)
 	case *sqlparser.FuncExpr:
 		if x.Name.String() == GET_PARAMS_FUNC {
 			return params.funcExpr(x, injector)
 		}
-		return w.funcExpr(x, injector)
+		return w.funcExpr(x, injector, selectedExprsReverse)
 	case *sqlparser.AndExpr:
-		return exp.resolve(x, injector, CMP_WHERE)
+		return exp.resolve(x, injector, CMP_WHERE, selectedExprsReverse)
+	case *sqlparser.OrExpr:
+		return exp.resolve(x, injector, CMP_WHERE, selectedExprsReverse)
 	case *sqlparser.BinaryExpr:
-		return exp.resolve(x, injector, CMP_WHERE)
+		return exp.resolve(x, injector, CMP_WHERE, selectedExprsReverse)
 	case *sqlparser.SQLVal:
 		return params.sqlVal(x, injector)
 	default:
@@ -54,10 +56,10 @@ func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExp
 
 }
 
-func (w *WhereType) funcExpr(x *sqlparser.FuncExpr, injector *injector) (*compilerResult, error) {
+func (w *WhereType) funcExpr(x *sqlparser.FuncExpr, injector *injector, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	if x.Name.String() == internal.FnMarkSpecialTextArgs {
 		return params.funcExpr(x, injector)
 	}
 
-	return exp.funcExpr(x, injector, CMP_WHERE)
+	return exp.funcExpr(x, injector, CMP_WHERE, selectedExprsReverse)
 }

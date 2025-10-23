@@ -110,6 +110,7 @@ type SqlFncType struct {
 }
 
 type Dialect interface {
+	GetSelectStatement(selectStatement SelectStatement) string
 	// true debug mode, panic will raise instead returning error
 	ReleaseMode(bool)
 	DynamicStructFormColumnTypes(sql string, ccolTypes []*sql.ColumnType) reflect.Type
@@ -364,4 +365,29 @@ func (s *SqlInfo) Clone() *SqlInfo {
 	}
 
 	return clone
+}
+
+type SelectStatement struct {
+	Source   string // from
+	Selector string // select field here
+	Filter   string // where clause
+	Sort     string // order by clause
+	Having   string
+	GroupBy  string
+	Offset   int
+	Limit    int
+}
+type CompilerError struct {
+	Message string
+	Args    []interface{}
+}
+
+func (e CompilerError) Error() string {
+	return fmt.Sprintf(e.Message, e.Args...)
+}
+func NewCompilerError(message string, args ...interface{}) error {
+	return CompilerError{
+		Message: message,
+		Args:    args,
+	}
 }

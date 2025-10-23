@@ -15,19 +15,20 @@ const (
 	CMP_SELECT CMP_TYP = iota
 	CMP_WHERE
 	CMP_TYP_FUNC
+	CMP_ORDER_BY
 )
 
 type expCmp struct {
 }
 
-func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	switch x := node.(type) {
 	case *sqlparser.AndExpr:
-		left, err := e.resolve(x.Left, injector, cmpType)
+		left, err := e.resolve(x.Left, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
-		right, err := e.resolve(x.Right, injector, cmpType)
+		right, err := e.resolve(x.Right, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -37,15 +38,16 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 			Args:                 append(left.Args, right.Args...),
 			Fields:               left.Fields.merge(right.Fields),
 			selectedExprs:        dictionaryFields{},
-			selectedExprsReverse: dictionaryFields{},
+			selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 			IsExpression:         true,
+			IsInAggregateFunc:    left.IsExpression || right.IsExpression,
 		}, nil
 	case *sqlparser.OrExpr:
-		left, err := e.resolve(x.Left, injector, cmpType)
+		left, err := e.resolve(x.Left, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
-		right, err := e.resolve(x.Right, injector, cmpType)
+		right, err := e.resolve(x.Right, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -55,15 +57,16 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 			Args:                 append(left.Args, right.Args...),
 			Fields:               left.Fields.merge(right.Fields),
 			selectedExprs:        dictionaryFields{},
-			selectedExprsReverse: dictionaryFields{},
+			selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 			IsExpression:         true,
+			IsInAggregateFunc:    left.IsExpression || right.IsExpression,
 		}, nil
 	case *sqlparser.ComparisonExpr:
-		left, err := e.resolve(x.Left, injector, cmpType)
+		left, err := e.resolve(x.Left, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
-		right, err := e.resolve(x.Right, injector, cmpType)
+		right, err := e.resolve(x.Right, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -73,15 +76,16 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 			Args:                 append(left.Args, right.Args...),
 			Fields:               left.Fields.merge(right.Fields),
 			selectedExprs:        dictionaryFields{},
-			selectedExprsReverse: dictionaryFields{},
+			selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 			IsExpression:         true,
+			IsInAggregateFunc:    left.IsExpression || right.IsExpression,
 		}, nil
 	case *sqlparser.BinaryExpr:
-		left, err := e.resolve(x.Left, injector, cmpType)
+		left, err := e.resolve(x.Left, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
-		right, err := e.resolve(x.Right, injector, cmpType)
+		right, err := e.resolve(x.Right, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -91,12 +95,13 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 			Args:                 append(left.Args, right.Args...),
 			Fields:               left.Fields.merge(right.Fields),
 			selectedExprs:        dictionaryFields{},
-			selectedExprsReverse: dictionaryFields{},
+			selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 			nonAggregateFields:   *left.nonAggregateFields.merge(right.nonAggregateFields),
 			IsExpression:         true,
+			IsInAggregateFunc:    left.IsExpression || right.IsExpression,
 		}, nil
 	case *sqlparser.ColName:
-		return selector.colName(x, injector)
+		return selector.colName(x, injector, cmpType, selectedExprsReverse)
 	case *sqlparser.SQLVal:
 		return params.sqlVal(x, injector)
 	case *sqlparser.FuncExpr:
@@ -104,10 +109,18 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 		if x.Name.String() == GET_PARAMS_FUNC || x.Name.String() == internal.FnMarkSpecialTextArgs {
 			return params.funcExpr(x, injector)
 		} else {
-			return e.funcExpr(x, injector, cmpType)
+			return e.funcExpr(x, injector, cmpType, selectedExprsReverse)
 		}
 	case *sqlparser.AliasedExpr:
-		return e.aliasedExpr(x, injector, cmpType)
+		return e.aliasedExpr(x, injector, cmpType, selectedExprsReverse)
+	case *sqlparser.NotExpr:
+		fx, err := e.resolve(x.Expr, injector, cmpType, selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		fx.Content = "NOT " + fx.Content
+		fx.OriginalContent = "NOT " + fx.OriginalContent
+		return fx, nil
 
 	default:
 		panic(fmt.Sprintf("unhandled node type %T. see  expCmp.resolve, file %s", x, `sql\where.comparisonExpr.go`))
@@ -115,13 +128,13 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 
 }
 
-func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	switch t := expr.Expr.(type) {
 	case *sqlparser.ColName:
-		return selector.colName(t, injector)
+		return selector.colName(t, injector, cmpType, selectedExprsReverse)
 	case *sqlparser.BinaryExpr:
 
-		ret, err := exp.resolve(t, injector, cmpType)
+		ret, err := exp.resolve(t, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -144,8 +157,11 @@ func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmp
 
 		return ret, nil
 	case *sqlparser.FuncExpr:
+		if t.Name.String() == GET_PARAMS_FUNC || t.Name.String() == internal.FnMarkSpecialTextArgs {
+			return params.funcExpr(t, injector)
+		}
 
-		ret, err := exp.funcExpr(t, injector, cmpType)
+		ret, err := exp.funcExpr(t, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +183,7 @@ func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmp
 
 }
 
-func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	oldCmpType := cmpType
 	defer func() {
 		cmpType = oldCmpType
@@ -190,7 +206,7 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 	originItems := []string{}
 
 	for _, arg := range expr.Exprs {
-		argResult, err := e.resolve(arg, injector, cmpType)
+		argResult, err := e.resolve(arg, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -198,7 +214,8 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 		delegator.Args = append(delegator.Args, argResult.Content)
 		originItems = append(originItems, argResult.OriginalContent)
 		ret.nonAggregateFields.merge(argResult.nonAggregateFields)
-
+		ret.Fields.merge(argResult.Fields) // important: we need to get all field for data acess permission check
+		ret.selectedExprsReverse.merge(argResult.selectedExprsReverse)
 	}
 	content, err := injector.dialect.SqlFunction(&delegator)
 	if err != nil {

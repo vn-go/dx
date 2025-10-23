@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/vn-go/dx/dialect/types"
@@ -29,7 +28,7 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*sql
 	if i.err != nil {
 		return nil, i.err
 	}
-	fmt.Println(i.val.selectedExprs.String())
+
 	return &sqlParser{
 		Query: i.val.Content,
 		Args:  i.val.Args.ToArray(arg),

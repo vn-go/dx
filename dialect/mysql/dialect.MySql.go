@@ -50,6 +50,41 @@ func (d *mySqlDialect) ToParam(index int, pType sqlparser.ValType) string {
 	return fmt.Sprintf("{%d}", index)
 	//return "?"
 }
+func (d *mySqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
+	sql := "SELECT " + stmt.Selector + " FROM " + stmt.Source
+
+	// WHERE
+	if stmt.Filter != "" {
+		sql += " WHERE " + stmt.Filter
+	}
+
+	// GROUP BY
+	if stmt.GroupBy != "" {
+		sql += " GROUP BY " + stmt.GroupBy
+	}
+
+	// HAVING
+	if stmt.Having != "" {
+		sql += " HAVING " + stmt.Having
+	}
+
+	// ORDER BY
+	if stmt.Sort != "" {
+		sql += " ORDER BY " + stmt.Sort
+	}
+
+	// LIMIT & OFFSET
+	if stmt.Limit > 0 {
+		// MySQL: LIMIT limit OFFSET offset
+		if stmt.Offset > 0 {
+			sql += fmt.Sprintf(" LIMIT %d OFFSET %d", stmt.Limit, stmt.Offset)
+		} else {
+			sql += fmt.Sprintf(" LIMIT %d", stmt.Limit)
+		}
+	}
+
+	return sql
+}
 
 var mySqlDialectInstance = &mySqlDialect{
 	cacheMakeSqlInsert: sync.Map{},
