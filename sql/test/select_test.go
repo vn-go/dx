@@ -12,6 +12,21 @@ import (
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 
+func TestSelectOneTableWithSum(t *testing.T) {
+
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select price,sum(item.id+1) Total  from item 
+														where total>1000 and price>100`, 1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sqlCompiled.Query)
+
+}
 func TestSelectOneTable(t *testing.T) {
 
 	db, err := dx.Open("sqlserver", cnn)
@@ -19,7 +34,8 @@ func TestSelectOneTable(t *testing.T) {
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
-	sqlCompiled, err := sql.Compiler.Resolve(dialect, "select item.id from item where id = ? and name ='admin'", 1)
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select name, sum(item.id+1) Total from item 
+														where (id = ? and name ='admin') and (item.id+1>0)`, 1)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +49,7 @@ func BenchmarkSelectOneTable(b *testing.B) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := sql.Compiler.Resolve(dialect, "select item.id from item where id = ? and name ='admin'", 1)
+		_, err := sql.Compiler.ResolveNoCache(dialect, "select name, sum(item.id+1) Total from item where id = ? and name ='admin'")
 		if err != nil {
 			panic(err)
 		}

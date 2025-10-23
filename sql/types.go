@@ -55,6 +55,10 @@ if user has permission to access this table and field
 */
 type refFields map[string]refFieldInfo
 
+func (r refFields) String() any {
+	panic("unimplemented")
+}
+
 func (r refFields) merge(fields refFields) refFields {
 	return internal.UnionMap(r, fields)
 }
@@ -63,7 +67,9 @@ type compilerResult struct {
 	// use for error message. Error message should be show with original content
 	OriginalContent string
 	Content         string
+	AliasOfContent  string
 	Args            arguments
+	IsExpression    bool // true if not select field
 	/*
 		use check permission
 		if user has permission to access this table and field
@@ -83,7 +89,10 @@ type compilerResult struct {
 
 	*/
 	selectedExprs dictionaryFields
-
+	// all fields in select expression
+	// just field no expresion or function call
+	// use to detect group by clause if any aggregate function in select
+	nonAggregateFields dictionaryFields
 	/*
 		Example:
 
@@ -123,6 +132,7 @@ type compilerResult struct {
 
 	*/
 	//allFields dictionaryFields
+	IsInAggregateFunc bool
 }
 
 // After compiled to sql, we need to know the type of each field in the result set.
@@ -153,8 +163,9 @@ func (d dictionaryFields) String() string {
 	return strings.Join(items, "\n")
 }
 
-func (d dictionaryFields) merge(exprs dictionaryFields) dictionaryFields {
-	return internal.UnionMap(d, exprs)
+func (d *dictionaryFields) merge(exprs dictionaryFields) *dictionaryFields {
+	*d = internal.UnionMap(*d, exprs)
+	return d
 }
 
 type dictionary struct {
@@ -243,6 +254,8 @@ type sqlComplied struct {
 	selector string // select field here
 	filter   string // where clause
 	sort     string // order by clause
+	having   string
+	groupBy  string
 }
 
 func (s *sqlComplied) String() string {
@@ -263,6 +276,16 @@ func (s *sqlComplied) String() string {
 	// WHERE clause
 	if s.filter != "" {
 		query += " WHERE " + s.filter
+	}
+
+	// GROUP BY clause
+	if s.groupBy != "" {
+		query += " GROUP BY " + s.groupBy
+	}
+
+	// HAVING clause
+	if s.having != "" {
+		query += " HAVING " + s.having
 	}
 
 	// ORDER BY clause

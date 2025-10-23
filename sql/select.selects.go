@@ -25,18 +25,35 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		if err != nil {
 			return nil, err
 		}
-		itemSelectors = append(itemSelectors, r.Content)
+		itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 	}
 	sql.selector = strings.Join(itemSelectors, ", ")
 	if expr.Where != nil {
-		r, err = where.resolve(expr.Where.Expr, injector)
-		if err != nil {
-			return nil, err
+		resultOfWhere := []string{}
+		havingItems := []string{}
+		nodes := where.splitAndExpr(expr.Where.Expr)
+		for _, node := range nodes {
+			//field Expr sqlparser.Expr
+
+			r, err = where.resolve(node.(sqlparser.Expr), injector, ret.selectedExprsReverse)
+			if err != nil {
+				return nil, err
+			}
+			if r.IsInAggregateFunc {
+				havingItems = append(havingItems, *&r.Content)
+			} else {
+				resultOfWhere = append(resultOfWhere, *&r.Content)
+			}
 		}
-		sql.filter = r.Content
+		if len(resultOfWhere) > 0 {
+			sql.filter = strings.Join(resultOfWhere, " AND ")
+		}
+		if len(havingItems) > 0 {
+			sql.having = strings.Join(havingItems, " AND ")
+		}
 	}
 
 	ret.Content = sql.String()
@@ -49,7 +66,24 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 	case *sqlparser.StarExpr:
 		return s.starExpr(x, injector)
 	case *sqlparser.AliasedExpr:
-		return s.aliasedExpr(x, injector)
+		r, err := exp.resolve(x.Expr, injector, CMP_SELECT)
+		if err != nil {
+			return nil, err
+		}
+		if x.As.IsEmpty() && r.IsExpression {
+			return nil, newCompilerError("Please add a name (alias) for the expression '%s'.", r.OriginalContent)
+		} else if !x.As.IsEmpty() {
+			r.AliasOfContent = x.As.String()
+		}
+		r.selectedExprsReverse.merge(dictionaryFields{
+			x.As.Lowered(): &dictionaryField{
+				Expr:              r.Content,
+				IsInAggregateFunc: r.IsInAggregateFunc,
+				Alias:             x.As.String(),
+			},
+		})
+
+		return r, nil
 	default:
 		panic(fmt.Sprintf("unimplemented: %T. See selectors.selectExpr, file %s", x, `sql\select.selects.go`))
 	}

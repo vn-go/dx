@@ -21,7 +21,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector) (*compilerR
 	}
 	// check alias table in dict
 
-	// determine database tabel name
+	// determine database table name
 	var ent *entity.Entity
 	if entFind, ok := injector.dict.aliasToEntity[strings.ToLower(alias)]; ok {
 		ent = entFind
@@ -39,31 +39,32 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector) (*compilerR
 
 	if field, ok := injector.dict.fields[key]; ok {
 		refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Name))
+		cmpField := &dictionaryField{
+			Expr:  field.Expr,
+			Typ:   field.Typ,
+			Alias: field.EntityField.Field.Name,
+		}
 		return &compilerResult{
 			Content:         field.Expr,
 			OriginalContent: originalContent,
 			Args:            nil,
-			Fields: refFields{
+			Fields: refFields{ // add ref field for permission check
 				refFieldKey: refFieldInfo{
 					EntityName:      ent.EntityType.Name(),
 					EntityFieldName: field.EntityField.Field.Name,
 				},
 			},
-			selectedExprs: dictionaryFields{
-				strings.ToLower(field.Expr): &dictionaryField{
-					Expr:  field.Expr,
-					Typ:   field.Typ,
-					Alias: field.EntityField.Field.Name,
-				},
+			selectedExprs: dictionaryFields{ // add selected expr next phase of compiler
+				strings.ToLower(field.Expr): cmpField,
 			},
-			selectedExprsReverse: dictionaryFields{
-				field.EntityField.Name: &dictionaryField{
-					Expr:  field.Expr,
-					Typ:   field.Typ,
-					Alias: field.EntityField.Field.Name,
-				},
+			selectedExprsReverse: dictionaryFields{ // hold reverse of selected exprs for where clause compiler
+				field.EntityField.Name: cmpField,
 			},
+			nonAggregateFields: dictionaryFields{ // hold non aggregate fields for group by clause compiler
+				strings.ToLower(field.Expr): cmpField,
+			},
+			AliasOfContent: field.Alias,
 		}, nil
 	}
-	panic("unimplemented")
+	panic("unimplemented, see selectors.colName")
 }
