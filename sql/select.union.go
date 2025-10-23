@@ -10,12 +10,14 @@ import (
 // select.union.go
 func (s selectors) union(expr *sqlparser.Union, injector *injector) (*compilerResult, error) {
 	sqlSource := []string{}
+	injector.dict = newDictionary()
 	l, err := s.selectStatement(expr.Left, injector)
 	if err != nil {
 		return nil, err
 	}
 	sqlSource = append(sqlSource, l.Content)
 	sqlSource = append(sqlSource, expr.Type)
+	injector.dict = newDictionary()
 	r, err := s.selectStatement(expr.Right, injector)
 
 	if err != nil {

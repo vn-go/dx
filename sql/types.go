@@ -27,16 +27,19 @@ type argument struct {
 }
 type arguments []argument
 
-func (a arguments) ToArray(dynamicArgs []any) []any {
+func (a arguments) ToArray(dynamicArgs []any) ([]any, error) {
 	ret := make([]any, len(a))
 	for i, arg := range a {
 		if arg.index > 0 {
+			if arg.index > len(dynamicArgs) {
+				return nil, fmt.Errorf("dynamic arg index out of range. index: %d, dynamic args length: %d", arg.index, len(dynamicArgs))
+			}
 			ret[i] = dynamicArgs[arg.index-1]
 		} else {
 			ret[i] = arg.val
 		}
 	}
-	return ret
+	return ret, nil
 }
 
 /*

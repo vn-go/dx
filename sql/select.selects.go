@@ -27,7 +27,12 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		if err != nil {
 			return nil, err
 		}
-		itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
+		if _, ok := x.(*sqlparser.StarExpr); ok {
+			itemSelectors = append(itemSelectors, r.Content)
+		} else {
+			itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
+		}
+
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
@@ -161,14 +166,16 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*compilerResult, error) {
 	strSelectItems := []string{}
 	if expr.TableName.IsEmpty() {
+		i := 1
 		for _, x := range injector.dict.entities {
+			aliasTable := fmt.Sprintf("T%d", i)
 			for _, col := range x.Cols {
 				aliasField := injector.dialect.Quote(col.Field.Name)
 				if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
 					aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
 				}
 				strSelectItems = append(strSelectItems, injector.dialect.Quote(x.TableName, col.Name)+" "+aliasField)
-				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", x.EntityType.Name(), col.Field.Name))
+				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))
 				if _, ok := injector.fields[refFieldKey]; !ok {
 					injector.fields[refFieldKey] = refFieldInfo{
 						EntityName:      x.EntityType.Name(),
@@ -176,11 +183,13 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					}
 				}
 			}
+			i++
 		}
 	} else {
 		if ent, ok := injector.dict.entities[strings.ToLower(expr.TableName.Name.String())]; ok {
+			aliasTable := "T1"
 			for _, col := range ent.Cols {
-				strSelectItems = append(strSelectItems, injector.dialect.Quote(ent.TableName, col.Name)+" "+injector.dialect.Quote(col.Field.Name))
+				strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+injector.dialect.Quote(col.Field.Name))
 				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), col.Field.Name))
 				if _, ok := injector.fields[refFieldKey]; !ok {
 					injector.fields[refFieldKey] = refFieldInfo{

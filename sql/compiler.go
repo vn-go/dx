@@ -28,10 +28,13 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*sql
 	if i.err != nil {
 		return nil, i.err
 	}
-
+	args, err := i.val.Args.ToArray(arg)
+	if err != nil {
+		return nil, err
+	}
 	return &sqlParser{
 		Query: i.val.Content,
-		Args:  i.val.Args.ToArray(arg),
+		Args:  args,
 	}, nil
 
 }

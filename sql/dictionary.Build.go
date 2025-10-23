@@ -30,8 +30,8 @@ func (d *dictionary) Build(alias string, datasetName string, dialect types.Diale
 	d.tableAlias[strings.ToLower(datasetName)] = alias
 	d.tableAlias[strings.ToLower(ent.TableName)] = alias
 	for _, col := range ent.Cols {
-		key := strings.ToLower(alias + "." + col.Name)
-		key2 := strings.ToLower(ent.EntityType.Name() + "." + col.Name)
+		key := strings.ToLower(alias + "." + col.Field.Name)
+		key2 := strings.ToLower(ent.EntityType.Name() + "." + col.Field.Name)
 		fieldExpr := dialect.Quote(alias, col.Name)
 		d.fields[key] = &dictionaryField{
 			Expr:        fieldExpr,

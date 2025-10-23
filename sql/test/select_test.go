@@ -12,6 +12,22 @@ import (
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 
+func TestSelect2TableJoin(t *testing.T) {
+
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `
+		select item.* from item, decrementDetail where item.id =1 and item.id = decrementDetail.itemId
+	`)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sqlCompiled.Query)
+
+}
 func TestSelectOneTableWithSum(t *testing.T) {
 
 	db, err := dx.Open("sqlserver", cnn)
@@ -133,7 +149,7 @@ func TestSelectUnion(t *testing.T) {
 	select * from decrement where id = ?
 	union all
 	select * from incrementDetail where id = ?
-	`, 1)
+	`, 1, 2, 3)
 	if err != nil {
 		panic(err)
 	}
