@@ -20,7 +20,7 @@ func TestSelectOneTableWithSum(t *testing.T) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
 	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select price,sum(item.id+1) Total  from item 
-														where total>1000 and price>100`, 1)
+														where total>1000 or price>100`, 1)
 	if err != nil {
 		panic(err)
 	}

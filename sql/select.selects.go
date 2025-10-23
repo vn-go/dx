@@ -53,6 +53,22 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		}
 		if len(havingItems) > 0 {
 			sql.having = strings.Join(havingItems, " AND ")
+			goupByItems := []string{}
+			checkGroupBy := map[string]bool{}
+			for k, v := range ret.selectedExprsReverse {
+				if k == "" { // not not hav alias skip it
+					continue
+				}
+				if !v.IsInAggregateFunc {
+					if _, ok := checkGroupBy[v.Expr]; !ok {
+						goupByItems = append(goupByItems, v.Expr)
+						checkGroupBy[v.Expr] = true
+					}
+				}
+			}
+			if len(goupByItems) > 0 {
+				sql.groupBy = strings.Join(goupByItems, ", ")
+			}
 		}
 	}
 
