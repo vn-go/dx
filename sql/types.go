@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
@@ -172,6 +173,8 @@ func (d *dictionaryFields) merge(exprs dictionaryFields) *dictionaryFields {
 	return d
 }
 
+type subqueryEntity struct {
+}
 type dictionary struct {
 	fields dictionaryFields
 	/*
@@ -197,7 +200,8 @@ type dictionary struct {
 
 
 	*/
-	aliasToEntity map[string]*entity.Entity
+	aliasToEntity   map[string]*entity.Entity
+	subqueryEntites map[string]subqueryEntity
 }
 
 type injector struct {
@@ -241,64 +245,51 @@ const GET_PARAMS_FUNC = "dx__GetParams"
 type CompilerError struct {
 	Message string
 	Args    []any
+
+	Type      ERR_TYPE
+	TraceArgs []any
 }
+type ERR_TYPE int
+
+const (
+	ERR_UNKNOWN ERR_TYPE = iota
+	ERR_DATASET_NOT_FOUND
+	ERR_FIELD_REQUIRE_ALIAS
+	ERR_FIELD_NOT_FOUND
+	ERR_AMBIGUOUS_FIELD_NAME
+	ERR_EXPRESION_REQUIRE_ALIAS
+)
 
 func (e *CompilerError) Error() string {
-	return fmt.Sprintf(e.Message, e.Args...)
+	msg := []string{
+		fmt.Sprintf(e.Message, e.Args...),
+	}
+	for _, traceArgs := range e.TraceArgs {
+		msg = append(msg, fmt.Sprintf("Detail: %s", traceArgs))
+	}
+	return strings.Join(msg, "\n")
 }
-func newCompilerError(message string, args ...any) *CompilerError {
+func newCompilerError(errType ERR_TYPE, message string, args ...any) error {
 	return &CompilerError{
 		Message: message,
 		Args:    args,
+		Type:    errType,
 	}
 }
+func traceCompilerError(err error, args ...any) error {
+	if ce, ok := err.(*CompilerError); ok {
+		if ce.TraceArgs == nil {
+			ce.TraceArgs = []any{}
+		}
+		ce.TraceArgs = append(ce.TraceArgs, args...)
+		return ce
+	}
+	return err
+}
 
-// type sqlComplied struct {
-// 	source   string // from
-// 	selector string // select field here
-// 	filter   string // where clause
-// 	sort     string // order by clause
-// 	having   string
-// 	groupBy  string
-// }
-
-// func (s *sqlComplied) String() string {
-// 	query := "SELECT "
-
-// 	// SELECT fields
-// 	if s.selector != "" {
-// 		query += s.selector
-// 	} else {
-// 		query += "*"
-// 	}
-
-// 	// FROM clause
-// 	if s.source != "" {
-// 		query += " FROM " + s.source
-// 	}
-
-// 	// WHERE clause
-// 	if s.filter != "" {
-// 		query += " WHERE " + s.filter
-// 	}
-
-// 	// GROUP BY clause
-// 	if s.groupBy != "" {
-// 		query += " GROUP BY " + s.groupBy
-// 	}
-
-// 	// HAVING clause
-// 	if s.having != "" {
-// 		query += " HAVING " + s.having
-// 	}
-
-// 	// ORDER BY clause
-// 	if s.sort != "" {
-// 		query += " ORDER BY " + s.sort
-// 	}
-
-// 	return query
-// }
+type joinTableExprInjector struct {
+	index int
+}
 
 type sqlParser struct {
 	Query string

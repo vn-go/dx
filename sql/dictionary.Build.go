@@ -22,7 +22,7 @@ func (dictBuildItem *dictionaryBuildItem) backtick(dialect types.Dialect) string
 func (d *dictionary) Build(alias string, datasetName string, dialect types.Dialect) (*dictionaryBuildItem, error) {
 	ent := model.ModelRegister.FindEntityByName(datasetName)
 	if ent == nil {
-		return nil, newCompilerError("dataset %s not found", datasetName)
+		return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "dataset %s not found", datasetName)
 	}
 	d.entities[strings.ToLower(ent.EntityType.Name())] = ent
 	d.aliasToEntity[strings.ToLower(alias)] = ent

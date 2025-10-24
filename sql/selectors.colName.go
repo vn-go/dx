@@ -11,7 +11,7 @@ import (
 // selectors.colName.go
 func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
-		return nil, newCompilerError("'%s' is ambiguous, specify dataset	 name", t.Name.String())
+		return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
 	}
 	originalContent := t.Name.String()
 	alias := "T1" // if not found, use default alias
@@ -29,31 +29,41 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 
 		if entFind, ok := injector.dict.entities[strings.ToLower(alias)]; ok {
 			ent = entFind
+		} else if subqueryEntity, ok := injector.dict.subqueryEntites[strings.ToLower(alias)]; ok {
+			return s.colNameInSubquery(t, injector, cmpTyp, selectedExprsReverse, subqueryEntity)
+
 		} else {
 
-			return nil, newCompilerError("dataset was not found")
+			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "Dataset '%s' was not found", t.Qualifier.Name.String())
 		}
 	}
 
 	key := strings.ToLower(fmt.Sprintf("%s.%s", alias, t.Name.String()))
-
+	fr := refFields{}
 	if field, ok := injector.dict.fields[key]; ok {
-		refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Name))
+		refFieldKey := fmt.Sprintf("%s.%s", alias, t.Name.String())
+		retAlias := alias
+		if ent.EntityType != nil {
+			refFieldKey = strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Name))
+			retAlias = field.EntityField.Field.Name
+			fr = refFields{ // add ref field for permission check
+				refFieldKey: refFieldInfo{
+					EntityName:      ent.EntityType.Name(),
+					EntityFieldName: field.EntityField.Field.Name,
+				},
+			}
+		}
+
 		cmpField := &dictionaryField{
 			Expr:  field.Expr,
 			Typ:   field.Typ,
-			Alias: field.EntityField.Field.Name,
+			Alias: retAlias,
 		}
 		return &compilerResult{
 			Content:         field.Expr,
 			OriginalContent: originalContent,
 			Args:            nil,
-			Fields: refFields{ // add ref field for permission check
-				refFieldKey: refFieldInfo{
-					EntityName:      ent.EntityType.Name(),
-					EntityFieldName: field.EntityField.Field.Name,
-				},
-			},
+			Fields:          fr,
 			selectedExprs: dictionaryFields{ // add selected expr next phase of compiler
 				strings.ToLower(field.Expr): cmpField,
 			},
@@ -75,7 +85,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				IsExpression:      true,
 			}, nil
 		}
-		return nil, newCompilerError("column '%s' was not found", t.Name.String())
+		return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "column '%s' was not found", t.Name.String())
 	}
 
 	panic("unimplemented, see selectors.colName")

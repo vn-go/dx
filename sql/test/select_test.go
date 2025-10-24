@@ -20,7 +20,12 @@ func TestSelect2TableJoin(t *testing.T) {
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
 	sqlCompiled, err := sql.Compiler.Resolve(dialect, `
-		select item.* from item, decrementDetail where item.id =1 and item.id = decrementDetail.itemId
+		select item.* 
+		from 
+		item 	left join (select id,price from item where id>1000) qr1
+					on item.id = qr1.itemId
+				left join incrementDetail 
+					on item.id = incrementDetail.itemId
 	`)
 	if err != nil {
 		panic(err)

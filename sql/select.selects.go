@@ -126,7 +126,7 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 			return nil, err
 		}
 		if x.As.IsEmpty() && r.IsExpression {
-			return nil, newCompilerError("Please add a name (alias) for the expression '%s'.", r.OriginalContent)
+			return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
 		} else if !x.As.IsEmpty() {
 			r.AliasOfContent = x.As.String()
 		}
@@ -165,16 +165,22 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 
 func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*compilerResult, error) {
 	strSelectItems := []string{}
+	selectedExprs := dictionaryFields{}
 	if expr.TableName.IsEmpty() {
 		i := 1
 		for _, x := range injector.dict.entities {
 			aliasTable := fmt.Sprintf("T%d", i)
 			for _, col := range x.Cols {
+
 				aliasField := injector.dialect.Quote(col.Field.Name)
 				if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
 					aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
 				}
 				strSelectItems = append(strSelectItems, injector.dialect.Quote(x.TableName, col.Name)+" "+aliasField)
+				selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
+					Expr:  injector.dialect.Quote(aliasTable, col.Name),
+					Alias: col.Name,
+				}
 				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))
 				if _, ok := injector.fields[refFieldKey]; !ok {
 					injector.fields[refFieldKey] = refFieldInfo{
@@ -197,15 +203,20 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 						EntityFieldName: col.Field.Name,
 					}
 				}
+				selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
+					Expr:  injector.dialect.Quote(aliasTable, col.Name),
+					Alias: col.Name,
+				}
 			}
 		} else {
-			return nil, newCompilerError("datasource %s not found", expr.TableName.Name.String())
+			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "dataset %s not found", expr.TableName.Name.String())
 		}
 	}
 	strSelect := strings.Join(strSelectItems, ", ")
 	return &compilerResult{
-		Content: strSelect,
-		Args:    nil,
-		Fields:  injector.fields,
+		Content:       strSelect,
+		Args:          nil,
+		Fields:        injector.fields,
+		selectedExprs: selectedExprs,
 	}, nil
 }
