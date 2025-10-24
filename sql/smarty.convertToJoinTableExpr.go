@@ -48,7 +48,8 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 			r = append(r, s.extractTables(expr, visitedTable)...)
 		}
 		return r
-
+	case *sqlparser.SQLVal:
+		return []string{}
 	default:
 		panic(fmt.Sprintf("unknown type %T, smarty.extractTables", t))
 	}

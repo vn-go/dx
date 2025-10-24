@@ -13,8 +13,55 @@ import (
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
 var dsnMySql = "root:123456@tcp(127.0.0.1:3306)/hrm"
 
-func TestFullSetSunIf(t *testing.T) {
+func TestSmartQuery(t *testing.T) {
+	db, err := dx.Open("mysql", dsnMySql)
+	assert.NoError(t, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
 
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `
+														max(item.price) MaxPrice, 
+														where (MaxPrice > 1000 and item.name='admin'),
+														from(
+														itm.id=incrementDetail.itemId,
+														item itm
+														)`)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sqlCompiled.Query)
+}
+func BenchmarkSmartQuery(b *testing.B) {
+	db, err := dx.Open("mysql", dsnMySql)
+	assert.NoError(b, err)
+	defer db.Close()
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	b.ResetTimer()
+	query := `
+			max(item.price) MaxPrice, 
+			where (MaxPrice > 1000),
+			from(item.id=incrementDetail.itemId)`
+	expectedQuery := "SELECT max(`T1`.`price`) `MaxPrice` FROM `items` `T1` join  `increment_details` `T2` ON `T1`.`id` = `T2`.`item_id` HAVING max(`T1`.`price`) > {1}"
+	for i := 0; i < b.N; i++ {
+		sqlCompiled, err := sql.Compiler.Resolve(dialect, query)
+		if err != nil {
+			panic(err)
+		}
+		assert.Equal(b, expectedQuery, sqlCompiled.Query)
+	}
+
+	b.Run("parallel", func(b *testing.B) {
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				sqlCompiled, err := sql.Compiler.Resolve(dialect, query)
+				if err != nil {
+					panic(err)
+				}
+				assert.Equal(b, expectedQuery, sqlCompiled.Query)
+			}
+		})
+	})
 }
 func TestSelect2TableJoin(t *testing.T) {
 

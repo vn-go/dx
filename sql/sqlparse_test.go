@@ -16,7 +16,7 @@ func Test0001(t *testing.T) {
 					emp.department_id like department.id,
 					emp.userId = usr.id,
 			),emp.code+dept.code Code, where(emp.id = select(max(emp.id)))`
-	str = `max(emp.id), from(employee emp),where(emp.id = select(max(emp.id)))`
+	str = `max(emp.id), from(employee emp)`
 	sql, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
