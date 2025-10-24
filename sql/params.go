@@ -83,7 +83,7 @@ func (p *param) sqlVal(expr *sqlparser.SQLVal, injector *injector) (*compilerRes
 			IsExpression: true,
 		}, nil
 	default:
-		panic(fmt.Sprintf("unsupported type: %d. See param.sqlVal, file ", expr.Type, `sql\params.go`))
+		panic(fmt.Sprintf("unsupported type: %d. See param.sqlVal, file %s", expr.Type, `sql\params.go`))
 	}
 
 }
@@ -96,7 +96,7 @@ func (p *param) extract(node sqlparser.SQLNode) *sqlparser.SQLVal {
 		return p.extract(x.Expr)
 
 	default:
-		panic(fmt.Sprintf("unsupported type: %T. See param.extract, file ", x, `sql\params.go`))
+		panic(fmt.Sprintf("unsupported type: %T. See param.extract, file %s ", x, `sql\params.go`))
 	}
 
 }
@@ -132,7 +132,7 @@ func (p *param) funcExpr(x *sqlparser.FuncExpr, injector *injector) (*compilerRe
 			IsExpression:    true,
 		}, nil
 	}
-	panic(fmt.Sprintf("unsupported function: %s. see param.funcExpr, file ", x.Name.String(), `sql\params.go`))
+	panic(fmt.Sprintf("unsupported function: %s. see param.funcExpr, file %s", x.Name.String(), `sql\params.go`))
 }
 
 var params = &param{}

@@ -11,16 +11,21 @@ import (
 )
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
+var dsnMySql = "root:123456@tcp(127.0.0.1:3306)/hrm"
 
+func TestFullSetSunIf(t *testing.T) {
+
+}
 func TestSelect2TableJoin(t *testing.T) {
 
-	db, err := dx.Open("sqlserver", cnn)
+	//db, err := dx.Open("sqlserver", cnn)
+	db, err := dx.Open("mysql", dsnMySql)
 	assert.NoError(t, err)
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
 	sqlCompiled, err := sql.Compiler.Resolve(dialect, `
-		select item.* 
+		select text(item.id)  Code
 		from 
 		item 	left join (select id,price from item where id>1000) qr1
 					on item.id = qr1.itemId
@@ -33,6 +38,42 @@ func TestSelect2TableJoin(t *testing.T) {
 	fmt.Println(sqlCompiled.Query)
 
 }
+func BenchmarkSelect2TableJoin(b *testing.B) {
+	db, err := dx.Open("sqlserver", cnn)
+	assert.NoError(b, err)
+	defer db.Close()
+
+	dialect := factory.DialectFactory.Create(db.DriverName)
+	query := `
+		SELECT item.* 
+		FROM item 
+		LEFT JOIN (SELECT id, price FROM item WHERE id > 1000) qr1 ON item.id = qr1.itemId 
+		LEFT JOIN incrementDetail ON item.id = incrementDetail.itemId
+	`
+
+	b.Run("parallel", func(b *testing.B) {
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, err := sql.Compiler.Resolve(dialect, query)
+				if err != nil {
+					panic(err)
+				}
+			}
+		})
+	})
+
+	b.Run("sequential", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err := sql.Compiler.Resolve(dialect, query)
+			if err != nil {
+				panic(err)
+			}
+		}
+	})
+}
+
 func TestSelectOneTableWithSum(t *testing.T) {
 
 	db, err := dx.Open("sqlserver", cnn)

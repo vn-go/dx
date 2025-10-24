@@ -97,6 +97,9 @@ var aggregateFunc = map[string]string{
 
 func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
+	if fnName == "text" {
+		return d.SqlFunctionText(delegator)
+	}
 	if ret, ok := castFunc[fnName]; ok {
 		delegator.FuncName = ret
 		return ret, nil

@@ -56,6 +56,9 @@ func (m *MigratorMySql) GetSqlCreateTable(db *db.DB, typ reflect.Type, schema st
 		if col.Length != nil && (col.Field.Type == reflect.TypeFor[string]() || col.Field.Type == reflect.TypeFor[*string]()) {
 			sqlType = fmt.Sprintf("%s(%d)", sqlType, *col.Length)
 		}
+		if strings.ToLower(sqlType) == "varchar" {
+			sqlType = "text"
+		}
 
 		colDef := m.Quote(col.Name) + " " + sqlType
 

@@ -30,7 +30,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 		if entFind, ok := injector.dict.entities[strings.ToLower(alias)]; ok {
 			ent = entFind
 		} else if subqueryEntity, ok := injector.dict.subqueryEntites[strings.ToLower(alias)]; ok {
-			return s.colNameInSubquery(t, injector, cmpTyp, selectedExprsReverse, subqueryEntity)
+			return s.colNameInSubquery(t, injector, subqueryEntity)
 
 		} else {
 

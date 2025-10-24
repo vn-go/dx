@@ -284,7 +284,24 @@ func (c *helperType) QuoteExpression2(expr string) (string, error) {
 		expr = strings.ReplaceAll(expr, "\t", " ")
 		expr = strings.TrimSpace(expr)
 		expr = strings.TrimSuffix(expr, ",")
-
+		for strings.Contains(expr, ", ") {
+			expr = strings.ReplaceAll(expr, ", ", ",")
+		}
+		for strings.Contains(expr, "  ") {
+			expr = strings.ReplaceAll(expr, "  ", " ")
+		}
+		for strings.Contains(expr, "( ,") {
+			expr = strings.ReplaceAll(expr, "( ,", "(")
+		}
+		for strings.Contains(expr, ", )") {
+			expr = strings.ReplaceAll(expr, ", )", ")")
+		}
+		for strings.Contains(expr, "(,") {
+			expr = strings.ReplaceAll(expr, "(,", "(")
+		}
+		for strings.Contains(expr, ",)") {
+			expr = strings.ReplaceAll(expr, ",)", ")")
+		}
 		exprNoStr, literals := c.extractLiterals(expr)
 
 		// Lấy từng token và vị trí

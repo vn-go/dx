@@ -23,8 +23,8 @@ type DecrementDetail struct {
 	Amount      float64
 }
 type Item struct {
-	ID    int `db:"pk;auto"`
-	Name  string
+	ID    int    `db:"pk;auto"`
+	Name  string `db:"size:50"`
 	Price float64
 }
 type Customers struct {

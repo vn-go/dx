@@ -173,7 +173,13 @@ func (d *dictionaryFields) merge(exprs dictionaryFields) *dictionaryFields {
 	return d
 }
 
+type subqueryEntityField struct {
+	source string
+	field  string
+}
+type subqueryEntityFields map[string]subqueryEntityField
 type subqueryEntity struct {
+	fields subqueryEntityFields
 }
 type dictionary struct {
 	fields dictionaryFields
