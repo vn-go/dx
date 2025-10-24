@@ -23,6 +23,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 	selectStatement.Source = r.Content
 	itemSelectors := []string{}
 	for _, x := range expr.SelectExprs {
+
 		r, err = s.selectExpr(x, injector)
 		if err != nil {
 			return nil, err
@@ -145,6 +146,7 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 				},
 			},
 			IsInAggregateFunc: r.IsInAggregateFunc,
+			Fields:            r.Fields,
 		}, nil
 		// r.selectedExprsReverse.merge(dictionaryFields{
 		// 	x.As.Lowered(): &dictionaryField{

@@ -10,7 +10,7 @@ import (
 // selectors.colNameInSubquery.go
 func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields, qrEntity subqueryEntity) (*compilerResult, error) {
 	key := strings.ToLower(fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()))
-	return &compilerResult{
+	ret := compilerResult{
 		Content:         injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
 		OriginalContent: fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()),
 		selectedExprsReverse: dictionaryFields{
@@ -18,5 +18,6 @@ func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, c
 				Expr: injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
 			},
 		},
-	}, nil
+	}
+	return &ret, nil
 }

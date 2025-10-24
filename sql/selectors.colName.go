@@ -44,7 +44,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 		refFieldKey := fmt.Sprintf("%s.%s", alias, t.Name.String())
 		retAlias := alias
 		if ent.EntityType != nil {
-			refFieldKey = strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Name))
+			refFieldKey = strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Field.Name))
 			retAlias = field.EntityField.Field.Name
 			fr = refFields{ // add ref field for permission check
 				refFieldKey: refFieldInfo{

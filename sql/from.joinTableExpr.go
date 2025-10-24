@@ -23,9 +23,10 @@ func (f *from) joinTableExpr(t *sqlparser.JoinTableExpr, injector *injector, joi
 	if err != nil {
 		return nil, err
 	}
-
+	condition.Fields = condition.Fields.merge(left.Fields.merge(right.Fields))
 	return &compilerResult{
 		Content: fmt.Sprintf("%s %s  %s ON %s", left.Content, t.Join, right.Content, condition.Content),
+		Fields:  condition.Fields,
 	}, nil
 }
 

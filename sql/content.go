@@ -32,8 +32,12 @@ func (c *contentNode) toText(node sqlparser.SQLNode) string {
 		return c.whereToText(n)
 	case *sqlparser.ComparisonExpr:
 		return c.binaryExprToText(n.Left, n.Right, n.Operator)
+	case *sqlparser.BinaryExpr:
+		return c.binaryExprToText(n.Left, n.Right, n.Operator)
 	case sqlparser.JoinCondition:
 		return c.joinConditionToText(n)
+	case *sqlparser.FuncExpr:
+		return c.funcExprToText(n)
 	case *sqlparser.SQLVal:
 		if n.Type == sqlparser.ValArg {
 			return "?"
@@ -45,7 +49,16 @@ func (c *contentNode) toText(node sqlparser.SQLNode) string {
 
 }
 
+func (c *contentNode) funcExprToText(n *sqlparser.FuncExpr) string {
+	items := []string{}
+	for _, x := range n.Exprs {
+		items = append(items, c.toText(x))
+	}
+	return fmt.Sprintf("%s(%s)", n.Name.String(), strings.Join(items, ", "))
+}
+
 func (c *contentNode) joinConditionToText(n sqlparser.JoinCondition) string {
+
 	return c.toText(n.On)
 
 }

@@ -31,7 +31,8 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 	case *sqlparser.OrExpr:
 		return e.binary(x.Left, x.Right, "OR", injector, cmpType, selectedExprsReverse)
 	case *sqlparser.ComparisonExpr:
-		return e.binary(x.Left, x.Right, x.Operator, injector, cmpType, selectedExprsReverse)
+		ret, err := e.binary(x.Left, x.Right, x.Operator, injector, cmpType, selectedExprsReverse)
+		return ret, err
 
 	case *sqlparser.BinaryExpr:
 		return e.binary(x.Left, x.Right, x.Operator, injector, cmpType, selectedExprsReverse)

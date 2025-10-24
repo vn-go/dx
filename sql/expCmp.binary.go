@@ -18,7 +18,7 @@ func (e *expCmp) binary(leftExpr sqlparser.Expr, rightExpr sqlparser.Expr, opera
 
 		return nil, traceCompilerError(err, fmt.Sprintf("%s %s %s", contents.toText(leftExpr), operator, contents.toText(rightExpr)))
 	}
-	return &compilerResult{
+	ret := &compilerResult{
 		OriginalContent:      fmt.Sprintf("%s %s %s", left.OriginalContent, operator, right.OriginalContent),
 		Content:              fmt.Sprintf("%s %s %s", left.Content, operator, right.Content),
 		Args:                 append(left.Args, right.Args...),
@@ -27,5 +27,6 @@ func (e *expCmp) binary(leftExpr sqlparser.Expr, rightExpr sqlparser.Expr, opera
 		selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 		IsExpression:         true,
 		IsInAggregateFunc:    left.IsExpression || right.IsExpression,
-	}, nil
+	}
+	return ret, nil
 }

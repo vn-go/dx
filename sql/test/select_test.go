@@ -40,8 +40,8 @@ func TestSelectOneTableWithSum(t *testing.T) {
 	defer db.Close()
 	dialect := factory.DialectFactory.Create(db.DriverName)
 
-	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select sum(item.id+1)+min(price) Total  from item 
-														where total>1000 or price>100 order by price desc`, 1)
+	sqlCompiled, err := sql.Compiler.Resolve(dialect, `select sum(item.id)+min(price) Total  from item 
+														where total>1000 or price>100 order by total desc`, 1)
 	if err != nil {
 		panic(err)
 	}

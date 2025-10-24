@@ -33,8 +33,9 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*sql
 		return nil, err
 	}
 	return &sqlParser{
-		Query: i.val.Content,
-		Args:  args,
+		Query:       i.val.Content,
+		Args:        args,
+		ScopeAccess: i.val.Fields,
 	}, nil
 
 }
