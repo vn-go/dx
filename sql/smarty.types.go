@@ -35,6 +35,7 @@ func (s *smarty) simpleCache(simpleQuery string) (string, error) {
 
 func (s *smarty) simple(simpleQuery string) (string, error) {
 
+
 	str, err := internal.Helper.QuoteExpression2(simpleQuery)
 	if err != nil {
 		return "", err
@@ -47,39 +48,14 @@ func (s *smarty) simple(simpleQuery string) (string, error) {
 		return "", err
 	}
 	selectStm := stm.(*sqlparser.Select)
-	return s.compile(selectStm)
+	ret.from = smartier.from(selectStm)
 
-}
-
-func (s *smarty) compile(selectStm *sqlparser.Select) (string, error) {
-
-	ret := &simpleSql{}
-	subSetInfoList, err := subsets.extractSubSetInfo(selectStm)
-	if err != nil {
-		return "", err
-	}
-
-	fieldAliasMap := map[string]string{}
-	ret.selects = smartier.selectors(selectStm, fieldAliasMap)
+	ret.selects = smartier.selectors(selectStm,fieldAliasMap)
 
 	ret.where = smartier.where(selectStm)
 	ret.groupBy = smartier.groupBy(selectStm, fieldAliasMap)
-	ret.sort = smartier.sort(selectStm, fieldAliasMap)
-	unionSource, err := unions.extractUnionInfo(selectStm, subSetInfoList)
-	if err != nil {
-		return "", err
-	}
-	if unionSource != "" {
-		if ret.where == "" && ret.groupBy == "" && ret.sort == "" {
-			return unionSource, nil
-		} else {
-			ret.from = "(" + unionSource + ")"
-		}
-	} else {
-		ret.from = smartier.from(selectStm, subSetInfoList)
-	}
-	sqlText := ret.String()
-	return sqlText, nil
+	ret.sort = smartier.sort(selectStm,fieldAliasMap)
+	return ret.String(), nil
 }
 
 func (s *simpleSql) replaceVParams(sql string) string {
