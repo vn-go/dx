@@ -21,7 +21,7 @@ type initCompilerResolve struct {
 
 var initCompilerResolveCache sync.Map
 
-func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*sqlParser, error) {
+func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*SmartSqlParser, error) {
 	a, _ := initCompilerResolveCache.LoadOrStore(query, &initCompilerResolve{})
 	i := a.(*initCompilerResolve)
 	i.once.Do(func() {
@@ -34,7 +34,7 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*sql
 	if err != nil {
 		return nil, err
 	}
-	return &sqlParser{
+	return &SmartSqlParser{
 		Query:       i.val.Content,
 		Args:        args,
 		ScopeAccess: i.val.Fields,

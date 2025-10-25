@@ -112,6 +112,15 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		selectStatement.Sort = r.Content
 	}
+	if expr.GroupBy != nil {
+
+		r, err := groups.resolve(expr.GroupBy, injector, ret.selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
+		selectStatement.GroupBy = r.Content
+	}
 	ret.Content = injector.dialect.GetSelectStatement(selectStatement)
 	ret.Args = injector.args
 	return &ret, nil

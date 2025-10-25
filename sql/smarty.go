@@ -11,15 +11,40 @@ import (
 type smarty struct {
 }
 
+var joinTypeFuncMap = map[string]string{
+	"left":  "LEFT",
+	"right": "RIGHT",
+	"inner": "INNER",
+
+	"outer": "OUTER",
+}
+
+type joinCondition struct {
+	node     sqlparser.SQLNode
+	joinType string
+}
+
 func (s *smarty) from(selectStm *sqlparser.Select) string {
 
 	dsSourceFunc := s.findFncExpr(selectStm, "from")
 	if dsSourceFunc != nil {
-		comparisonExprs := []sqlparser.SQLNode{}
+		comparisonExprs := []joinCondition{}
 		aliasedExpr := []sqlparser.SQLNode{}
 		for _, expr := range dsSourceFunc.Exprs {
+			if fnNode := detect[*sqlparser.FuncExpr](expr); fnNode != nil {
+				if joinType, ok := joinTypeFuncMap[fnNode.Name.Lowered()]; ok {
+					comparisonExprs = append(comparisonExprs, joinCondition{
+						node:     fnNode.Exprs[0],
+						joinType: joinType,
+					})
+					continue
+				}
+			}
 			if isNode[*sqlparser.ComparisonExpr](expr) {
-				comparisonExprs = append(comparisonExprs, expr)
+				comparisonExprs = append(comparisonExprs, joinCondition{
+					node:     expr,
+					joinType: "INNER",
+				})
 			} else if aliased, ok := expr.(*sqlparser.AliasedExpr); ok {
 				aliasedExpr = append(aliasedExpr, aliased)
 			}
@@ -89,6 +114,10 @@ func detect[T any](node sqlparser.SQLNode) T {
 	case *sqlparser.ColName:
 		return defautT
 	case *sqlparser.BinaryExpr:
+		return defautT
+	case *sqlparser.ComparisonExpr:
+		return defautT
+	case *sqlparser.FuncExpr:
 		return defautT
 	default:
 		panic(fmt.Sprintf("unexpected type %T. ref detect", t))

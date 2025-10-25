@@ -29,10 +29,30 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 
 		if entFind, ok := injector.dict.entities[strings.ToLower(alias)]; ok {
 			ent = entFind
+		} else if len(injector.dict.aliasToEntity) == 1 && cmpTyp != CMP_SELECT {
+			// If selecting from only one table, and the SELECT clause hasn't been compiled yet,
+			// the current field is probably an alias of an expression in the SELECT clause.
+			for k, v := range injector.dict.aliasToEntity {
+				ent = v
+				alias = k
+				break
+			}
 		} else if subqueryEntity, ok := injector.dict.subqueryEntites[strings.ToLower(alias)]; ok {
 			return s.colNameInSubquery(t, injector, subqueryEntity)
 
 		} else {
+			if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
+				if cmpField, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
+					return &compilerResult{
+						Content:           cmpField.Expr,
+						OriginalContent:   originalContent,
+						AliasOfContent:    cmpField.Alias,
+						IsInAggregateFunc: cmpField.IsInAggregateFunc,
+						IsExpression:      true,
+					}, nil
+				}
+				return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "column '%s' was not found", t.Name.String())
+			}
 
 			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "Dataset '%s' was not found", t.Qualifier.Name.String())
 		}
@@ -76,7 +96,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 			AliasOfContent: field.Alias,
 		}, nil
 	} else if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
-		if cmpField, ok := selectedExprsReverse[t.Name.String()]; ok {
+		if cmpField, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
 			return &compilerResult{
 				Content:           cmpField.Expr,
 				OriginalContent:   originalContent,

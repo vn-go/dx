@@ -50,13 +50,26 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 		return r
 	case *sqlparser.SQLVal:
 		return []string{}
+	case *sqlparser.AndExpr:
+		r := s.extractTables(t.Left, visitedTable)
+		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		return r
+	case *sqlparser.OrExpr:
+		r := s.extractTables(t.Left, visitedTable)
+		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		return r
+	case *sqlparser.BinaryExpr:
+		r := s.extractTables(t.Left, visitedTable)
+		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		return r
+
 	default:
 		panic(fmt.Sprintf("unknown type %T, smarty.extractTables", t))
 	}
 }
 
 // smarty.convertToJoinTableExpr.go
-func (s *smarty) convertToJoinTableExpr(comparisionNodes []sqlparser.SQLNode, tableAliasNodes []sqlparser.SQLNode) string {
+func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableAliasNodes []sqlparser.SQLNode) string {
 
 	mapTableAlias := s.getMapTableAlias(tableAliasNodes)
 	if len(comparisionNodes) == 0 {
@@ -67,8 +80,8 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []sqlparser.SQLNode, ta
 		return strings.Join(items, ", ")
 	}
 
-	strOn := s.ToText(comparisionNodes[0])
-	tables := s.extractTables(comparisionNodes[0], map[string]bool{})
+	strOn := s.ToText(comparisionNodes[0].node)
+	tables := s.extractTables(comparisionNodes[0].node, map[string]bool{})
 	strLeft := tables[0]
 	tableHasUsed := map[string]bool{}
 	tableHasUsed[strLeft] = true
@@ -84,9 +97,9 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []sqlparser.SQLNode, ta
 
 	}
 
-	strJoin := strLeft + " " + "INNER JOIN " + strRight + " ON " + strOn
+	strJoin := strLeft + " " + comparisionNodes[0].joinType + " JOIN " + strRight + " ON " + strOn
 	for i := 1; i < len(comparisionNodes); i++ {
-		tables := s.extractTables(comparisionNodes[i], map[string]bool{})
+		tables := s.extractTables(comparisionNodes[i].node, map[string]bool{})
 		nextTable := tables[1]
 		for _, table := range tables {
 			if !tableHasUsed[table] {
@@ -101,8 +114,8 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []sqlparser.SQLNode, ta
 			tableHasUsed[aliasTable] = true
 		}
 
-		joinNext := s.ToText(comparisionNodes[i])
-		strJoin += " " + "INNER JOIN " + nextTable + " ON " + joinNext
+		joinNext := s.ToText(comparisionNodes[i].node)
+		strJoin += " " + comparisionNodes[i].joinType + " JOIN " + nextTable + " ON " + joinNext
 	}
 
 	return strJoin

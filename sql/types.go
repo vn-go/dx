@@ -297,7 +297,7 @@ type joinTableExprInjector struct {
 	index int
 }
 
-type sqlParser struct {
+type SmartSqlParser struct {
 	Query       string
 	Args        []any
 	ScopeAccess refFields

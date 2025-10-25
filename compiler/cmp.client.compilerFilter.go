@@ -92,9 +92,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 
 		fieldInFunc := union(left.FieldInFunc, right.FieldInFunc)
 		isAggFuncCall := left.HasAggregateFunc || right.HasAggregateFunc
-		if isAggFuncCall {
-			fmt.Println(fieldInFunc)
-		}
+
 		return &CompilerFilterTypeResult{
 			Expr:             expr,
 			FieldExpr:        fieldExpr,

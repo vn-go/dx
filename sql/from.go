@@ -72,6 +72,7 @@ func (f *from) selectStatement(sqlStm sqlparser.Statement, injector *injector) (
 		return selector.selects(expr, injector)
 	case *sqlparser.Union:
 		return selector.union(expr, injector)
+	
 
 	default:
 		panic(fmt.Sprintf("not support statement type: %T. see compiler.Resolve", sqlStm))

@@ -1,6 +1,10 @@
 package sql
 
 import (
+	"strings"
+	"sync"
+	"unicode"
+
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -10,6 +14,23 @@ type simpleSql struct {
 	where   string
 	selects string
 	sort    string
+	groupBy string
+}
+type initSimpleCache struct {
+	val  string
+	err  error
+	once sync.Once
+}
+
+var initSimpleCacheMap sync.Map
+
+func (s *smarty) simpleCache(simpleQuery string) (string, error) {
+	a, _ := initSimpleCacheMap.LoadOrStore(simpleQuery, &initSimpleCache{})
+	cache := a.(*initSimpleCache)
+	cache.once.Do(func() {
+		cache.val, cache.err = s.simple(simpleQuery)
+	})
+	return cache.val, cache.err
 }
 
 func (s *smarty) simple(simpleQuery string) (string, error) {
@@ -31,9 +52,47 @@ func (s *smarty) simple(simpleQuery string) (string, error) {
 	ret.selects = smartier.selectors(selectStm)
 
 	ret.where = smartier.where(selectStm)
+	ret.groupBy = smartier.groupBy(selectStm)
 	return ret.String(), nil
 }
 
+func (s *simpleSql) replaceVParams(sql string) string {
+	var (
+		result   strings.Builder
+		inString bool // đang trong '...'
+		runes    = []rune(sql)
+		n        = len(runes)
+	)
+
+	for i := 0; i < n; i++ {
+		ch := runes[i]
+
+		// Toggle khi gặp dấu nháy đơn (') không bị escape
+		if ch == '\'' {
+			inString = !inString
+			result.WriteRune(ch)
+			continue
+		}
+
+		// Nếu không trong chuỗi và gặp :v
+		if !inString && ch == ':' && i+2 <= n && (i+1 < n && runes[i+1] == 'v') {
+
+			j := i + 2
+			// đọc hết phần số hoặc chữ
+			for j < n && (unicode.IsDigit(runes[j]) || unicode.IsLetter(runes[j])) {
+				j++
+			}
+
+			result.WriteRune('?')
+			i = j - 1 // skip phần đã đọc
+			continue
+		}
+
+		result.WriteRune(ch)
+	}
+
+	return result.String()
+}
 func (sql *simpleSql) String() string {
 	query := "SELECT " + sql.selects
 
@@ -43,9 +102,12 @@ func (sql *simpleSql) String() string {
 	if sql.where != "" {
 		query += " WHERE " + sql.where
 	}
+	if sql.groupBy != "" {
+		query += " GROUP BY " + sql.groupBy
+	}
 	if sql.sort != "" {
 		query += " ORDER BY " + sql.sort
 	}
 
-	return query
+	return sql.replaceVParams(query)
 }

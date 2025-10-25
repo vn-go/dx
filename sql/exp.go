@@ -18,6 +18,7 @@ const (
 	CMP_ORDER_BY
 	CMP_JOIN
 	CMP_SUBQUERY
+	CMP_GROUP
 )
 
 type expCmp struct {

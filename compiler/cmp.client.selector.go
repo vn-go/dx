@@ -88,23 +88,13 @@ func (cmpTyp *cmpSelectorType) makeSelectInternal(dialect types.Dialect, outputF
 						// if current selector is agg function call
 						ret.GroupByExprs = append(ret.GroupByExprs, x.Expr)
 
-						// ds.args.ArgGroup = append(ds.args.ArgGroup, x.Args.CompileArgs(ds.args.ArgsSelect, selectors.ApostropheArg)...) // add agrs group by
-					} else {
-						// if ds.aggExpr == nil {
-						// 	ds.aggExpr = map[string]exprWithArgs{}
-						// }
-						// ds.aggExpr[strings.ToLower(x.Alias)] = exprWithArgs{
-						// 	Expr: x.Expr,
-						// 	Args: x.Args,
-						// }
-
 					}
-					// ds.selector[strings.ToLower(x.Alias)] = true
+				}
+				for _, v := range ret.FieldNotInAggFunc {
+					ret.GroupByExprs = append(ret.GroupByExprs, v)
 				}
 			}
-			for _, v := range ret.FieldNotInAggFunc {
-				ret.GroupByExprs = append(ret.GroupByExprs, v)
-			}
+
 			return ret, nil
 		} else {
 			return nil, err

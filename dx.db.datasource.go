@@ -157,7 +157,7 @@ func datasourceTypeBuildWhere(ds *datasourceTypeBuildStruct, args *internal.SqlA
 	}
 	return nil
 }
-func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string, strWhere string, skipCheck bool, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) *compiler.CompilerFilterTypeResult {
+func (ds *datasourceType) buildWhere(strWhere string, skipCheck bool, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) *compiler.CompilerFilterTypeResult {
 
 	if strWhere == "" {
 		return nil
@@ -214,27 +214,12 @@ func (ds *datasourceType) buildWhere(selectorFieldNotInAggFuns map[string]string
 
 			}
 		}
-		// for _, x := range selectorFieldNotInAggFuns {
-		// 	if _, ok := mapGroupByItems[x]; !ok {
-		// 		strWhereNew.GroupByExprs = append(strWhereNew.GroupByExprs, x)
-		// 		mapGroupByItems[x] = true
-		// 	}
-		// }
+
 		strWhereNew.GroupByExprs = strGroupByItems
-		// ds.strGroupBy += strings.Join(strGroupByItems, ",")
+
 	}
 	return strWhereNew
 }
-
-// type datasourceTypeArgs struct {
-// 	ArgWhere   []any
-// 	ArgsSelect []any
-// 	ArgJoin    []any
-// 	ArgGroup   []any
-// 	ArgHaving  []any
-// 	ArgOrder   []any
-// 	ArgSetter  []any
-// }
 
 func (ds *datasourceType) Select(selector string, args ...any) *datasourceType {
 
@@ -332,7 +317,7 @@ type sqlParseStruct struct {
 }
 
 func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex int) (*sqlParseStruct, error) {
-	fmt.Println(ds.key)
+
 	return internal.OnceCall(fmt.Sprintf("datasourceType://ToSql/%s/%s/%s", ds.key, ds.strSelectOrigin, ds.strWhereOrigin), func() (*sqlParseStruct, error) {
 		var db = ds.db
 		var args internal.SqlArgs = []internal.SqlArg{}
@@ -357,7 +342,7 @@ func (ds *datasourceType) getSqlParse(startOf2ApostropheArgs, startOfSqlIndex in
 
 		}
 
-		where := ds.buildWhere(selectorFieldNotInAggFuns, ds.strWhereOrigin, false, len(apostropheArgs), len(args), len(*args.GetDynamicArgs()))
+		where := ds.buildWhere(ds.strWhereOrigin, false, len(apostropheArgs), len(args), len(*args.GetDynamicArgs()))
 
 		if ds.err != nil {
 			return nil, ds.err

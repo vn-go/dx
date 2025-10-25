@@ -30,9 +30,7 @@ var initMakeFilterCache sync.Map
 
 func (cmp *cmpWhereType) MakeFilter(dialect types.Dialect, outputFields map[string]types.OutputExpr, filter string, sqlSource string, startOf2ApostropheArgs, startSqlIndex, startOdDynamicArg int) (*CompilerFilterTypeResult, error) {
 	key := filter + "://" + reflect.TypeFor[cmpWhereType]().String() + "/" + sqlSource
-	// for k, v := range outputFields {
-	// 	key += k + "@" + v
-	// }
+
 	a, _ := initMakeFilterCache.LoadOrStore(key, &initMakeFilter{})
 	i := a.(*initMakeFilter)
 	i.once.Do(func() {

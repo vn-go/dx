@@ -637,7 +637,7 @@ func newHelper() *helperType {
 			"as": true, "and": true, "or": true, "not": true,
 			"case": true, "when": true, "then": true, "else": true, "end": true,
 			"inner": true, "left": true, "right": true, "full": true,
-			"on": true, "using": true, "group": true, "by": true,
+			"on": true, "using": true,
 			"like":  true,
 			"limit": true, "having": true, "is": true, "null": true, "offset": true,
 			"delete": true, "update": true, "set": true,

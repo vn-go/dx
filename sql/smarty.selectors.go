@@ -25,7 +25,9 @@ func (s *smarty) selectors(selectStm *sqlparser.Select) string {
 	for _, node := range nodes {
 		items = append(items, s.ToText(node))
 	}
-
+	if len(items) == 0 {
+		return "*"
+	}
 	return strings.Join(items, ", ")
 }
 
@@ -35,6 +37,7 @@ var keywordFuncMap = map[string]bool{
 	"order":  true,
 	"limit":  true,
 	"offset": true,
+	"group":  true,
 }
 
 func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {
