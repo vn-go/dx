@@ -3,12 +3,20 @@ package sql
 import (
 	"fmt"
 
+	sortTexts "sort"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
+
+func sortStrings(items []string) []string {
+	sorted := make([]string, len(items))
+	copy(sorted, items)
+	sortTexts.Strings(sorted)
+	return sorted
+}
 
 // select.selects.go
 func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compilerResult, error) {
@@ -37,13 +45,17 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
+		ret.IsInAggregateFunc = ret.IsInAggregateFunc || r.IsInAggregateFunc
 	}
 	selectStatement.Selector = strings.Join(itemSelectors, ", ")
-	goupByItems := []string{}
-	checkGroupBy := map[string]bool{}
+	//goupByItems := []string{}
+	//checkGroupBy := map[string]bool{}
+	havingItems := []string{}
+	groupKeys := []string{}
+	groupMap := map[string]string{}
 	if expr.Where != nil {
 		resultOfWhere := []string{}
-		havingItems := []string{}
+
 		nodes := where.splitAndExpr(expr.Where.Expr)
 		for _, node := range nodes {
 			//field Expr sqlparser.Expr
@@ -84,53 +96,76 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 							if k1 == "" { // not not hav alias skip it
 								continue
 							}
-							if _, ok := checkGroupBy[child.Expr]; !ok {
-
-								goupByItems = append(goupByItems, child.Expr)
-								checkGroupBy[child.Expr] = true
+							if _, ok := groupMap[child.Expr]; !ok {
+								groupKeys = append(groupKeys, child.Expr)
+								groupMap[child.Expr] = child.Expr
 							}
 						}
 
 					} else {
-						if _, ok := checkGroupBy[v.Expr]; !ok {
+						if _, ok := groupMap[v.Expr]; !ok {
+							groupKeys = append(groupKeys, v.Expr)
+							groupMap[v.Expr] = v.Expr
+						}
 
-							goupByItems = append(goupByItems, v.Expr)
-							checkGroupBy[v.Expr] = true
+					}
+				}
+			}
+
+		}
+	}
+
+	// detect if is need to add group by
+	if len(havingItems) > 0 || ret.IsInAggregateFunc {
+		for k, v := range ret.selectedExprsReverse {
+			if k == "" { // not not hav alias skip it
+				continue
+			}
+			if !v.IsInAggregateFunc {
+				if v.Children != nil && len(*v.Children) > 0 {
+					for k1, child := range *v.Children {
+						if k1 == "" { // not not hav alias skip it
+							continue
+						}
+						if _, ok := groupMap[child.Expr]; !ok {
+							groupKeys = append(groupKeys, child.Expr)
+
+							groupMap[child.Expr] = child.Expr
 						}
 					}
-				}
-			}
 
-		}
-	}
-	// detect if is need to add group by
-	for k, v := range ret.selectedExprsReverse {
-		if k == "" { // not not hav alias skip it
-			continue
-		}
-		if !v.IsInAggregateFunc {
-			if v.Children != nil && len(*v.Children) > 0 {
-				for k1, child := range *v.Children {
-					if k1 == "" { // not not hav alias skip it
-						continue
+				} else {
+					if _, ok := groupMap[v.Expr]; !ok {
+						groupKeys = append(groupKeys, v.Expr)
+
+						groupMap[v.Expr] = v.Expr
 					}
-					if _, ok := checkGroupBy[child.Expr]; !ok {
-
-						goupByItems = append(goupByItems, child.Expr)
-						checkGroupBy[child.Expr] = true
-					}
-				}
-
-			} else {
-				if _, ok := checkGroupBy[v.Expr]; !ok {
-
-					goupByItems = append(goupByItems, v.Expr)
-					checkGroupBy[v.Expr] = true
 				}
 			}
 		}
 	}
-	if len(goupByItems) > 0 {
+	if expr.GroupBy != nil {
+
+		r, err := groups.resolve(expr.GroupBy, injector, ret.selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
+		groupKeys = append(groupKeys, r.Content)
+		groupMap[r.Content] = r.Content
+		//goupByItems = append(goupByItems, r.Content)
+
+	}
+
+	if len(groupKeys) > 0 {
+		goupByItems := []string{}
+		groupKeys = sortStrings(groupKeys)
+		for _, x := range groupKeys {
+			if y, ok := groupMap[x]; ok {
+				goupByItems = append(goupByItems, y)
+
+			}
+		}
 		selectStatement.GroupBy = strings.Join(goupByItems, ", ")
 	}
 	if expr.OrderBy != nil {
@@ -141,15 +176,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		selectStatement.Sort = r.Content
 	}
-	if expr.GroupBy != nil {
 
-		r, err := groups.resolve(expr.GroupBy, injector, ret.selectedExprsReverse)
-		if err != nil {
-			return nil, err
-		}
-		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
-		selectStatement.GroupBy = r.Content
-	}
 	ret.Content = injector.dialect.GetSelectStatement(selectStatement)
 	ret.Args = injector.args
 	return &ret, nil
@@ -169,22 +196,26 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 		} else if !x.As.IsEmpty() {
 			r.AliasOfContent = x.As.String()
 		}
+		selectedExprsReverse := dictionaryFields{}
+		if x.As.IsEmpty() {
+			selectedExprsReverse = r.selectedExprsReverse
+		} else {
+			selectedExprsReverse[x.As.Lowered()] = &dictionaryField{
+				Expr:              r.Content,
+				IsInAggregateFunc: r.IsInAggregateFunc,
+				Alias:             x.As.String(),
+				Children:          &r.selectedExprsReverse,
+			}
+		}
 		return &compilerResult{
-			OriginalContent:    r.OriginalContent,
-			Content:            r.Content,
-			AliasOfContent:     r.AliasOfContent,
-			selectedExprs:      r.selectedExprs,
-			nonAggregateFields: r.nonAggregateFields,
-			selectedExprsReverse: dictionaryFields{
-				x.As.Lowered(): &dictionaryField{
-					Expr:              r.Content,
-					IsInAggregateFunc: r.IsInAggregateFunc,
-					Alias:             x.As.String(),
-					Children:          &r.selectedExprsReverse,
-				},
-			},
-			IsInAggregateFunc: r.IsInAggregateFunc,
-			Fields:            r.Fields,
+			OriginalContent:      r.OriginalContent,
+			Content:              r.Content,
+			AliasOfContent:       r.AliasOfContent,
+			selectedExprs:        r.selectedExprs,
+			nonAggregateFields:   r.nonAggregateFields,
+			selectedExprsReverse: selectedExprsReverse,
+			IsInAggregateFunc:    r.IsInAggregateFunc,
+			Fields:               r.Fields,
 		}, nil
 		// r.selectedExprsReverse.merge(dictionaryFields{
 		// 	x.As.Lowered(): &dictionaryField{

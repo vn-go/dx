@@ -72,6 +72,7 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 		if err != nil {
 			return nil, err
 		}
+
 		query = querySimple
 	}
 	inputSql := internal.Helper.ReplaceQuestionMarks(query, GET_PARAMS_FUNC)

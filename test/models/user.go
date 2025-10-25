@@ -30,6 +30,7 @@ type User struct {
 	RoleId                 *uint64    `json:"roleId"`
 	IsSysAdmin             bool       `db:"default:false" json:"isSysAdmin"`
 	CreatedBy              string     `db:"size:50;default:'admin'"  json:"createdBy"`
+	DepartmentId           *uint64    `json:"departmentId"`
 }
 type Role struct {
 	Id uint64 `db:"pk;auto" json:"id"`

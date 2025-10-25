@@ -37,12 +37,15 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 }
 
 var keywordFuncMap = map[string]bool{
-	"from":   true,
-	"where":  true,
-	"sort":   true,
-	"limit":  true,
-	"offset": true,
-	"group":  true,
+	"from":    true,
+	"where":   true,
+	"sort":    true,
+	"limit":   true,
+	"offset":  true,
+	"group":   true,
+	"subsets": true,
+	"rowset":  true,
+	"union":   true,
 }
 
 func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {

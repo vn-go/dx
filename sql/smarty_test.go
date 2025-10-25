@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vn-go/dx/internal"
-	"github.com/vn-go/dx/sqlparser"
 )
 
 func TestSelfJoin(t *testing.T) {
@@ -38,24 +36,7 @@ func BenchmarkTestSelfJoin(b *testing.B) {
 		assert.Equal(b, expect, sql)
 	}
 }
-func TestSubsets(t *testing.T) {
-	str := `
-		subSets(employee.code,where(employee.id = 1)) qr1,
-		subSets(employee.code,where(employee.id = 2)) qr2,
-		subSets(
-					from(department dept, department parent,dept.parentId = parent.id)
-				) dept,
-		from(qr1.id=qr2.id),
-		where(qr1.code = 'abc' and qr2.code = 'def'),
-		qr1.name`
 
-	sql, err := smartier.simple(str)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(sql)
-
-}
 func Test0001(t *testing.T) {
 	str := `from(
 					employee emp,
@@ -80,17 +61,10 @@ func BenchmarkTest0001(b *testing.B) {
 					emp.department_id = department.id,
 					emp.userId = usr.id,
 			),emp.code+dept.code Code`
-	str, _ = internal.Helper.QuoteExpression2(str)
-
-	tk := sqlparser.NewStringTokenizer("select " + str)
-	stm, err := sqlparser.ParseNext(tk)
-
+	sql, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}
-	selectStm := stm.(*sqlparser.Select)
-	for i := 0; i < b.N; i++ {
-		smartier.from(selectStm)
-	}
+	fmt.Println(sql)
 
 }

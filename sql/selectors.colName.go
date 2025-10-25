@@ -10,6 +10,7 @@ import (
 
 // selectors.colName.go
 func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
 		return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
 	}
@@ -29,7 +30,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 
 		if entFind, ok := injector.dict.entities[strings.ToLower(alias)]; ok {
 			ent = entFind
-		} else if len(injector.dict.aliasToEntity) == 1 && cmpTyp != CMP_SELECT {
+		} else if len(injector.dict.aliasToEntity) == 1 && cmpTyp != CMP_SELECT && cmpTyp != CMP_JOIN {
 			// If selecting from only one table, and the SELECT clause hasn't been compiled yet,
 			// the current field is probably an alias of an expression in the SELECT clause.
 			for k, v := range injector.dict.aliasToEntity {
@@ -51,9 +52,11 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 						IsExpression:      true,
 					}, nil
 				}
-				return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "column '%s' was not found", t.Name.String())
+				return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "Field '%s' was not found", t.Name.String())
 			}
-
+			if t.Qualifier.IsEmpty() {
+				return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
+			}
 			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "Dataset '%s' was not found", t.Qualifier.Name.String())
 		}
 	}
@@ -105,7 +108,10 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				IsExpression:      true,
 			}, nil
 		}
-		return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "column '%s' was not found", t.Name.String())
+		return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "field '%s' was not found", t.Name.String())
+	}
+	if ent != nil {
+		return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "field '%s' was not found in dataset '%s'", t.Name.String(), ent.EntityType.Name())
 	}
 
 	panic("unimplemented, see selectors.colName")
