@@ -24,7 +24,7 @@ type joinCondition struct {
 	joinType string
 }
 
-func (s *smarty) from(selectStm *sqlparser.Select) string {
+func (s *smarty) from(selectStm *sqlparser.Select, subSetInfoList map[string]subsetInfo) string {
 
 	dsSourceFunc := s.findFncExpr(selectStm, "from")
 	if dsSourceFunc != nil {
@@ -51,11 +51,11 @@ func (s *smarty) from(selectStm *sqlparser.Select) string {
 		}
 
 		if len(comparisonExprs) > 0 || len(aliasedExpr) > 0 {
-			return s.convertToJoinTableExpr(comparisonExprs, aliasedExpr)
+			return s.convertToJoinTableExpr(comparisonExprs, aliasedExpr, subSetInfoList)
 		}
 	} else {
 
-		return s.convertToTableExprs(selectStm)
+		return s.convertToTableExprs(selectStm, subSetInfoList)
 	}
 	return ""
 }
@@ -100,6 +100,12 @@ func isNode[T any](node sqlparser.SQLNode) bool {
 		return isNode[T](t.Expr)
 	case *sqlparser.ColName:
 		return false
+	case *sqlparser.BinaryExpr:
+		return false
+	case *sqlparser.AndExpr:
+		return false
+	case *sqlparser.OrExpr:
+		return false
 	default:
 		panic(fmt.Sprintf("unexpected type %T. ref isNode", t))
 	}
@@ -118,6 +124,10 @@ func detect[T any](node sqlparser.SQLNode) T {
 	case *sqlparser.ComparisonExpr:
 		return defautT
 	case *sqlparser.FuncExpr:
+		return defautT
+	case *sqlparser.AndExpr:
+		return defautT
+	case *sqlparser.OrExpr:
 		return defautT
 	default:
 		panic(fmt.Sprintf("unexpected type %T. ref detect", t))

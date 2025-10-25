@@ -14,6 +14,7 @@ func (f *from) joinTableExpr(t *sqlparser.JoinTableExpr, injector *injector, joi
 	if err != nil {
 		return nil, err
 	}
+
 	right, err := f.tableExpr(t.RightExpr, injector, joinInjector)
 	if err != nil {
 		return nil, err

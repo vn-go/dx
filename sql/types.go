@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -59,7 +60,11 @@ if user has permission to access this table and field
 type refFields map[string]refFieldInfo
 
 func (r refFields) String() any {
-	panic("unimplemented")
+	bff, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("refFields error:%s", err.Error())
+	}
+	return string(bff)
 }
 
 func (r *refFields) merge(fields refFields) refFields {

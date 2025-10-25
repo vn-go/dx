@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -238,8 +239,24 @@ func TestSmartySimplest(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	exprectedSql := "SELECT `T1`.`username` `Username` FROM `sys_users` `T1` WHERE `T1`.`username` = {1}"
+	exprectedSql := "SELECT count(`T1`.`id`) `Count`, year(`T1`.`created_on`) `year` FROM `sys_users` `T1` WHERE `T1`.`username` = {1} GROUP BY `T1`.`created_on` ORDER BY count(`T1`.`id`) desc"
+	exprecteScope := `{
+  "user.createdon": {
+    "EntityName": "User",
+    "EntityFieldName": "CreatedOn"
+  },
+  "user.id": {
+    "EntityName": "User",
+    "EntityFieldName": "Id"
+  },
+  "user.username": {
+    "EntityName": "User",
+    "EntityFieldName": "Username"
+  }
+}`
 	assert.Equal(t, exprectedSql, sql.Query)
+	assert.Equal(t, exprecteScope, sql.ScopeAccess.String())
+	fmt.Println(sql.ScopeAccess.String())
 }
 func BenchmarkSimpliest(b *testing.B) {
 	db, err := dx.Open("mysql", dsn)
@@ -247,56 +264,54 @@ func BenchmarkSimpliest(b *testing.B) {
 		panic(err)
 	}
 	defer db.Close()
-	ds := db.ModelDatasource("user").Select("username")
-	ds = ds.Where("username='admin'")
-	classicExpectedSql := "SELECT `T1`.`username` `username` FROM `sys_users` `T1` WHERE `T1`.`username` = {1}"
-	smartSipliestExpectedSql := "SELECT `T1`.`username` `Username` FROM `sys_users` `T1` WHERE `T1`.`username` = {1}"
-	b.Run("classic", func(b *testing.B) {
+
+	smartSipliestExpectedSql := "SELECT count(`T1`.`id`) `Count`, year(`T1`.`created_on`) `year` FROM `sys_users` `T1` WHERE `T1`.`username` = {1} GROUP BY `T1`.`created_on` ORDER BY count(`T1`.`id`) desc"
+	// after compile smarty also produce AccessScope for permission check
+	expecteScope := `{
+  "user.createdon": {
+    "EntityName": "User",
+    "EntityFieldName": "CreatedOn"
+  },
+  "user.id": {
+    "EntityName": "User",
+    "EntityFieldName": "Id"
+  },
+  "user.username": {
+    "EntityName": "User",
+    "EntityFieldName": "Username"
+  }
+}`
+
+	b.Run("smart-simplest", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-
-			sql, err := ds.ToSql()
-			if err != nil {
-				panic(err)
-			}
-
-			assert.Equal(b, classicExpectedSql, sql.Sql)
-		}
-	})
-	b.Run("ssmart-simplest", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			sql, err := db.Smart("user.username, where(username='admin')")
+			sql, err := db.Smart(`	count(user.id) Count, 
+							year(user.CreatedOn) year,
+							
+							where(username='admin'),
+							sort(count desc)`)
 			if err != nil {
 				panic(err)
 			}
 			assert.Equal(b, smartSipliestExpectedSql, sql.Query)
+			assert.Equal(b, expecteScope, sql.ScopeAccess.String())
 		}
 	})
-	b.Run("classic-parallel", func(b *testing.B) {
-		ds := db.ModelDatasource("user").Select("username")
-		ds = ds.Where("username='admin'")
-		b.ResetTimer()
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
 
-				sql, err := ds.ToSql()
-				if err != nil {
-					panic(err)
-				}
-				assert.Equal(b, classicExpectedSql, sql.Sql)
-			}
-		})
-	})
 	b.Run("smart-simplest-parallel", func(b *testing.B) {
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				sql, err := db.Smart("user.username, where(username='admin')")
+				sql, err := db.Smart(`	count(user.id) Count, 
+							year(user.CreatedOn) year,
+							
+							where(username='admin'),
+							sort(count desc)`)
 				if err != nil {
 					panic(err)
 				}
 				assert.Equal(b, smartSipliestExpectedSql, sql.Query)
+				assert.Equal(b, expecteScope, sql.ScopeAccess.String())
 			}
 		})
 	})

@@ -69,7 +69,7 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 }
 
 // smarty.convertToJoinTableExpr.go
-func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableAliasNodes []sqlparser.SQLNode) string {
+func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableAliasNodes []sqlparser.SQLNode, subSetInfoList map[string]subsetInfo) string {
 
 	mapTableAlias := s.getMapTableAlias(tableAliasNodes)
 	if len(comparisionNodes) == 0 {
@@ -88,6 +88,8 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 	if aliasLeft, ok := mapTableAlias[strLeft]; ok {
 		strLeft = aliasLeft + " " + strLeft
 		tableHasUsed[aliasLeft] = true
+	} else if subset, ok := subSetInfoList[strings.ToLower(strLeft)]; ok {
+		strLeft = "(" + subset.query + ") " + subset.alias
 	}
 	strRight := tables[1]
 	tableHasUsed[strRight] = true
@@ -95,6 +97,8 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		strRight = aliasRight + " " + strRight
 		tableHasUsed[aliasRight] = true
 
+	} else if subset, ok := subSetInfoList[strings.ToLower(strRight)]; ok {
+		strRight = "(" + subset.query + ") " + subset.alias
 	}
 
 	strJoin := strLeft + " " + comparisionNodes[0].joinType + " JOIN " + strRight + " ON " + strOn
@@ -112,6 +116,8 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		if aliasTable, ok := mapTableAlias[nextTable]; ok {
 			nextTable = aliasTable + " " + nextTable
 			tableHasUsed[aliasTable] = true
+		} else if subset, ok := subSetInfoList[strings.ToLower(nextTable)]; ok {
+			nextTable = "(" + subset.query + ") " + subset.alias
 		}
 
 		joinNext := s.ToText(comparisionNodes[i].node)

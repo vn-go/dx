@@ -7,7 +7,7 @@ import (
 )
 
 // smarty.convertToTableExprs.go
-func (s *smarty) convertToTableExprs(exprs *sqlparser.Select) string {
+func (s *smarty) convertToTableExprs(exprs *sqlparser.Select, subSetInfoList map[string]subsetInfo) string {
 	visited := make(map[string]bool)
 	items := []string{}
 	for _, expr := range exprs.SelectExprs {
