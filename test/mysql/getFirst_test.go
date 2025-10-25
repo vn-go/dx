@@ -230,7 +230,11 @@ func TestSmartySimplest(t *testing.T) {
 		t.Error(err)
 	}
 	defer db.Close()
-	sql, err := db.Smart("user.username, where(username='admin')")
+	sql, err := db.Smart(`	count(user.id) Count, 
+							year(user.CreatedOn) year,
+							
+							where(username='admin'),
+							sort(count desc)`)
 	if err != nil {
 		t.Error(err)
 	}

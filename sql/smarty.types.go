@@ -34,6 +34,7 @@ func (s *smarty) simpleCache(simpleQuery string) (string, error) {
 }
 
 func (s *smarty) simple(simpleQuery string) (string, error) {
+	fieldAliasMap := map[string]string{}
 	ret := &simpleSql{}
 	str, err := internal.Helper.QuoteExpression2(simpleQuery)
 	if err != nil {
@@ -49,10 +50,11 @@ func (s *smarty) simple(simpleQuery string) (string, error) {
 	selectStm := stm.(*sqlparser.Select)
 	ret.from = smartier.from(selectStm)
 
-	ret.selects = smartier.selectors(selectStm)
+	ret.selects = smartier.selectors(selectStm,fieldAliasMap)
 
 	ret.where = smartier.where(selectStm)
-	ret.groupBy = smartier.groupBy(selectStm)
+	ret.groupBy = smartier.groupBy(selectStm, fieldAliasMap)
+	ret.sort = smartier.sort(selectStm,fieldAliasMap)
 	return ret.String(), nil
 }
 

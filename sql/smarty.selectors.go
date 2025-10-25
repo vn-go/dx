@@ -19,10 +19,15 @@ func (s *smarty) where(selectStm *sqlparser.Select) string {
 }
 
 // smarty.selectors.go
-func (s *smarty) selectors(selectStm *sqlparser.Select) string {
+func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string]string) string {
 	items := []string{}
 	nodes := s.extractSelectNodes(selectStm)
 	for _, node := range nodes {
+		if fx, ok := node.(*sqlparser.AliasedExpr); ok {
+			if !fx.As.IsEmpty() {
+				fieldAliasMap[string(fx.As.Lowered())] = s.ToText(fx.Expr)
+			}
+		}
 		items = append(items, s.ToText(node))
 	}
 	if len(items) == 0 {
@@ -34,7 +39,7 @@ func (s *smarty) selectors(selectStm *sqlparser.Select) string {
 var keywordFuncMap = map[string]bool{
 	"from":   true,
 	"where":  true,
-	"order":  true,
+	"sort":   true,
 	"limit":  true,
 	"offset": true,
 	"group":  true,

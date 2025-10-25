@@ -39,6 +39,8 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 	}
 	selectStatement.Selector = strings.Join(itemSelectors, ", ")
+	goupByItems := []string{}
+	checkGroupBy := map[string]bool{}
 	if expr.Where != nil {
 		resultOfWhere := []string{}
 		havingItems := []string{}
@@ -71,8 +73,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 		}
 		if len(havingItems) > 0 {
 			selectStatement.Having = strings.Join(havingItems, " AND ")
-			goupByItems := []string{}
-			checkGroupBy := map[string]bool{}
+
 			for k, v := range ret.selectedExprsReverse {
 				if k == "" { // not not hav alias skip it
 					continue
@@ -99,10 +100,38 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 					}
 				}
 			}
-			if len(goupByItems) > 0 {
-				selectStatement.GroupBy = strings.Join(goupByItems, ", ")
+
+		}
+	}
+	// detect if is need to add group by
+	for k, v := range ret.selectedExprsReverse {
+		if k == "" { // not not hav alias skip it
+			continue
+		}
+		if !v.IsInAggregateFunc {
+			if v.Children != nil && len(*v.Children) > 0 {
+				for k1, child := range *v.Children {
+					if k1 == "" { // not not hav alias skip it
+						continue
+					}
+					if _, ok := checkGroupBy[child.Expr]; !ok {
+
+						goupByItems = append(goupByItems, child.Expr)
+						checkGroupBy[child.Expr] = true
+					}
+				}
+
+			} else {
+				if _, ok := checkGroupBy[v.Expr]; !ok {
+
+					goupByItems = append(goupByItems, v.Expr)
+					checkGroupBy[v.Expr] = true
+				}
 			}
 		}
+	}
+	if len(goupByItems) > 0 {
+		selectStatement.GroupBy = strings.Join(goupByItems, ", ")
 	}
 	if expr.OrderBy != nil {
 		r, err := sort.resolveOrderBy(expr.OrderBy, injector, ret.selectedExprsReverse)

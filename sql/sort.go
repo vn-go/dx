@@ -14,7 +14,17 @@ func (s *sorting) resolveOrderBy(exprs sqlparser.OrderBy, injector *injector, re
 	for _, x := range exprs {
 		switch fx := x.Expr.(type) {
 		case *sqlparser.ColName:
-			return exp.resolve(fx, injector, CMP_ORDER_BY, reverse)
+			r, err := exp.resolve(fx, injector, CMP_ORDER_BY, reverse)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, r.Content+" "+x.Direction)
+		case *sqlparser.FuncExpr:
+			r, err := exp.resolve(fx, injector, CMP_ORDER_BY, reverse)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, r.Content+" "+x.Direction)
 
 		default:
 			panic(fmt.Sprintf("not implemented: %T. See sorting.resolveOrderBy", fx))

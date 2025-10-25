@@ -650,11 +650,11 @@ func newHelper() *helperType {
 			"date_format": true, "date_add": true, "date_sub": true, "date": true,
 			"year": true, "month": true, "day": true, "hour": true, "minute": true,
 		}, funcWhitelist2: map[string]bool{
-			"min": true, "max": true, "abs": true, "len": true,
-			"sum": true, "avg": true, "count": true, "coalesce": true,
-			"lower": true, "upper": true, "trim": true, "ltrim": true, "rtrim": true,
-			"date_format": true, "date_add": true, "date_sub": true, "date": true,
-			"year": true, "month": true, "day": true, "hour": true, "minute": true,
+			// "min": true, "max": true, "abs": true, "len": true,
+			// "sum": true, "avg": true, "count": true, "coalesce": true,
+			// "lower": true, "upper": true, "trim": true, "ltrim": true, "rtrim": true,
+			// "date_format": true, "date_add": true, "date_sub": true, "date": true,
+			// "year": true, "month": true, "day": true, "hour": true, "minute": true,
 		},
 	}
 	for k, v := range ret.funcWhitelist {
