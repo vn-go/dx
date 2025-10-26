@@ -108,6 +108,14 @@ func isNode[T any](node sqlparser.SQLNode) bool {
 		return false
 	case *sqlparser.OrExpr:
 		return false
+	case *sqlparser.FuncExpr:
+		return true
+		// if t.Qualifier.IsEmpty() {
+		// 	return true
+		// } else {
+		// 	return false
+		// }
+
 	default:
 		panic(fmt.Sprintf("unexpected type %T. ref isNode", t))
 	}

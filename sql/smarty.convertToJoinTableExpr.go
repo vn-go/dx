@@ -56,6 +56,13 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 			return []string{
 				t.Name.String(),
 			}
+		} else if strings.ToLower(t.Qualifier.String()) == "list" {
+			retItems := []string{}
+			for _, x := range t.Exprs {
+				retItems = append(retItems, s.extractTables(x, visitedTable)...)
+
+			}
+			return retItems
 		}
 
 		return []string{}

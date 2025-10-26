@@ -37,10 +37,15 @@ func TestSmartyWithArrayFilter(t *testing.T) {
 	}
 	defer db.Close()
 	sql, err := db.Smart(`
-		department(count(id) Count),
-		sum(id),
-		where(list.contains(ChildrenId,?))
-	`, []int{1, 2})
+		dep(count(id+?) Count),
+		sum(dep.id),
+		from(
+			department child,
+			department dep,
+			list.contains(dep.ChildrenId,child.ChildrenId)
+		),
+		
+	`, 1, []int{1, 2})
 	if err != nil {
 		panic(err)
 	}

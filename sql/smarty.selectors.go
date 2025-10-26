@@ -27,8 +27,8 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 			if !fn.Qualifier.IsEmpty() {
 				if strings.ToLower(fn.Qualifier.String()) == "dataset" {
 					for _, x := range fn.Exprs {
-						strExpr := s.ToText(x)
-
+						nodeWithTable := tableApplier.resolve(x, fn.Name.String())
+						strExpr := s.ToText(nodeWithTable)
 						items = append(items, strExpr)
 					}
 					continue
@@ -37,7 +37,8 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 				if aliasNode.As.IsEmpty() { // means function name is table name
 					if _, ok := keywordFuncMap[fn.Name.Lowered()]; !ok {
 						for _, x := range fn.Exprs {
-							strExpr := s.ToText(x)
+							nodeWithTable := tableApplier.resolve(x, fn.Name.String())
+							strExpr := s.ToText(nodeWithTable)
 
 							items = append(items, strExpr)
 						}
@@ -59,8 +60,6 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 	}
 	return strings.Join(items, ", ")
 }
-
-
 
 func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {
 	nodes := []sqlparser.SQLNode{}
