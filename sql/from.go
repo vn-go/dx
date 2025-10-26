@@ -29,6 +29,7 @@ func (f *from) resolve(expr sqlparser.TableExprs, injector *injector) (*compiler
 			}
 			items = append(items, r.Content)
 			ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
+
 		case *sqlparser.JoinTableExpr:
 
 			return f.joinTableExpr(t, injector, &joinTableExprInjector{})
@@ -66,13 +67,12 @@ func (f *from) AliasedTableExpr(expr *sqlparser.AliasedTableExpr, alias string, 
 
 }
 
-func (f *from) selectStatement(sqlStm sqlparser.Statement, injector *injector) (*compilerResult, error) {
+func (f *from) selectStatement(sqlStm sqlparser.Statement, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
 	switch expr := sqlStm.(type) {
 	case *sqlparser.Select:
-		return selector.selects(expr, injector)
+		return selector.selects(expr, injector, cmpType)
 	case *sqlparser.Union:
 		return selector.union(expr, injector)
-	
 
 	default:
 		panic(fmt.Sprintf("not support statement type: %T. see compiler.Resolve", sqlStm))

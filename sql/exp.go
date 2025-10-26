@@ -19,6 +19,7 @@ const (
 	CMP_JOIN
 	CMP_SUBQUERY
 	CMP_GROUP
+	CMP_UNION
 )
 
 type expCmp struct {
@@ -133,8 +134,12 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 		Fields:               refFields{},
 		nonAggregateFields:   dictionaryFields{},
 	}
+	fName := expr.Name.String()
+	if !expr.Qualifier.IsEmpty() {
+		fName = expr.Qualifier.String() + "." + fName
+	}
 	delegator := types.DialectDelegateFunction{
-		FuncName:         expr.Name.String(),
+		FuncName:         fName,
 		Args:             []string{},
 		ArgTypes:         []sqlparser.ValType{},
 		IsAggregate:      false,

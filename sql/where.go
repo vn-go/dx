@@ -41,7 +41,8 @@ func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExp
 		if x.Name.String() == GET_PARAMS_FUNC {
 			return params.funcExpr(x, injector)
 		}
-		return w.funcExpr(x, injector, selectedExprsReverse)
+		ret, err := w.funcExpr(x, injector, selectedExprsReverse)
+		return ret, err
 	case *sqlparser.AndExpr:
 		return exp.resolve(x, injector, CMP_WHERE, selectedExprsReverse)
 	case *sqlparser.OrExpr:
@@ -57,6 +58,7 @@ func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExp
 }
 
 func (w *WhereType) funcExpr(x *sqlparser.FuncExpr, injector *injector, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+	
 	if x.Name.String() == internal.FnMarkSpecialTextArgs {
 		return params.funcExpr(x, injector)
 	}

@@ -73,6 +73,7 @@ func (r *refFields) merge(fields refFields) refFields {
 }
 
 type compilerResult struct {
+	IsInSubquery bool
 	// use for error message. Error message should be show with original content
 	OriginalContent string
 	Content         string

@@ -6,12 +6,14 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
 	_ "github.com/vn-go/dx/model"
 )
 
 func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema string) (string, error) {
+
 	scripts := []string{}
 
 	// Load schema hiện tại
@@ -32,22 +34,37 @@ func (m *MigratorMySql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema strin
 	for _, cols := range entityItem.Entity.IndexConstraints {
 		var colNames []string
 		var colNameInConstraint []string
-
+		isContaintArrayCol := false
+		colIndex := []entity.ColumnDef{}
 		for _, col := range cols {
 			colNames = append(colNames, m.Quote(col.Name))
 			colNameInConstraint = append(colNameInConstraint, col.Name)
+			typ := col.Field.Type
+			if typ.Kind() == reflect.Ptr {
+				typ = typ.Elem()
+
+			}
+			if typ.Kind() == reflect.Slice {
+				isContaintArrayCol = true
+			}
+			colIndex = append(colIndex, col)
 		}
 
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 
 		// Nếu chưa tồn tại index này trong schema
 		if _, ok := schemaData.Indexes[strings.ToLower(constraintName)]; !ok {
-			stmt := fmt.Sprintf(
-				"CREATE INDEX %s ON %s (%s)",
-				m.Quote(constraintName),
-				m.Quote(entityItem.Entity.TableName),
-				strings.Join(colNames, ", "),
-			)
+			stmt := ""
+			if isContaintArrayCol {
+				stmt = m.GetSqlAddIndexOfArrayField(db, typ, schema, constraintName, entityItem.Entity.TableName, colIndex)
+			} else {
+				stmt = fmt.Sprintf(
+					"CREATE INDEX %s ON %s (%s)",
+					m.Quote(constraintName),
+					m.Quote(entityItem.Entity.TableName),
+					strings.Join(colNames, ", "),
+				)
+			}
 
 			scripts = append(scripts, stmt)
 		}

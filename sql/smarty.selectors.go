@@ -23,6 +23,30 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 	items := []string{}
 	nodes := s.extractSelectNodes(selectStm)
 	for _, node := range nodes {
+		if fn := detect[*sqlparser.FuncExpr](node); fn != nil {
+			if !fn.Qualifier.IsEmpty() {
+				if strings.ToLower(fn.Qualifier.String()) == "dataset" {
+					for _, x := range fn.Exprs {
+						strExpr := s.ToText(x)
+
+						items = append(items, strExpr)
+					}
+					continue
+				}
+			} else if aliasNode, ok := node.(*sqlparser.AliasedExpr); ok {
+				if aliasNode.As.IsEmpty() { // means function name is table name
+					if _, ok := keywordFuncMap[fn.Name.Lowered()]; !ok {
+						for _, x := range fn.Exprs {
+							strExpr := s.ToText(x)
+
+							items = append(items, strExpr)
+						}
+						continue
+					}
+				}
+
+			}
+		}
 		if fx, ok := node.(*sqlparser.AliasedExpr); ok {
 			if !fx.As.IsEmpty() {
 				fieldAliasMap[string(fx.As.Lowered())] = s.ToText(fx.Expr)
@@ -36,32 +60,29 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 	return strings.Join(items, ", ")
 }
 
-var keywordFuncMap = map[string]bool{
-	"from":    true,
-	"where":   true,
-	"sort":    true,
-	"limit":   true,
-	"offset":  true,
-	"group":   true,
-	"subsets": true,
-	"rowset":  true,
 
-	"union": true,
-}
 
 func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {
 	nodes := []sqlparser.SQLNode{}
 	for _, expr := range selectStm.SelectExprs {
 		switch n := expr.(type) {
 		case *sqlparser.AliasedExpr:
+
 			if s.isSelecteNode(n.Expr) {
 				nodes = append(nodes, n)
 			}
+		// case *sqlparser.FuncExpr:
+
 		default:
 			panic(fmt.Sprintf("unknown SelectExpr type: %T. ref smarty.extractSelectNodes", expr))
 		}
 	}
 	return nodes
+	/*
+		if fn := detect[*sqlparser.FuncExpr](node); fn != nil {
+
+			}
+	*/
 }
 
 func (s *smarty) isSelecteNode(expr sqlparser.SQLNode) bool {

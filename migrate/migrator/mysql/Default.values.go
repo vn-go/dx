@@ -96,5 +96,6 @@ func (m *MigratorMySql) GetColumnDataTypeMapping() map[reflect.Type]string {
 		reflect.TypeOf(time.Time{}): "datetime",
 
 		reflect.TypeOf(uuid.UUID{}): "char(36)", // UUID stored as char(36)
+		reflect.TypeFor[[]int]():    "JSON DEFAULT (JSON_ARRAY())",
 	}
 }

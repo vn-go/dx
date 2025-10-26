@@ -90,6 +90,6 @@ func (m *MigratorMySql) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema stri
 
 		}
 	}
-
+	
 	return strings.Join(scripts, ";\n"), nil
 }

@@ -7,18 +7,21 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
-// selectors.colNameInSubquery.go
+// get colum select in subquery
 func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, qrEntity subqueryEntity) (*compilerResult, error) {
 	key := strings.ToLower(fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()))
-	if _, ok := qrEntity.fields[key]; ok {
+
+	if x, ok := qrEntity.fields[key]; ok {
 		ret := compilerResult{
-			Content:         injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
+			Content:         injector.dialect.Quote(x.source, x.field), //<-- for subquery, the real field and source must in subquery Entity
 			OriginalContent: fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()),
 			selectedExprsReverse: dictionaryFields{
 				key: &dictionaryField{
 					Expr: injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
 				},
 			},
+			IsInSubquery:   true,
+			AliasOfContent: x.field,
 		}
 		return &ret, nil
 	} else {

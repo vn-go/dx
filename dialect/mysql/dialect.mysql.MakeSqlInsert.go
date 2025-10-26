@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"sync"
@@ -30,6 +31,16 @@ func (d *mySqlDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDe
 		fieldVal := dataVal.FieldByName(col.Field.Name)
 		if fieldVal.IsValid() {
 			args[i] = fieldVal.Interface() //append(args, fieldVal.Interface())
+			typ := col.Field.Type
+			if typ.Kind() == reflect.Ptr {
+				typ = typ.Elem()
+			}
+			if typ.Kind() == reflect.Slice {
+				bff, err := json.Marshal(args[i])
+				if err == nil {
+					args[i] = bff
+				}
+			}
 		}
 
 	}

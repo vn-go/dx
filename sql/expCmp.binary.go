@@ -26,7 +26,7 @@ func (e *expCmp) binary(leftExpr sqlparser.Expr, rightExpr sqlparser.Expr, opera
 		selectedExprs:        dictionaryFields{},
 		selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 		IsExpression:         true,
-		IsInAggregateFunc:    left.IsExpression || right.IsExpression,
+		IsInAggregateFunc:    left.IsInAggregateFunc || right.IsInAggregateFunc,
 	}
 	return ret, nil
 }

@@ -3,6 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/vn-go/dx/db"
 	"github.com/vn-go/dx/migrate/loader/types"
@@ -78,6 +79,83 @@ func (m *MigratorLoaderMysql) LoadAllIndex(db *db.DB, schema string) (map[string
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
+	m.loadIndexOfArrayCols(db, schema)
+	lst, err := m.loadIndexOfArrayCols(db, schema)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range lst {
+		if _, ok := result[strings.ToLower(c.IndexName)]; !ok {
+			result[c.IndexName] = types.ColumnsInfo{
+				TableName: c.TableName,
+				Columns: []types.ColumnInfo{
+					{
+						//Name: c.ColumnName,
+					},
+				},
+			}
+		} else {
+			data := result[strings.ToLower(c.IndexName)]
+			data.Columns = append(data.Columns, types.ColumnInfo{
+				//Name: c.ColumnName,
+			})
+			result[strings.ToLower(c.IndexName)] = data
+		}
+
+	}
 
 	return result, nil
+}
+
+type loadIndexOfArrayColsItem struct {
+	Schema    string `db:"TABLE_SCHEMA"`
+	TableName string `db:"TABLE_NAME"`
+	IndexName string `db:"INDEX_NAME"`
+	IndexType string `db:"INDEX_TYPE"`
+	//ColumnName *string `db:"COLUMN_NAME"`
+	Expression string `db:"EXPRESSION"`
+}
+
+func (m *MigratorLoaderMysql) loadIndexOfArrayCols(db *db.DB, schema string) ([]loadIndexOfArrayColsItem, error) {
+	sqlText := `
+SELECT 
+    TABLE_SCHEMA,
+    TABLE_NAME,
+    INDEX_NAME,
+    INDEX_TYPE,
+    
+    EXPRESSION
+FROM INFORMATION_SCHEMA.STATISTICS
+
+  WHERE (
+      EXPRESSION LIKE '%json_extract%'
+      OR COLUMN_NAME LIKE '%json%'
+  );`
+
+	rows, err := db.Query(sqlText)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []loadIndexOfArrayColsItem
+	for rows.Next() {
+		var it loadIndexOfArrayColsItem
+		if err := rows.Scan(
+			&it.Schema,
+			&it.TableName,
+			&it.IndexName,
+			&it.IndexType,
+			//&it.ColumnName,
+			&it.Expression,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, it)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

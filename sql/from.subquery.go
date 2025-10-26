@@ -26,7 +26,7 @@ func (f from) subquery(x *sqlparser.Subquery, alias string, injector *injector) 
 	}()
 
 	injector.dict = newDictionary() // sub query need new dictionary for compiling
-	ret, err := f.selectStatement(x.Select, injector)
+	ret, err := f.selectStatement(x.Select, injector, CMP_SUBQUERY)
 	if err != nil {
 		return nil, err
 	}

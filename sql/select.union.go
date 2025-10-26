@@ -11,14 +11,14 @@ import (
 func (s selectors) union(expr *sqlparser.Union, injector *injector) (*compilerResult, error) {
 	sqlSource := []string{}
 	injector.dict = newDictionary()
-	l, err := s.selectStatement(expr.Left, injector)
+	l, err := s.selectStatement(expr.Left, injector, CMP_UNION)
 	if err != nil {
 		return nil, err
 	}
 	sqlSource = append(sqlSource, l.Content)
 	sqlSource = append(sqlSource, expr.Type)
 	injector.dict = newDictionary()
-	r, err := s.selectStatement(expr.Right, injector)
+	r, err := s.selectStatement(expr.Right, injector, CMP_UNION)
 
 	if err != nil {
 		return nil, err
@@ -30,10 +30,10 @@ func (s selectors) union(expr *sqlparser.Union, injector *injector) (*compilerRe
 	return l, nil
 }
 
-func (s selectors) selectStatement(expr sqlparser.SelectStatement, injector *injector) (*compilerResult, error) {
+func (s selectors) selectStatement(expr sqlparser.SelectStatement, injector *injector, cmpTyp CMP_TYP) (*compilerResult, error) {
 	switch x := expr.(type) {
 	case *sqlparser.Select:
-		return selector.selects(x, injector)
+		return selector.selects(x, injector, cmpTyp)
 	case *sqlparser.Union:
 		return selector.union(x, injector)
 	default:

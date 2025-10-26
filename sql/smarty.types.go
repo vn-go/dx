@@ -74,8 +74,10 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 		} else {
 			ret.from = "(" + unionSource + ")"
 		}
+	} else if strFrom := smartier.from(selectStm, subSetInfoList); strFrom != "" {
+		ret.from = strFrom
 	} else {
-		ret.from = smartier.from(selectStm, subSetInfoList)
+		panic("can not detect from clause")
 	}
 	sqlText := ret.String()
 	return sqlText, nil

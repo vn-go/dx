@@ -37,8 +37,6 @@ func (fx *InspectStatement) Resolve(n sqlparser.SQLNode, cType C_TYPE, args *int
 	panic(fmt.Sprintf("unimplemented: %T,in InspectStatement.Resolve, file '%s' ", n, `test\short_test\sqlparser.Statement.go`))
 }
 
-
-
 func (fx *InspectStatement) ResolveSQLVal(n *sqlparser.SQLVal, cType C_TYPE, args *internal.SqlArgs) (*ResolveInfo, error) {
 	paramIndex := len(*args) + 1
 	switch n.Type {

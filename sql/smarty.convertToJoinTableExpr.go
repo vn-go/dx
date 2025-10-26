@@ -11,7 +11,7 @@ func (s *smarty) getMapTableAlias(tableAliasNodes []sqlparser.SQLNode) map[strin
 	ret := make(map[string]string)
 	for _, node := range tableAliasNodes {
 		if a, ok := node.(*sqlparser.AliasedExpr); ok {
-			tableName := s.ToText(a.Expr)
+			tableName := strings.Trim(s.ToText(a.Expr), "`")
 			//ret[strings.ToLower(tableName)] = strings.ToLower(tableName)
 			if !a.As.IsEmpty() {
 				ret[strings.ToLower(strings.ToLower(a.As.String()))] = strings.ToLower(tableName)
@@ -43,7 +43,23 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 			return []string{}
 		}
 	case *sqlparser.FuncExpr:
-		return s.extractTables(t.Exprs, visitedTable)
+		if t.Qualifier.IsEmpty() {
+			// function name is table name or dataset name
+			if _, ok := keywordFuncMap[strings.ToLower(t.Name.String())]; !ok {
+				return []string{
+					t.Name.String(),
+				}
+			}
+
+		} else if strings.ToLower(t.Qualifier.String()) == "dataset" {
+			// if function is the same of keyword nedd dataset qualifier
+			return []string{
+				t.Name.String(),
+			}
+		}
+
+		return []string{}
+
 	case sqlparser.SelectExprs:
 		r := []string{}
 		for _, expr := range t {
@@ -75,32 +91,13 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 
 	mapTableAlias := s.getMapTableAlias(tableAliasNodes)
 	if len(comparisionNodes) == 0 {
-		// if len(mapTableAlias) == 0 {
-		// 	// no join condition and no table alias
-		// 	retItems := []string{}
-		// 	for _, x := range tableAliasNodes {
-		// 		if aliasNode, ok := x.(*sqlparser.AliasedExpr); ok {
-		// 			if colExpr, ok := aliasNode.Expr.(*sqlparser.ColName); ok {
 
-		// 				if n, ok := subSetInfoList[colExpr.Name.Lowered()]; ok {
-		// 					retItems = append(retItems, "("+n.query+") "+aliasNode.As.String())
-		// 				}
-		// 			}
-		// 			key := strings.ToLower(strings.Trim(s.ToText(aliasNode.Expr), "`"))
-		// 			if n, ok := subSetInfoList[key]; ok {
-		// 				retItems = append(retItems, "("+n.query+") "+strings.Trim(s.ToText(aliasNode.Expr), "`"))
-		// 			}
-		// 		}
-		// 	}
-		// 	return strings.Join(retItems, ", ")
-
-		// }
 		items := []string{}
 		for k, v := range mapTableAlias {
 			if n, ok := subSetInfoList[strings.ToLower(v)]; ok {
-				items = append(items, "("+n.query+") "+k)
+				items = append(items, "("+n.query+") "+sqlparser.Backtick(k))
 			} else {
-				items = append(items, v+" "+k)
+				items = append(items, v+" "+sqlparser.Backtick(k))
 			}
 
 		}
@@ -114,28 +111,28 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 	tableHasUsed[strLeft] = true
 	if aliasLeft, ok := mapTableAlias[strLeft]; ok {
 		if n, ok := subSetInfoList[strings.ToLower(aliasLeft)]; ok {
-			strLeft = "(" + n.query + ") " + aliasLeft
+			strLeft = "(" + n.query + ") " + sqlparser.Backtick(aliasLeft)
 		} else {
-			strLeft = aliasLeft + " " + strLeft
+			strLeft = aliasLeft + " " + sqlparser.Backtick(strLeft)
 		}
 
 		tableHasUsed[aliasLeft] = true
 	} else if subset, ok := subSetInfoList[strings.ToLower(strLeft)]; ok {
-		strLeft = "(" + subset.query + ") " + subset.alias
+		strLeft = "(" + subset.query + ") " + sqlparser.Backtick(subset.alias)
 	}
 	strRight := tables[1]
 	tableHasUsed[strRight] = true
 	if aliasRight, ok := mapTableAlias[strRight]; ok {
 		if n, ok := subSetInfoList[strings.ToLower(aliasRight)]; ok {
-			strRight = "(" + n.query + ") " + aliasRight
+			strRight = "(" + n.query + ") " + sqlparser.Backtick(aliasRight)
 		} else {
-			strRight = aliasRight + " " + strRight
+			strRight = aliasRight + " " + sqlparser.Backtick(strRight)
 		}
 
 		tableHasUsed[aliasRight] = true
 
 	} else if subset, ok := subSetInfoList[strings.ToLower(strRight)]; ok {
-		strRight = "(" + subset.query + ") " + subset.alias
+		strRight = "(" + subset.query + ") " + sqlparser.Backtick(subset.alias)
 	}
 
 	strJoin := strLeft + " " + comparisionNodes[0].joinType + " JOIN " + strRight + " ON " + strOn
@@ -152,13 +149,13 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 
 		if aliasTable, ok := mapTableAlias[nextTable]; ok {
 			if n, ok := subSetInfoList[strings.ToLower(aliasTable)]; ok {
-				nextTable = "(" + n.query + ") " + aliasTable
+				nextTable = "(" + n.query + ") " + sqlparser.Backtick(aliasTable)
 			} else {
-				nextTable = aliasTable + " " + nextTable
+				nextTable = aliasTable + " " + sqlparser.Backtick(nextTable)
 			}
 			tableHasUsed[aliasTable] = true
 		} else if subset, ok := subSetInfoList[strings.ToLower(nextTable)]; ok {
-			nextTable = "(" + subset.query + ") " + subset.alias
+			nextTable = "(" + subset.query + ") " + sqlparser.Backtick(subset.alias)
 		}
 
 		joinNext := s.ToText(comparisionNodes[i].node)

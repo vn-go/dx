@@ -19,7 +19,7 @@ func sortStrings(items []string) []string {
 }
 
 // select.selects.go
-func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compilerResult, error) {
+func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
 	ret := compilerResult{}
 	selectStatement := types.SelectStatement{}
 
@@ -32,14 +32,24 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 	itemSelectors := []string{}
 	for _, x := range expr.SelectExprs {
 
-		r, err = s.selectExpr(x, injector)
+		r, err = s.selectExpr(x, injector, cmpType)
 		if err != nil {
 			return nil, err
 		}
 		if _, ok := x.(*sqlparser.StarExpr); ok {
 			itemSelectors = append(itemSelectors, r.Content)
 		} else {
-			itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
+			if cmpType == CMP_SELECT {
+				itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
+			} else {
+				if r.AliasOfContent != "" {
+					itemSelectors = append(itemSelectors, r.Content+" "+injector.dialect.Quote(r.AliasOfContent))
+				} else {
+					itemSelectors = append(itemSelectors, r.Content)
+				}
+
+			}
+
 		}
 
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
@@ -182,7 +192,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector) (*compile
 	return &ret, nil
 }
 
-func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*compilerResult, error) {
+func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
 	switch x := expr.(type) {
 	case *sqlparser.StarExpr:
 		return s.starExpr(x, injector)
@@ -191,13 +201,16 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 		if err != nil {
 			return nil, err
 		}
-		if x.As.IsEmpty() && r.IsExpression {
+		if x.As.IsEmpty() && r.IsExpression && cmpType == CMP_SELECT {
 			return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
-		} else if !x.As.IsEmpty() {
+		} else if !x.As.IsEmpty() && cmpType == CMP_SELECT {
 			r.AliasOfContent = x.As.String()
 		}
 		selectedExprsReverse := dictionaryFields{}
 		if x.As.IsEmpty() {
+			if r.IsInSubquery {
+				return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
+			}
 			selectedExprsReverse = r.selectedExprsReverse
 		} else {
 			selectedExprsReverse[x.As.Lowered()] = &dictionaryField{
@@ -217,16 +230,6 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector) (*c
 			IsInAggregateFunc:    r.IsInAggregateFunc,
 			Fields:               r.Fields,
 		}, nil
-		// r.selectedExprsReverse.merge(dictionaryFields{
-		// 	x.As.Lowered(): &dictionaryField{
-		// 		Expr:              r.Content,
-		// 		IsInAggregateFunc: r.IsInAggregateFunc,
-		// 		Alias:             x.As.String(),
-		// 		Children:          &r.selectedExprsReverse,
-		// 	},
-		// })
-
-		//return r, nil
 
 	default:
 		panic(fmt.Sprintf("unimplemented: %T. See selectors.selectExpr, file %s", x, `sql\select.selects.go`))
