@@ -55,12 +55,16 @@ func TestSmartyWithArrayFilter(t *testing.T) {
     "EntityName": "Department",
     "EntityFieldName": "Code"
   },
+  "department.id": {
+    "EntityName": "Department",
+    "EntityFieldName": "ID"
+  },
   "department.name": {
     "EntityName": "Department",
     "EntityFieldName": "Name"
   }
 }`
-	expectedSql := "SELECT [dep].[code] [Code], [dep].[name] [Name] FROM [departments] [child] join  [departments] [dep] ON [child].[children_id] like concat(@p1, [dep].[children_id], @p2)"
+	expectedSql := "SELECT [dep].[code] [Code], [dep].[name] [Name], count([child].[id]) [TotalChildren] FROM [departments] [child] join  [departments] [dep] ON [child].[children_id] like concat(@p1, [dep].[children_id], @p2) GROUP BY [dep].[code], [dep].[name]"
 	sql, err := db.Smart(`
 		dep(code,name,count(child.id) TotalChildren),
 		sum(dep.id),
@@ -74,7 +78,7 @@ func TestSmartyWithArrayFilter(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sql.Query)
+	fmt.Println(sql.ScopeAccess.String())
 	assert.Equal(t, expectedSql, sql.Query)
 	assert.Equal(t, expectedAccessScope, sql.ScopeAccess.String())
 	assert.Equal(t, expectedArgs, sql.Args.String())
@@ -101,28 +105,53 @@ func BenchmarkSmartyWithArrayFilter(t *testing.B) {
     "EntityName": "Department",
     "EntityFieldName": "Code"
   },
+  "department.id": {
+    "EntityName": "Department",
+    "EntityFieldName": "ID"
+  },
   "department.name": {
     "EntityName": "Department",
     "EntityFieldName": "Name"
   }
 }`
-	expectedSql := "SELECT [dep].[code] [Code], [dep].[name] [Name] FROM [departments] [child] join  [departments] [dep] ON [child].[children_id] like concat(@p1, [dep].[children_id], @p2)"
-	sql, err := db.Smart(`
+	expectedSql := "SELECT [dep].[code] [Code], [dep].[name] [Name], count([child].[id]) [TotalChildren] FROM [departments] [child] join  [departments] [dep] ON [child].[children_id] like concat(@p1, [dep].[children_id], @p2) GROUP BY [dep].[code], [dep].[name]"
+	query := `
 		dep(code,name,count(child.id) TotalChildren),
 		
 		from(
 			department child,
 			department dep,
-			child.ChildrenId like concat('%',dep.ChildrenId,'%')  /* dep.ChildrenId is '.1.' and child.ChildrenId is '.1.2.' */
+			child.ChildrenId like concat('%',dep.ChildrenId,'%')  
+			/* dep.ChildrenId is '.1.' and child.ChildrenId is '.1.2.' */
 		),
 		
-	`, 1)
-	if err != nil {
-		panic(err)
-	}
-	assert.Equal(t, expectedSql, sql.Query)
-	assert.Equal(t, expectedAccessScope, sql.ScopeAccess.String())
-	assert.Equal(t, expectedArgs, sql.Args.String())
+	`
+	t.Run("no-paralle", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			sql, err := db.Smart(query)
+			if err != nil {
+				panic(err)
+			}
+			assert.Equal(b, expectedSql, sql.Query)
+			assert.Equal(b, expectedAccessScope, sql.ScopeAccess.String())
+			assert.Equal(b, expectedArgs, sql.Args.String())
+		}
+	})
+	t.Run("parallel", func(b *testing.B) {
+		b.RunParallel(func(p *testing.PB) {
+			b.ResetTimer()
+			for p.Next() {
+				sql, err := db.Smart(query)
+				if err != nil {
+					panic(err)
+				}
+				assert.Equal(b, expectedSql, sql.Query)
+				assert.Equal(b, expectedAccessScope, sql.ScopeAccess.String())
+				assert.Equal(b, expectedArgs, sql.Args.String())
+			}
+		})
+	})
 
 }
 
