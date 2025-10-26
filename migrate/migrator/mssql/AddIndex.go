@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/db"
+	"github.com/vn-go/dx/entity"
 	"github.com/vn-go/dx/errors"
 	"github.com/vn-go/dx/model"
 )
@@ -44,12 +45,23 @@ func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema strin
 	for _, cols := range entityItem.Entity.IndexConstraints {
 		var colNames []string
 		colNameInConstraint := []string{}
+		// isColArrayType := false
 		for _, col := range cols {
+			// typ := col.Field.Type
+			// if typ.Kind() == reflect.Ptr {
+			// 	typ = typ.Elem()
+			// }
+			// if typ.Kind() == reflect.Slice {
+			// 	isColArrayType = true
+			// }
 			colNames = append(colNames, m.Quote(col.Name))
 			colNameInConstraint = append(colNameInConstraint, col.Name)
 		}
 		constraintName := fmt.Sprintf("IDX_%s__%s", entityItem.Entity.TableName, strings.Join(colNameInConstraint, "_"))
 		if _, ok := schemaData.Indexes[strings.ToLower(constraintName)]; !ok {
+			// if isColArrayType {
+			// 	return m.GetSqlAddIndexColsWithDbTypeIsArray(db, constraintName, cols)
+			// }
 			constraint := fmt.Sprintf("CREATE INDEX %s ON %s (%s)", m.Quote(constraintName), m.Quote(entityItem.Entity.TableName), strings.Join(colNames, ", "))
 			constraintIfNotExist := ixIfNoExist(constraintName, entityItem.Entity.TableName, constraint)
 			scripts = append(scripts, constraintIfNotExist)
@@ -58,4 +70,8 @@ func (m *migratorMssql) GetSqlAddIndex(db *db.DB, typ reflect.Type, schema strin
 	}
 	return strings.Join(scripts, ";\n"), nil
 
+}
+
+func (m *migratorMssql) GetSqlAddIndexColsWithDbTypeIsArray(db *db.DB, constraintName string, cols []entity.ColumnDef) (string, error) {
+	panic("unimplemented")
 }

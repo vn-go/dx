@@ -303,9 +303,18 @@ func traceCompilerError(err error, args ...any) error {
 type joinTableExprInjector struct {
 	index int
 }
+type smartSqlParserArgs []any
+
+func (s smartSqlParserArgs) String() string {
+	bff, err := json.MarshalIndent(s, " ", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(bff)
+}
 
 type SmartSqlParser struct {
 	Query       string
-	Args        []any
+	Args        smartSqlParserArgs
 	ScopeAccess refFields
 }

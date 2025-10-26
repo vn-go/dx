@@ -49,6 +49,12 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 				return []string{
 					t.Name.String(),
 				}
+			} else {
+				items := []string{}
+				for _, x := range t.Exprs {
+					items = append(items, s.extractTables(x, visitedTable)...)
+				}
+				return items
 			}
 
 		} else if strings.ToLower(t.Qualifier.String()) == "dataset" {
@@ -63,6 +69,12 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 
 			}
 			return retItems
+		} else {
+			items := []string{}
+			for _, x := range t.Exprs {
+				items = append(items, s.extractTables(x, visitedTable)...)
+			}
+			return items
 		}
 
 		return []string{}

@@ -88,5 +88,6 @@ func (m *migratorMssql) GetColumnDataTypeMapping() map[reflect.Type]string {
 		reflect.TypeOf([]byte{}):    "varbinary",
 		reflect.TypeOf(time.Time{}): "datetime2",
 		reflect.TypeOf(uuid.UUID{}): "uniqueidentifier",
+		reflect.TypeFor[[]int]():    "varchar",
 	}
 }

@@ -51,7 +51,12 @@ func (t *tableApply) expr(expr sqlparser.SQLNode, table string) sqlparser.SQLNod
 		n.Name = t.expr(n.Name, table).(sqlparser.TableIdent)
 		return n
 	case sqlparser.TableIdent:
-		return sqlparser.NewTableIdent(table)
+		if n.IsEmpty() {
+			return sqlparser.NewTableIdent(table)
+		} else {
+			return n
+		}
+
 	case *sqlparser.BinaryExpr:
 		n.Left = t.expr(n.Left, table).(sqlparser.Expr)
 		n.Right = t.expr(n.Right, table).(sqlparser.Expr)
