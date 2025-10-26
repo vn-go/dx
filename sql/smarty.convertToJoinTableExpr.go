@@ -16,6 +16,8 @@ func (s *smarty) getMapTableAlias(tableAliasNodes []sqlparser.SQLNode) map[strin
 			if !a.As.IsEmpty() {
 				ret[strings.ToLower(strings.ToLower(a.As.String()))] = strings.ToLower(tableName)
 				//ret[strings.ToLower(tableName)] = strings.ToLower(strings.ToLower(a.As.String()))
+			} else {
+				ret[strings.ToLower(tableName)] = strings.ToLower(tableName)
 			}
 		}
 	}
@@ -73,9 +75,34 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 
 	mapTableAlias := s.getMapTableAlias(tableAliasNodes)
 	if len(comparisionNodes) == 0 {
+		// if len(mapTableAlias) == 0 {
+		// 	// no join condition and no table alias
+		// 	retItems := []string{}
+		// 	for _, x := range tableAliasNodes {
+		// 		if aliasNode, ok := x.(*sqlparser.AliasedExpr); ok {
+		// 			if colExpr, ok := aliasNode.Expr.(*sqlparser.ColName); ok {
+
+		// 				if n, ok := subSetInfoList[colExpr.Name.Lowered()]; ok {
+		// 					retItems = append(retItems, "("+n.query+") "+aliasNode.As.String())
+		// 				}
+		// 			}
+		// 			key := strings.ToLower(strings.Trim(s.ToText(aliasNode.Expr), "`"))
+		// 			if n, ok := subSetInfoList[key]; ok {
+		// 				retItems = append(retItems, "("+n.query+") "+strings.Trim(s.ToText(aliasNode.Expr), "`"))
+		// 			}
+		// 		}
+		// 	}
+		// 	return strings.Join(retItems, ", ")
+
+		// }
 		items := []string{}
 		for k, v := range mapTableAlias {
-			items = append(items, v+" "+k)
+			if n, ok := subSetInfoList[strings.ToLower(v)]; ok {
+				items = append(items, "("+n.query+") "+k)
+			} else {
+				items = append(items, v+" "+k)
+			}
+
 		}
 		return strings.Join(items, ", ")
 	}
@@ -86,7 +113,12 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 	tableHasUsed := map[string]bool{}
 	tableHasUsed[strLeft] = true
 	if aliasLeft, ok := mapTableAlias[strLeft]; ok {
-		strLeft = aliasLeft + " " + strLeft
+		if n, ok := subSetInfoList[strings.ToLower(aliasLeft)]; ok {
+			strLeft = "(" + n.query + ") " + aliasLeft
+		} else {
+			strLeft = aliasLeft + " " + strLeft
+		}
+
 		tableHasUsed[aliasLeft] = true
 	} else if subset, ok := subSetInfoList[strings.ToLower(strLeft)]; ok {
 		strLeft = "(" + subset.query + ") " + subset.alias
@@ -94,7 +126,12 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 	strRight := tables[1]
 	tableHasUsed[strRight] = true
 	if aliasRight, ok := mapTableAlias[strRight]; ok {
-		strRight = aliasRight + " " + strRight
+		if n, ok := subSetInfoList[strings.ToLower(aliasRight)]; ok {
+			strRight = "(" + n.query + ") " + aliasRight
+		} else {
+			strRight = aliasRight + " " + strRight
+		}
+
 		tableHasUsed[aliasRight] = true
 
 	} else if subset, ok := subSetInfoList[strings.ToLower(strRight)]; ok {
@@ -114,7 +151,11 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		}
 
 		if aliasTable, ok := mapTableAlias[nextTable]; ok {
-			nextTable = aliasTable + " " + nextTable
+			if n, ok := subSetInfoList[strings.ToLower(aliasTable)]; ok {
+				nextTable = "(" + n.query + ") " + aliasTable
+			} else {
+				nextTable = aliasTable + " " + nextTable
+			}
 			tableHasUsed[aliasTable] = true
 		} else if subset, ok := subSetInfoList[strings.ToLower(nextTable)]; ok {
 			nextTable = "(" + subset.query + ") " + subset.alias

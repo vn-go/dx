@@ -43,6 +43,14 @@ func BenchmarkSmartyUnion(t *testing.B) {
 	`
 	expectedSql := " SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union all SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`"
 	expecdAccessScope := `{
+  "decrementdetail.amount": {
+    "EntityName": "DecrementDetail",
+    "EntityFieldName": "Amount"
+  },
+  "decrementdetail.itemid": {
+    "EntityName": "DecrementDetail",
+    "EntityFieldName": "ItemID"
+  },
   "incrementdetail.amount": {
     "EntityName": "IncrementDetail",
     "EntityFieldName": "Amount"
@@ -90,4 +98,24 @@ func BenchmarkSmartyUnion(t *testing.B) {
 		})
 	})
 
+}
+func TestSmartyUnion2(t *testing.T) {
+	db, err := dx.Open("mysql", dsn)
+	if err != nil {
+		t.Error(err)
+	}
+	defer db.Close()
+	expectedSql := " SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union all SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`"
+	sql, err := db.Smart(`
+		subsets(i.name,i.price,d.amount, from( i.id=d.itemId, item i, incrementDetail d)) inc,
+		subsets(i.name,i.price,d.amount, from( i.id=d.itemId, item i, decrementDetail d)) dec,
+		subsets(union(inc+dec)) all,
+		from( all), all.name,sum(all.amount) TotalAmount
+
+	`)
+	if err != nil {
+		panic(err)
+	}
+	assert.Equal(t, expectedSql, strings.ReplaceAll(sql.Query, "\n", ""))
+	fmt.Print(sql.ScopeAccess.String())
 }

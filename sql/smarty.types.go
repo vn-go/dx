@@ -47,13 +47,13 @@ func (s *smarty) simple(simpleQuery string) (string, error) {
 		return "", err
 	}
 	selectStm := stm.(*sqlparser.Select)
-	return s.compile(selectStm)
+	return s.compile(selectStm, map[string]subsetInfo{})
 
 }
 
-func (s *smarty) compile(selectStm *sqlparser.Select) (string, error) {
+func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subsetInfo) (string, error) {
 	ret := &simpleSql{}
-	subSetInfoList, err := subsets.extractSubSetInfo(selectStm)
+	subSetInfoList, err := subsets.extractSubSetInfo(selectStm, refSubsets)
 	if err != nil {
 		return "", err
 	}

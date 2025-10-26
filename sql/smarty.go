@@ -47,6 +47,8 @@ func (s *smarty) from(selectStm *sqlparser.Select, subSetInfoList map[string]sub
 				})
 			} else if aliased, ok := expr.(*sqlparser.AliasedExpr); ok {
 				aliasedExpr = append(aliasedExpr, aliased)
+			} else {
+				panic(fmt.Sprintf("unexpected type %T. ref smarty.from", expr))
 			}
 		}
 

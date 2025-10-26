@@ -9,8 +9,8 @@ type subsetInfo struct {
 	alias string
 }
 
-func (s *subset) extractSubSetInfo(selectStm *sqlparser.Select) (map[string]subsetInfo, error) {
-	ret := map[string]subsetInfo{}
+func (s *subset) extractSubSetInfo(selectStm *sqlparser.Select, ret map[string]subsetInfo) (map[string]subsetInfo, error) {
+
 	for _, x := range selectStm.SelectExprs {
 		if aliasExpr, ok := x.(*sqlparser.AliasedExpr); ok {
 			if fn := detect[*sqlparser.FuncExpr](aliasExpr.Expr); fn != nil {
@@ -19,7 +19,7 @@ func (s *subset) extractSubSetInfo(selectStm *sqlparser.Select) (map[string]subs
 					selector := &sqlparser.Select{
 						SelectExprs: selectExprs,
 					}
-					query, err := smartier.compile(selector)
+					query, err := smartier.compile(selector, ret)
 					if err != nil {
 						return nil, err
 					}
