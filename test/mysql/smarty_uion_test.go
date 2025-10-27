@@ -38,10 +38,10 @@ func BenchmarkSmartyUnion(t *testing.B) {
 	query := `
 		subsets(i.name,i.price,d.amount, from( i.id=d.itemId, item i, incrementDetail d)) inc,
 		subsets(i.name,i.price,d.amount, from( i.id=d.itemId, item i, decrementDetail d)) dec,
-		union(inc+dec)
+		union(inc*dec)
 
 	`
-	expectedSql := " SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union all SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`"
+	expectedSql := " SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`"
 	expecdAccessScope := `{
   "decrementdetail.amount": {
     "EntityName": "DecrementDetail",
@@ -188,11 +188,11 @@ func BenchmarkSmartyUnion2(b *testing.B) {
     "EntityFieldName": "Price"
   }
 }`
-	expectedSql := "SELECT `all`.`Name` `Name`, sum(`all`.`Amount`) `TotalAmount` FROM ( SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union all SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` * {1} FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`) `all` GROUP BY `all`.`name`"
+	expectedSql := "SELECT `all`.`Name` `Name`, sum(`all`.`Amount`) `TotalAmount` FROM ( SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` `Amount` FROM `items` `i` join  `increment_details` `d` ON `i`.`id` = `d`.`item_id` union SELECT `i`.`name` `Name`, `i`.`price` `Price`, `d`.`amount` * {1} FROM `items` `i` join  `decrement_details` `d` ON `i`.`id` = `d`.`item_id`) `all` GROUP BY `all`.`name`"
 	query := `
 		subsets(i.name,i.price,d.amount, from( i.id=d.itemId, item i, incrementDetail d)) inc,
 		subsets(i.name,i.price,d.amount*-1 amount, from( i.id=d.itemId, item i, decrementDetail d)) dec,
-		subsets(union(inc+dec)) all,
+		subsets(union(inc*dec)) all,
 		from( all), all.name Name,sum(all.amount) TotalAmount
 
 	`

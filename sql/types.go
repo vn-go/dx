@@ -72,6 +72,20 @@ func (r *refFields) merge(fields refFields) refFields {
 	return *r
 }
 
+type outputField struct {
+	Name         string
+	IsCalculated bool
+}
+type outputFields []outputField
+
+func (o outputFields) String() string {
+	bff, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("outputFields error:%s", err.Error())
+	}
+	return string(bff)
+}
+
 type compilerResult struct {
 	IsInSubquery bool
 	// use for error message. Error message should be show with original content
@@ -143,6 +157,7 @@ type compilerResult struct {
 	*/
 	//allFields dictionaryFields
 	IsInAggregateFunc bool
+	OutputFields      []outputField
 }
 
 // After compiled to sql, we need to know the type of each field in the result set.
@@ -314,7 +329,8 @@ func (s smartSqlParserArgs) String() string {
 }
 
 type SmartSqlParser struct {
-	Query       string
-	Args        smartSqlParserArgs
-	ScopeAccess refFields
+	Query        string
+	Args         smartSqlParserArgs
+	ScopeAccess  refFields
+	OutputFields outputFields
 }

@@ -20,7 +20,9 @@ func sortStrings(items []string) []string {
 
 // select.selects.go
 func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
-	ret := compilerResult{}
+	ret := compilerResult{
+		OutputFields: []outputField{},
+	}
 	selectStatement := types.SelectStatement{}
 
 	r, err := froms.resolve(expr.From, injector)
@@ -56,6 +58,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 		ret.IsInAggregateFunc = ret.IsInAggregateFunc || r.IsInAggregateFunc
+		ret.OutputFields = append(ret.OutputFields, r.OutputFields...)
 	}
 	selectStatement.Selector = strings.Join(itemSelectors, ", ")
 	//goupByItems := []string{}
@@ -97,29 +100,33 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 			selectStatement.Having = strings.Join(havingItems, " AND ")
 
 			for k, v := range ret.selectedExprsReverse {
-				if k == "" { // not not hav alias skip it
+				if k == "" || v.IsInAggregateFunc { // not not hav alias skip it
 					continue
 				}
-				if !v.IsInAggregateFunc {
-					if v.Children != nil && len(*v.Children) > 0 {
-						for k1, child := range *v.Children {
-							if k1 == "" { // not not hav alias skip it
-								continue
-							}
-							if _, ok := groupMap[child.Expr]; !ok {
-								groupKeys = append(groupKeys, child.Expr)
-								groupMap[child.Expr] = child.Expr
-							}
-						}
-
-					} else {
-						if _, ok := groupMap[v.Expr]; !ok {
-							groupKeys = append(groupKeys, v.Expr)
-							groupMap[v.Expr] = v.Expr
-						}
-
-					}
+				if _, ok := groupMap[v.Expr]; !ok {
+					groupKeys = append(groupKeys, v.Expr)
+					groupMap[v.Expr] = v.Expr
 				}
+				// if !v.IsInAggregateFunc {
+				// 	if v.Children != nil && len(*v.Children) > 0 {
+				// 		for k1, child := range *v.Children {
+				// 			if k1 == "" { // not not hav alias skip it
+				// 				continue
+				// 			}
+				// 			if _, ok := groupMap[child.Expr]; !ok {
+				// 				groupKeys = append(groupKeys, child.Expr)
+				// 				groupMap[child.Expr] = child.Expr
+				// 			}
+				// 		}
+
+				// 	} else {
+				// 		if _, ok := groupMap[v.Expr]; !ok {
+				// 			groupKeys = append(groupKeys, v.Expr)
+				// 			groupMap[v.Expr] = v.Expr
+				// 		}
+
+				// 	}
+				// }
 			}
 
 		}
@@ -128,29 +135,13 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	// detect if is need to add group by
 	if len(havingItems) > 0 || ret.IsInAggregateFunc {
 		for k, v := range ret.selectedExprsReverse {
-			if k == "" { // not not hav alias skip it
+			if k == "" || v.IsInAggregateFunc { // not not hav alias skip it
 				continue
 			}
-			if !v.IsInAggregateFunc {
-				if v.Children != nil && len(*v.Children) > 0 {
-					for k1, child := range *v.Children {
-						if k1 == "" { // not not hav alias skip it
-							continue
-						}
-						if _, ok := groupMap[child.Expr]; !ok {
-							groupKeys = append(groupKeys, child.Expr)
+			if _, ok := groupMap[v.Expr]; !ok {
+				groupKeys = append(groupKeys, v.Expr)
 
-							groupMap[child.Expr] = child.Expr
-						}
-					}
-
-				} else {
-					if _, ok := groupMap[v.Expr]; !ok {
-						groupKeys = append(groupKeys, v.Expr)
-
-						groupMap[v.Expr] = v.Expr
-					}
-				}
+				groupMap[v.Expr] = v.Expr
 			}
 		}
 	}
@@ -220,7 +211,8 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 				Children:          &r.selectedExprsReverse,
 			}
 		}
-		return &compilerResult{
+
+		ret := &compilerResult{
 			OriginalContent:      r.OriginalContent,
 			Content:              r.Content,
 			AliasOfContent:       r.AliasOfContent,
@@ -229,7 +221,23 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 			selectedExprsReverse: selectedExprsReverse,
 			IsInAggregateFunc:    r.IsInAggregateFunc,
 			Fields:               r.Fields,
-		}, nil
+		}
+		if !x.As.IsEmpty() {
+			ret.OutputFields = []outputField{
+				{
+					Name:         x.As.String(),
+					IsCalculated: r.IsExpression,
+				},
+			}
+		} else {
+			ret.OutputFields = []outputField{
+				{
+					Name:         r.AliasOfContent,
+					IsCalculated: r.IsExpression,
+				},
+			}
+		}
+		return ret, nil
 
 	default:
 		panic(fmt.Sprintf("unimplemented: %T. See selectors.selectExpr, file %s", x, `sql\select.selects.go`))

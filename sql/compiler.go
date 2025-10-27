@@ -35,9 +35,10 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*Sma
 		return nil, err
 	}
 	return &SmartSqlParser{
-		Query:       i.val.Content,
-		Args:        args,
-		ScopeAccess: i.val.Fields,
+		Query:        i.val.Content,
+		Args:         args,
+		ScopeAccess:  i.val.Fields,
+		OutputFields: i.val.OutputFields,
 	}, nil
 
 }

@@ -12,6 +12,7 @@ import (
 func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
+
 		return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
 	}
 	originalContent := t.Name.String()

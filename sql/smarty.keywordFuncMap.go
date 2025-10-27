@@ -1,7 +1,5 @@
 package sql
 
-import "github.com/vn-go/dx/internal"
-
 var sqlFuncWhitelist = map[string]bool{
 	// --- Numeric functions ---
 	"abs":     true,
@@ -58,7 +56,7 @@ var keywordFuncMap = map[string]bool{
 	"rowset":  true,
 
 	"union": true,
-	"count": true, "sum": true, "avg": true, "min": true, "max": true,
+	//"count": true, "sum": true, "avg": true, "min": true, "max": true,
 }
 var customKeyworMap = map[string]bool{
 	"if":     true,
@@ -97,7 +95,7 @@ var keywordSQLStandard = map[string]bool{
 	"cast": true, "convert": true, "null": true, "true": true, "false": true,
 }
 
-func init() {
-	keywordFuncMap = internal.UnionMap(keywordFuncMap, sqlFuncWhitelist)
-	keywordFuncMap = internal.UnionMap(keywordFuncMap, customKeyworMap)
-}
+// func init() {
+// 	keywordFuncMap = internal.UnionMap(keywordFuncMap, sqlFuncWhitelist)
+// 	keywordFuncMap = internal.UnionMap(keywordFuncMap, customKeyworMap)
+// }
