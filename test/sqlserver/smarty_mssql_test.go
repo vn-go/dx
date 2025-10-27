@@ -135,7 +135,7 @@ func TestStatYearOfCreateUserAndRole(t *testing.T) {
     "EntityFieldName": "RoleId"
   }
 }`
-	query := `user(count(id) TotalUser,year(createdOn) Year),
+	query := `user(count(id) TotalUser,year(createdOn)+1 Year),
 			  role(count(id) TotalRole),
 			  
 			  from(user,role,user.roleId=role.id),
@@ -145,6 +145,7 @@ func TestStatYearOfCreateUserAndRole(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(sql.Query)
 	assert.Equal(t, expectedquery, sql.Query)
 	assert.Equal(t, expectedArgs, sql.Args.String())
 	assert.Equal(t, expectedOuputFields, sql.OutputFields.String())

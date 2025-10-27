@@ -171,7 +171,8 @@ type dictionaryField struct {
 	IsInAggregateFunc bool
 	Alias             string
 	EntityField       *entity.ColumnDef
-	Children          *dictionaryFields
+	//Children          *dictionaryFields
+	Node sqlparser.SQLNode
 }
 
 // this type is very important for make dynamic struct from column types

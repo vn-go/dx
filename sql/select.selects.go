@@ -208,7 +208,6 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 				Expr:              r.Content,
 				IsInAggregateFunc: r.IsInAggregateFunc,
 				Alias:             x.As.String(),
-				Children:          &r.selectedExprsReverse,
 			}
 		}
 
