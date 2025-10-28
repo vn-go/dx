@@ -367,6 +367,11 @@ func (s *SqlInfo) Clone() *SqlInfo {
 	return clone
 }
 
+type SelectStatementArg struct {
+	Content string
+	Val     any
+	Index   int
+}
 type SelectStatement struct {
 	Source   string // from
 	Selector string // select field here
@@ -374,8 +379,8 @@ type SelectStatement struct {
 	Sort     string // order by clause
 	Having   string
 	GroupBy  string
-	Offset   int
-	Limit    int
+	Offset   *SelectStatementArg
+	Limit    *SelectStatementArg
 }
 type CompilerError struct {
 	Message string

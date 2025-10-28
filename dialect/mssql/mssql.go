@@ -115,13 +115,13 @@ func (d *mssqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
 	}
 
 	// OFFSET + LIMIT (SQL Server yêu cầu ORDER BY nếu có OFFSET/FETCH)
-	if stmt.Limit > 0 {
+	if stmt.Limit != nil {
 		if stmt.Sort == "" {
 			// fallback để tránh lỗi "OFFSET requires ORDER BY clause"
 			sql += " ORDER BY (SELECT NULL)"
 		}
 
-		sql += fmt.Sprintf(" OFFSET %d ROWS FETCH NEXT %d ROWS ONLY", stmt.Offset, stmt.Limit)
+		sql += fmt.Sprintf(" OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", stmt.Offset.Content, stmt.Limit.Content)
 	}
 
 	return sql

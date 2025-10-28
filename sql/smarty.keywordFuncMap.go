@@ -46,16 +46,19 @@ var sqlFuncWhitelist = map[string]bool{
 }
 
 var keywordFuncMap = map[string]bool{
-	"from":    true,
-	"where":   true,
-	"sort":    true,
-	"limit":   true,
-	"offset":  true,
+	"from":  true,
+	"where": true,
+	"sort":  true,
+	// "limit":   true,
+	// "offset":  true,
 	"group":   true,
 	"subsets": true,
 	"rowset":  true,
 
 	"union": true,
+	"skip":  true,
+	"take":  true,
+
 	//"count": true, "sum": true, "avg": true, "min": true, "max": true,
 }
 var customKeyworMap = map[string]bool{

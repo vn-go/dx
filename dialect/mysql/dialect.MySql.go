@@ -74,12 +74,12 @@ func (d *mySqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
 	}
 
 	// LIMIT & OFFSET
-	if stmt.Limit > 0 {
+	if stmt.Limit != nil {
 		// MySQL: LIMIT limit OFFSET offset
-		if stmt.Offset > 0 {
-			sql += fmt.Sprintf(" LIMIT %d OFFSET %d", stmt.Limit, stmt.Offset)
+		if stmt.Offset != nil {
+			sql += fmt.Sprintf(" LIMIT %s OFFSET %s", stmt.Limit, stmt.Offset.Content)
 		} else {
-			sql += fmt.Sprintf(" LIMIT %d", stmt.Limit)
+			sql += fmt.Sprintf(" LIMIT %s", stmt.Limit)
 		}
 	}
 

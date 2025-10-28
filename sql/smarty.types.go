@@ -15,6 +15,8 @@ type simpleSql struct {
 	selects string
 	sort    string
 	groupBy string
+	offset  string
+	limit   string
 }
 type initSimpleCache struct {
 	val  string
@@ -66,6 +68,7 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 	ret.where = smartier.where(selectStm)
 	ret.groupBy = smartier.groupBy(selectStm, fieldAliasMap)
 	ret.sort = smartier.sort(selectStm, fieldAliasMap)
+	ret.offset, ret.limit = smartier.limitAndOffset(selectStm)
 	unionSource, err := unions.extractUnionInfo(selectStm, subSetInfoList)
 	if err != nil {
 		return "", err
@@ -82,7 +85,23 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 		panic("can not detect from clause")
 	}
 	sqlText := ret.String()
+
 	return sqlText, nil
+}
+
+func (s *smarty) limitAndOffset(selectStm *sqlparser.Select) (skip string, take string) {
+
+	for _, x := range selectStm.SelectExprs {
+		if fn := detect[*sqlparser.FuncExpr](x); fn != nil {
+			if fn.Name.Lowered() == "take" {
+				take = smartier.ToText(fn.Exprs[0])
+			}
+			if fn.Name.Lowered() == "skip" {
+				skip = smartier.ToText(fn.Exprs[0])
+			}
+		}
+	}
+	return
 }
 
 func (s *simpleSql) replaceVParams(sql string) string {
@@ -136,6 +155,18 @@ func (sql *simpleSql) String() string {
 	}
 	if sql.sort != "" {
 		query += " ORDER BY " + sql.sort
+	}
+
+	// ⚡ Thêm LIMIT & OFFSET theo chuẩn MySQL
+	if sql.limit != "" {
+		query += " LIMIT " + sql.limit
+		if sql.offset != "" {
+			query += " OFFSET " + sql.offset
+		}
+	} else if sql.offset != "" {
+		// MySQL cho phép OFFSET mà không có LIMIT (dù ít khi dùng)
+		query += " LIMIT 0 OFFSET " + sql.offset
+		// (số này là max uint64, tương đương "không giới hạn")
 	}
 
 	return sql.replaceVParams(query)

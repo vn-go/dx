@@ -87,6 +87,8 @@ func (o outputFields) String() string {
 }
 
 type compilerResult struct {
+	limit        string
+	offset       string
 	IsInSubquery bool
 	// use for error message. Error message should be show with original content
 	OriginalContent string

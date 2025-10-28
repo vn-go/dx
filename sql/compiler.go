@@ -69,6 +69,7 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	//var node sqlparser.SQLNode
 	var sqlStm sqlparser.Statement
 	isNotStartWithSelect := !c.startWithSelectKeyword(query)
+
 	if isNotStartWithSelect {
 		querySimple, err := smartier.simple(query)
 		if err != nil {
@@ -76,6 +77,8 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 		}
 
 		query = querySimple
+		// offset = querySimple.offset
+		// limit = querySimple.limit
 	}
 	inputSql := internal.Helper.ReplaceQuestionMarks(query, GET_PARAMS_FUNC)
 
@@ -92,7 +95,12 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	if err != nil {
 		return nil, err
 	}
-	return froms.selectStatement(sqlStm, injector, CMP_SELECT)
+	ret, err := froms.selectStatement(sqlStm, injector, CMP_SELECT)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 
 }
 

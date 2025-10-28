@@ -72,10 +72,10 @@ func (d *postgresDialect) GetSelectStatement(stmt types.SelectStatement) string 
 	}
 
 	// LIMIT & OFFSET
-	if stmt.Limit > 0 {
-		sql += fmt.Sprintf(" LIMIT %d", stmt.Limit)
-		if stmt.Offset > 0 {
-			sql += fmt.Sprintf(" OFFSET %d", stmt.Offset)
+	if stmt.Limit != nil {
+		sql += fmt.Sprintf(" LIMIT %s", stmt.Limit)
+		if stmt.Offset != nil {
+			sql += fmt.Sprintf(" OFFSET %s", stmt.Offset.Content)
 		}
 	}
 

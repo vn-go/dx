@@ -107,26 +107,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 					groupKeys = append(groupKeys, v.Expr)
 					groupMap[v.Expr] = v.Expr
 				}
-				// if !v.IsInAggregateFunc {
-				// 	if v.Children != nil && len(*v.Children) > 0 {
-				// 		for k1, child := range *v.Children {
-				// 			if k1 == "" { // not not hav alias skip it
-				// 				continue
-				// 			}
-				// 			if _, ok := groupMap[child.Expr]; !ok {
-				// 				groupKeys = append(groupKeys, child.Expr)
-				// 				groupMap[child.Expr] = child.Expr
-				// 			}
-				// 		}
 
-				// 	} else {
-				// 		if _, ok := groupMap[v.Expr]; !ok {
-				// 			groupKeys = append(groupKeys, v.Expr)
-				// 			groupMap[v.Expr] = v.Expr
-				// 		}
-
-				// 	}
-				// }
 			}
 
 		}
@@ -177,9 +158,39 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 		selectStatement.Sort = r.Content
 	}
+	if expr.Limit != nil {
+		//tmpInjector := newInjector(injector.dialect, make([]string, 0))
 
+		if expr.Limit.Offset != nil {
+			offset, err := exp.resolve(expr.Limit.Offset, injector, CMP_SELECT, ret.selectedExprsReverse)
+			if err != nil {
+				return nil, err
+			}
+			selectStatement.Offset = &types.SelectStatementArg{
+				Content: offset.Content,
+				// Val:     tmpInjector.args[1].val,
+				// Index:   tmpInjector.args[1].index,
+			}
+			// selectStatement.Limit = smartier.ToText(expr.Limit.Rowcount)
+			// ret.offset = smartier.ToText(expr.Limit.Offset)
+		}
+		if expr.Limit.Rowcount != nil {
+			limit, err := exp.resolve(expr.Limit.Rowcount, injector, CMP_SELECT, ret.selectedExprsReverse)
+			if err != nil {
+				return nil, err
+			}
+			selectStatement.Limit = &types.SelectStatementArg{
+				Content: limit.Content,
+				// Val:     tmpInjector.args[0].val,
+				// Index:   tmpInjector.args[0].index,
+			}
+			// ret.limit = smartier.ToText(expr.Limit.Rowcount)
+		}
+
+	}
 	ret.Content = injector.dialect.GetSelectStatement(selectStatement)
 	ret.Args = injector.args
+
 	return &ret, nil
 }
 
