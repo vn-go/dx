@@ -641,6 +641,9 @@ func newHelper() *helperType {
 			"like":  true,
 			"limit": true, "having": true, "is": true, "null": true, "offset": true,
 			"delete": true, "update": true, "set": true,
+			"range":               true,
+			"to":                  true,
+			"in":                  true,
 			FnMarkSpecialTextArgs: true,
 		},
 		funcWhitelist: map[string]bool{

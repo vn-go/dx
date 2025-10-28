@@ -19,11 +19,14 @@ func (s *smarty) where(selectStm *sqlparser.Select) string {
 }
 
 // smarty.selectors.go
-func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string]string) string {
+func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string]string) (string, error) {
 	items := []string{}
 	nodes := s.extractSelectNodes(selectStm)
 	for _, node := range nodes {
 		if fn := detect[*sqlparser.FuncExpr](node); fn != nil {
+			if fn.Name.Lowered() == "crosstab" {
+				return crossTabs.resolve(node.(*sqlparser.AliasedExpr), fn, fieldAliasMap)
+			}
 			if !fn.Qualifier.IsEmpty() {
 				if strings.ToLower(fn.Qualifier.String()) == "dataset" {
 					for _, x := range fn.Exprs {
@@ -56,9 +59,9 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 		items = append(items, s.ToText(node))
 	}
 	if len(items) == 0 {
-		return "*"
+		return "*", nil
 	}
-	return strings.Join(items, ", ")
+	return strings.Join(items, ", "), nil
 }
 
 func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {

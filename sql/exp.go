@@ -113,6 +113,28 @@ func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmp
 		return ret, nil
 	case *sqlparser.SQLVal:
 		return params.sqlVal(t, injector)
+	case *sqlparser.ComparisonExpr:
+		ret, err := exp.resolve(t, injector, cmpType, selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		if cmpType == CMP_SELECT {
+			if expr.As.IsEmpty() {
+				return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "'%s' require alias", ret.OriginalContent)
+			}
+		}
+		if cmpType == CMP_SELECT {
+			ret.Content += " " + injector.dialect.Quote(expr.As.String())
+		}
+		ret.selectedExprs[strings.ToLower(ret.Content)] = &dictionaryField{
+			Expr:              ret.Content,
+			Typ:               -1,
+			Alias:             expr.As.String(),
+			IsInAggregateFunc: ret.IsInAggregateFunc,
+		}
+
+		ret.selectedExprsReverse[strings.ToLower(expr.As.String())] = ret.selectedExprs[strings.ToLower(ret.Content)]
+		return ret, nil
 	default:
 		panic(fmt.Sprintf("unimplemented: %T. See selectors.aliasedExpr, %s", t, `sql\selectors.aliasedExpr.go.go`))
 

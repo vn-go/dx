@@ -201,6 +201,7 @@ func BenchmarkStatYearOfCreateUserAndRolev1(b *testing.B) {
 			  from(user,role,user.roleId=role.id),
 			  where( year=? and totalUser>0)`
 	b.Run("Smart", func(b *testing.B) {
+		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			sql, err := db.Smart(query, 2025)
 			if err != nil {
@@ -214,6 +215,7 @@ func BenchmarkStatYearOfCreateUserAndRolev1(b *testing.B) {
 	})
 	b.Run("parallels", func(b *testing.B) {
 		b.RunParallel(func(p *testing.PB) {
+			b.ResetTimer()
 			for p.Next() {
 				sql, err := db.Smart(query, 2025)
 				if err != nil {
