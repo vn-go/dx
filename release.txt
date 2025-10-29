@@ -504,3 +504,11 @@ git tag -a v1.0.79 -m "fix auto group by and having"
 git push origin v1.0.79
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.79
+
+---
+git add .
+git commit -m "support dsl"
+git tag -a v1.0.80 -m "support dsl"
+git push origin v1.0.80
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.80
