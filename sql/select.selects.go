@@ -268,7 +268,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 				if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
 					aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
 				}
-				strSelectItems = append(strSelectItems, injector.dialect.Quote(x.TableName, col.Name)+" "+aliasField)
+				strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+aliasField)
 				selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
 					Expr:  injector.dialect.Quote(aliasTable, col.Name),
 					Alias: col.Name,

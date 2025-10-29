@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/vn-go/dx"
+	_ "github.com/vn-go/dx/test/models"
 )
 
 func TestQuery(t *testing.T) {
