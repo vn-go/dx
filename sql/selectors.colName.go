@@ -12,8 +12,18 @@ import (
 func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
 
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
+		if field, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
+			return &compilerResult{
+				Content:           field.Expr,
+				OriginalContent:   t.Name.String(),
+				AliasOfContent:    field.Alias,
+				IsInAggregateFunc: field.IsInAggregateFunc,
+				IsExpression:      true,
+			}, nil
+		} else {
+			return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
+		}
 
-		return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
 	}
 	originalContent := t.Name.String()
 	alias := "T1" // if not found, use default alias

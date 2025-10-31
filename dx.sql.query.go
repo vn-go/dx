@@ -27,7 +27,7 @@ func getStructMeta(t reflect.Type) *structMeta {
 	metaCache.Store(t, m)
 	return m
 }
-func (db *DB) DslQuery(result any, dslQuery string, skip, limit int, args ...interface{}) error {
+func (db *DB) DslQuery(result any, dslQuery string, args ...interface{}) error {
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Slice {
 		return errors.New("result must be pointer to slice")
@@ -39,10 +39,10 @@ func (db *DB) DslQuery(result any, dslQuery string, skip, limit int, args ...int
 		return errors.New("slice element must be struct")
 	}
 
-	if skip > 0 || limit > 0 {
-		dslQuery += ",skip(?),take(?)"
-		args = append(args, limit, skip)
-	}
+	// if skip > 0 || limit > 0 {
+	// 	dslQuery += ",skip(?),take(?)"
+	// 	args = append(args, limit, skip)
+	// }
 
 	query, err := db.Smart(dslQuery, args...)
 	if err != nil {
