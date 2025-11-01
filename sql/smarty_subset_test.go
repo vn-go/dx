@@ -16,7 +16,7 @@ func TestSubsets(t *testing.T) {
 		where(qr1.code = 'abc' and qr2.code = 'def'),
 		qr1.name`
 
-	sql, err := smartier.simple(str)
+	sql, _, err :=smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}

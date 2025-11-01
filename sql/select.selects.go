@@ -166,10 +166,23 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 			if err != nil {
 				return nil, err
 			}
+			// if val, ok := find[*sqlparser.SQLVal](expr.Limit.Offset); ok {
+			// 	indexOfOffsetInArgs, err := internal.Helper.ToIntFormBytes(val.Val)
+			// 	if err != nil {
+			// 		return nil, err
+			// 	}
+			// 	selectStatement.Offset = &types.SelectStatementArg{
+			// 		Content: offset.Content,
+			// 		Index:   indexOfOffsetInArgs - 1, // decrement 1 because the first argument is starta at 0 while sql parse use 1 for start index
+			// 	}
+
+			// } else {
+			// 	selectStatement.Offset = &types.SelectStatementArg{
+			// 		Content: offset.Content,
+			// 	}
+			// }
 			selectStatement.Offset = &types.SelectStatementArg{
 				Content: offset.Content,
-				// Val:     tmpInjector.args[1].val,
-				// Index:   tmpInjector.args[1].index,
 			}
 			// selectStatement.Limit = smartier.ToText(expr.Limit.Rowcount)
 			// ret.offset = smartier.ToText(expr.Limit.Offset)
@@ -179,10 +192,23 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 			if err != nil {
 				return nil, err
 			}
+			// if val, ok := find[*sqlparser.SQLVal](expr.Limit.Rowcount); ok {
+			// 	indexOfLimitInArgs, err := internal.Helper.ToIntFormBytes(val.Val)
+			// 	if err != nil {
+			// 		return nil, err
+			// 	}
+			// 	selectStatement.Limit = &types.SelectStatementArg{
+			// 		Content: limit.Content,
+			// 		Index:   indexOfLimitInArgs - 1, // decrement 1 because the first argument is starta at 0 while sql parse use 1 for start index
+			// 	}
+
+			// } else {
+			// 	selectStatement.Limit = &types.SelectStatementArg{
+			// 		Content: limit.Content,
+			// 	}
+			// }
 			selectStatement.Limit = &types.SelectStatementArg{
 				Content: limit.Content,
-				// Val:     tmpInjector.args[0].val,
-				// Index:   tmpInjector.args[0].index,
 			}
 			// ret.limit = smartier.ToText(expr.Limit.Rowcount)
 		}

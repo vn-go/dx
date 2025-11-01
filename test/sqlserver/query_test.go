@@ -18,7 +18,8 @@ func TestQuery(t *testing.T) {
 		Id       uint64 `db:"pk;auto" json:"id"`
 		Username string `db:"size:50;uk" json:"username"`
 	}{}
-	err = db.DslQuery(&userInfos, "user(id,username),where(id>=1),sort(id),skip(?),take(?)", 10, 10)
+	err = db.DslQuery(&userInfos, "user(id,username),sort(id),take(10),where(id>=15)")
+	// err = db.DslQuery(&userInfos, "user(id,username),where(id>=1),sort(id)")
 	if err != nil {
 		panic(err)
 	}

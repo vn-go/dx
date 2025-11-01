@@ -5,8 +5,9 @@ import "github.com/vn-go/dx/sqlparser"
 type subset struct {
 }
 type subsetInfo struct {
-	query string
-	alias string
+	query   string
+	alias   string
+	reIndex []int
 }
 
 func (s *subset) extractSubSetInfo(selectStm *sqlparser.Select, ret map[string]subsetInfo) (map[string]subsetInfo, error) {
@@ -19,14 +20,15 @@ func (s *subset) extractSubSetInfo(selectStm *sqlparser.Select, ret map[string]s
 					selector := &sqlparser.Select{
 						SelectExprs: selectExprs,
 					}
-					query, err := smartier.compile(selector, ret)
+					query, reIndex, err := smartier.compile(selector, ret)
 					if err != nil {
 						return nil, err
 					}
 					ret[aliasExpr.As.Lowered()] = subsetInfo{
 
-						alias: aliasExpr.As.Lowered(),
-						query: query,
+						alias:   aliasExpr.As.Lowered(),
+						query:   query,
+						reIndex: reIndex,
 					}
 
 				}

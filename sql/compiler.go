@@ -30,13 +30,19 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*Sma
 	if i.err != nil {
 		return nil, i.err
 	}
-	args, err := i.val.Args.ToArray(arg)
+
+	compileArgs, err := i.val.Args.ToArray(arg)
 	if err != nil {
 		return nil, err
 	}
+	var sqlArgs = make([]any, len(compileArgs))
+	for j, v := range i.val.reIndex {
+		sqlArgs[v] = compileArgs[j]
+	}
+
 	return &SmartSqlParser{
 		Query:        i.val.Content,
-		Args:         args,
+		Args:         compileArgs,
 		ScopeAccess:  i.val.Fields,
 		OutputFields: i.val.OutputFields,
 	}, nil
@@ -69,9 +75,10 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	//var node sqlparser.SQLNode
 	var sqlStm sqlparser.Statement
 	isNotStartWithSelect := !c.startWithSelectKeyword(query)
-
+	reIndex := []int{}
+	querySimple := ""
 	if isNotStartWithSelect {
-		querySimple, err := smartier.simple(query)
+		querySimple, reIndex, err = smartier.simple(query)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +106,13 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	if err != nil {
 		return nil, err
 	}
+	ret.reIndex = reIndex
+	for j := 0; j < len(ret.Args); j++ {
+		if j < len(ret.reIndex) {
+			ret.Args[j].index = ret.reIndex[j] + 1
+		}
 
+	}
 	return ret, nil
 
 }

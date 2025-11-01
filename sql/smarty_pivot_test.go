@@ -10,7 +10,7 @@ func TestPivot001(t *testing.T) {
 				from(user u),
 				crossTab(for(day(u.createdOn) Day ,1,31),select(count(u.id) Total, SUM(U.AMOUNT) AMOUNT))
 				`
-	sql, err := smartier.simple(query)
+	sql, _, err := smartier.simple(query)
 	if err != nil {
 		panic(err)
 	}

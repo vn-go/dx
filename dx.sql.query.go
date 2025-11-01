@@ -39,45 +39,12 @@ func (db *DB) DslQuery(result any, dslQuery string, args ...interface{}) error {
 		return errors.New("slice element must be struct")
 	}
 
-	// if skip > 0 || limit > 0 {
-	// 	dslQuery += ",skip(?),take(?)"
-	// 	args = append(args, limit, skip)
-	// }
-
 	query, err := db.Smart(dslQuery, args...)
 	if err != nil {
 		return err
 	}
 	return db.fecthItems(result, query.Query, nil, nil, true, query.Args...)
-	// rows, err := db.Query(query.Query, query.Args...)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer rows.Close()
 
-	// meta := getStructMeta(elemType)
-	// buf := make([]any, len(meta.fieldPtrs)) // cấp phát 1 lần duy nhất
-
-	// // preallocate slice nếu biết trước limit
-	// capHint := 0
-	// if limit > 0 {
-	// 	capHint = limit
-	// }
-	// sliceVal = reflect.MakeSlice(sliceVal.Type(), 0, capHint)
-
-	// for rows.Next() {
-	// 	elemVal := reflect.New(elemType).Elem()
-	// 	for i, f := range meta.fieldPtrs {
-	// 		buf[i] = f(elemVal)
-	// 	}
-	// 	if err := rows.Scan(buf...); err != nil {
-	// 		return err
-	// 	}
-	// 	sliceVal = reflect.Append(sliceVal, elemVal)
-	// }
-
-	// rv.Elem().Set(sliceVal)
-	// return nil
 }
 
 func (db *DB) DslFirstRow(result any, dslQuery string, args ...interface{}) error {

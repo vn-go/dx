@@ -8,7 +8,12 @@ import (
 
 // mssqlDialect.GetSelectStatement.go
 func (d *mssqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
-	sql := "SELECT " + stmt.Selector + " FROM " + stmt.Source
+	sql := ""
+	if stmt.Limit != nil && stmt.Offset == nil {
+		sql = "SELECT TOP (" + stmt.Limit.Content + ") " + stmt.Selector + " FROM " + stmt.Source
+	} else {
+		sql = "SELECT " + stmt.Selector + " FROM " + stmt.Source
+	}
 
 	// WHERE
 	if stmt.Filter != "" {
@@ -27,17 +32,19 @@ func (d *mssqlDialect) GetSelectStatement(stmt types.SelectStatement) string {
 
 	// ORDER BY
 	if stmt.Sort != "" {
+
 		sql += " ORDER BY " + stmt.Sort
 	}
 
 	// OFFSET + LIMIT (SQL Server yêu cầu ORDER BY nếu có OFFSET/FETCH)
-	if stmt.Limit != nil {
+	if stmt.Limit != nil && stmt.Offset != nil {
 		if stmt.Sort == "" {
 			// fallback để tránh lỗi "OFFSET requires ORDER BY clause"
 			sql += " ORDER BY (SELECT NULL)"
 		}
 
 		sql += fmt.Sprintf(" OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", stmt.Offset.Content, stmt.Limit.Content)
+
 	}
 
 	return sql

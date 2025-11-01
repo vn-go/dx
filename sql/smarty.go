@@ -3,6 +3,7 @@ package sql
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/vn-go/dx/sqlparser"
@@ -120,6 +121,56 @@ func isNode[T any](node sqlparser.SQLNode) bool {
 		panic(fmt.Sprintf("unexpected type %T. ref isNode", t))
 	}
 }
+func find[T any](node sqlparser.SQLNode) (T, bool) {
+	var defautT T
+	switch t := node.(type) {
+	case T:
+		return node.(T), true
+	case *sqlparser.AliasedExpr:
+		return find[T](t.Expr)
+	case *sqlparser.ColName:
+		if reflect.TypeFor[T]() == reflect.TypeFor[*sqlparser.ColName]() {
+			return node.(T), true
+		}
+		return defautT, false
+	case *sqlparser.BinaryExpr:
+		if ret, found := find[T](t.Left); found {
+			return ret, found
+		}
+		return find[T](t.Right)
+	case *sqlparser.ComparisonExpr:
+		if ret, found := find[T](t.Left); found {
+			return ret, found
+		}
+		return find[T](t.Right)
+	case *sqlparser.FuncExpr:
+		for _, expr := range t.Exprs {
+			if ret, found := find[T](expr); found {
+				return ret, found
+			}
+		}
+		return defautT, false
+	case *sqlparser.AndExpr:
+		if ret, found := find[T](t.Left); found {
+			return ret, found
+		}
+		return find[T](t.Right)
+	case *sqlparser.OrExpr:
+		if ret, found := find[T](t.Left); found {
+			return ret, found
+		}
+		return find[T](t.Right)
+	case *sqlparser.SQLVal:
+		if reflect.TypeFor[T]() == reflect.TypeFor[*sqlparser.SQLVal]() {
+			return node.(T), true
+		}
+
+		return defautT, false
+	default:
+		panic(fmt.Sprintf("unexpected type %T. ref detect", t))
+	}
+}
+
 func detect[T any](node sqlparser.SQLNode) T {
 	var defautT T
 	switch t := node.(type) {
