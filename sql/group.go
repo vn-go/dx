@@ -9,9 +9,7 @@ import (
 type group struct {
 }
 
-
-
-func (g *group) resolve(expr sqlparser.GroupBy, injector *injector, reverse dictionaryFields) (*compilerResult, error) {
+func (g *group) resolve(expr sqlparser.GroupBy, injector *injector, reverse *dictionaryFields) (*compilerResult, error) {
 	itemsOfContent := []string{}
 	itemsOfOriginalContent := []string{}
 	ret := compilerResult{}

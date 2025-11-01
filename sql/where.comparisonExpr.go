@@ -3,7 +3,7 @@ package sql
 import "github.com/vn-go/dx/sqlparser"
 
 // where.comparisonExpr.go
-func (w *WhereType) comparisonExpr(x *sqlparser.ComparisonExpr, injector *injector, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (w *WhereType) comparisonExpr(x *sqlparser.ComparisonExpr, injector *injector, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	left, err := w.resolve(x.Left, injector, selectedExprsReverse)
 	if err != nil {
 		return nil, err

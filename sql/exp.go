@@ -24,7 +24,7 @@ const (
 type expCmp struct {
 }
 
-func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	switch x := node.(type) {
 	case *sqlparser.AndExpr:
 		return e.binary(x.Left, x.Right, "AND", injector, cmpType, selectedExprsReverse)
@@ -58,6 +58,14 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 		fx.Content = "NOT " + fx.Content
 		fx.OriginalContent = "NOT " + fx.OriginalContent
 		return fx, nil
+	case *sqlparser.ParenExpr:
+		ret, err := e.resolve(x.Expr, injector, cmpType, selectedExprsReverse)
+		if err != nil {
+			return nil, err
+		}
+		ret.Content = "(" + ret.Content + ")"
+		ret.OriginalContent = "(" + ret.OriginalContent + ")"
+		return ret, nil
 
 	default:
 		panic(fmt.Sprintf("unhandled node type %T. see  expCmp.resolve, file %s", x, `sql\where.comparisonExpr.go`))
@@ -65,7 +73,7 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 
 }
 
-func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (s expCmp) aliasedExpr(expr *sqlparser.AliasedExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	switch t := expr.Expr.(type) {
 	case *sqlparser.ColName:
 		return selector.colName(t, injector, cmpType, selectedExprsReverse)

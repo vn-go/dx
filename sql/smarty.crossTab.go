@@ -82,6 +82,13 @@ func (f *crossTab) build(iteratorExpr *sqlparser.AliasedExpr, selectExpr sqlpars
 	for _, x := range selectExpr {
 		masterAlais := x.(*sqlparser.AliasedExpr).As.String()
 		if fx, ok := x.(*sqlparser.AliasedExpr).Expr.(*sqlparser.FuncExpr); ok {
+			if _, ok := crossTabFunctionMap[fx.Name.Lowered()]; !ok {
+				msg := ""
+				for k := range crossTabFunctionMap {
+					msg += k + ", "
+				}
+				return "", newCompilerError(ERR_SYNTAX, "Invalid function '%s' in 'for' function. Allowed functions are: %s", fx.Name.String(), msg)
+			}
 			for i := minVal; i <= maxVal; i++ {
 				node := &sqlparser.BinaryExpr{
 					Operator: "=",

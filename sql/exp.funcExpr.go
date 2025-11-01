@@ -9,7 +9,7 @@ import (
 )
 
 // exp.funcExpr.go
-func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	oldCmpType := cmpType
 	defer func() {
 		cmpType = oldCmpType

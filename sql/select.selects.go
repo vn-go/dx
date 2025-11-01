@@ -32,9 +32,10 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
 	selectStatement.Source = r.Content
 	itemSelectors := []string{}
+	selectedExprsReverse := &dictionaryFields{}
 	for _, x := range expr.SelectExprs {
 
-		r, err = s.selectExpr(x, injector, cmpType)
+		r, err = s.selectExpr(x, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -72,8 +73,8 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		nodes := where.splitAndExpr(expr.Where.Expr)
 		for _, node := range nodes {
 			//field Expr sqlparser.Expr
-
-			r, err = where.resolve(node.(sqlparser.Expr), injector, ret.selectedExprsReverse)
+			// whereselectedExprsReverse := &dictionaryFields{}
+			r, err = where.resolve(node.(sqlparser.Expr), injector, selectedExprsReverse)
 			if err != nil {
 				return nil, err
 			}
@@ -86,7 +87,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 				*/
 
 				havingItems = append(havingItems, r.Content)
-				ret.selectedExprsReverse.merge(r.selectedExprsReverse) // "Fields which do not belong to an aggregate function must be added to the GROUP BY clause."
+				selectedExprsReverse.merge(r.selectedExprsReverse) // "Fields which do not belong to an aggregate function must be added to the GROUP BY clause."
 
 			} else {
 				resultOfWhere = append(resultOfWhere, r.Content)
@@ -99,7 +100,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		if len(havingItems) > 0 {
 			selectStatement.Having = strings.Join(havingItems, " AND ")
 
-			for k, v := range ret.selectedExprsReverse {
+			for k, v := range *selectedExprsReverse {
 				if k == "" || v.IsInAggregateFunc { // not not hav alias skip it
 					continue
 				}
@@ -115,7 +116,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 
 	// detect if is need to add group by
 	if len(havingItems) > 0 || ret.IsInAggregateFunc {
-		for k, v := range ret.selectedExprsReverse {
+		for k, v := range *selectedExprsReverse {
 			if k == "" || v.IsInAggregateFunc { // not not hav alias skip it
 				continue
 			}
@@ -128,7 +129,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	}
 	if expr.GroupBy != nil {
 
-		r, err := groups.resolve(expr.GroupBy, injector, ret.selectedExprsReverse)
+		r, err := groups.resolve(expr.GroupBy, injector, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +152,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		selectStatement.GroupBy = strings.Join(goupByItems, ", ")
 	}
 	if expr.OrderBy != nil {
-		r, err := sort.resolveOrderBy(expr.OrderBy, injector, ret.selectedExprsReverse)
+		r, err := sort.resolveOrderBy(expr.OrderBy, injector, &ret.selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +163,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		//tmpInjector := newInjector(injector.dialect, make([]string, 0))
 
 		if expr.Limit.Offset != nil {
-			offset, err := exp.resolve(expr.Limit.Offset, injector, CMP_SELECT, ret.selectedExprsReverse)
+			offset, err := exp.resolve(expr.Limit.Offset, injector, CMP_SELECT, &ret.selectedExprsReverse)
 			if err != nil {
 				return nil, err
 			}
@@ -188,7 +189,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 			// ret.offset = smartier.ToText(expr.Limit.Offset)
 		}
 		if expr.Limit.Rowcount != nil {
-			limit, err := exp.resolve(expr.Limit.Rowcount, injector, CMP_SELECT, ret.selectedExprsReverse)
+			limit, err := exp.resolve(expr.Limit.Rowcount, injector, CMP_SELECT, &ret.selectedExprsReverse)
 			if err != nil {
 				return nil, err
 			}
@@ -220,12 +221,12 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	return &ret, nil
 }
 
-func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	switch x := expr.(type) {
 	case *sqlparser.StarExpr:
 		return s.starExpr(x, injector)
 	case *sqlparser.AliasedExpr:
-		r, err := exp.resolve(x.Expr, injector, CMP_SELECT, dictionaryFields{})
+		r, err := exp.resolve(x.Expr, injector, CMP_SELECT, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
@@ -234,17 +235,19 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 		} else if !x.As.IsEmpty() && cmpType == CMP_SELECT {
 			r.AliasOfContent = x.As.String()
 		}
-		selectedExprsReverse := dictionaryFields{}
+
 		if x.As.IsEmpty() {
 			if r.IsInSubquery {
 				return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
 			}
-			selectedExprsReverse = r.selectedExprsReverse
+			selectedExprsReverse.merge(r.selectedExprsReverse)
 		} else {
-			selectedExprsReverse[x.As.Lowered()] = &dictionaryField{
-				Expr:              r.Content,
-				IsInAggregateFunc: r.IsInAggregateFunc,
-				Alias:             x.As.String(),
+			if cmpType == CMP_SELECT {
+				(*selectedExprsReverse)[x.As.Lowered()] = &dictionaryField{
+					Expr:              r.Content,
+					IsInAggregateFunc: r.IsInAggregateFunc,
+					Alias:             x.As.String(),
+				}
 			}
 		}
 
@@ -254,7 +257,7 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 			AliasOfContent:       r.AliasOfContent,
 			selectedExprs:        r.selectedExprs,
 			nonAggregateFields:   r.nonAggregateFields,
-			selectedExprsReverse: selectedExprsReverse,
+			selectedExprsReverse: *selectedExprsReverse,
 			IsInAggregateFunc:    r.IsInAggregateFunc,
 			Fields:               r.Fields,
 		}
@@ -271,6 +274,13 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 					Name:         r.AliasOfContent,
 					IsCalculated: r.IsExpression,
 				},
+			}
+		}
+		if cmpType == CMP_SELECT {
+			(*selectedExprsReverse)[strings.ToLower(ret.AliasOfContent)] = &dictionaryField{
+				Expr:              r.Content,
+				IsInAggregateFunc: r.IsInAggregateFunc,
+				Alias:             ret.AliasOfContent,
 			}
 		}
 		return ret, nil

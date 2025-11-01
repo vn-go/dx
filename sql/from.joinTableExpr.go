@@ -20,7 +20,7 @@ func (f *from) joinTableExpr(t *sqlparser.JoinTableExpr, injector *injector, joi
 		return nil, err
 	}
 	selectedExprsReverse := dictionaryFields{}
-	condition, err := exp.resolve(t.Condition.On, injector, CMP_JOIN, selectedExprsReverse)
+	condition, err := exp.resolve(t.Condition.On, injector, CMP_JOIN, &selectedExprsReverse)
 	if err != nil {
 		return nil, err
 	}

@@ -9,10 +9,10 @@ import (
 )
 
 // selectors.colName.go
-func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 
 	if len(injector.dict.entities) > 1 && t.Qualifier.Name.IsEmpty() {
-		if field, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
+		if field, ok := (*selectedExprsReverse)[t.Name.Lowered()]; ok {
 			return &compilerResult{
 				Content:           field.Expr,
 				OriginalContent:   t.Name.String(),
@@ -54,7 +54,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 
 		} else {
 			if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
-				if cmpField, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
+				if cmpField, ok := (*selectedExprsReverse)[t.Name.Lowered()]; ok {
 					return &compilerResult{
 						Content:           cmpField.Expr,
 						OriginalContent:   originalContent,
@@ -93,7 +93,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 			Typ:   field.Typ,
 			Alias: retAlias,
 		}
-		return &compilerResult{
+		ret := &compilerResult{
 			Content:         field.Expr,
 			OriginalContent: originalContent,
 			Args:            nil,
@@ -108,9 +108,11 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				strings.ToLower(field.Expr): cmpField,
 			},
 			AliasOfContent: field.Alias,
-		}, nil
+		}
+		//selectedExprsReverse.merge(ret.selectedExprsReverse)
+		return ret, nil
 	} else if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
-		if cmpField, ok := selectedExprsReverse[t.Name.Lowered()]; ok {
+		if cmpField, ok := (*selectedExprsReverse)[t.Name.Lowered()]; ok {
 			return &compilerResult{
 				Content:           cmpField.Expr,
 				OriginalContent:   originalContent,

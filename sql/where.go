@@ -24,13 +24,13 @@ func (w *WhereType) splitAndExpr(expr sqlparser.Expr) []sqlparser.SQLNode {
 
 var where = &WhereType{}
 
-func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
+func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	switch x := expr.(type) {
 	case *sqlparser.ComparisonExpr:
 		return w.comparisonExpr(x, injector, selectedExprsReverse)
 	case *sqlparser.ColName:
 		colName := x.Name.Lowered()
-		if fx, ok := selectedExprsReverse[colName]; ok {
+		if fx, ok := (*selectedExprsReverse)[colName]; ok {
 			return &compilerResult{
 				Content:           fx.Expr,
 				IsInAggregateFunc: fx.IsInAggregateFunc,
@@ -57,8 +57,8 @@ func (w *WhereType) resolve(expr sqlparser.Expr, injector *injector, selectedExp
 
 }
 
-func (w *WhereType) funcExpr(x *sqlparser.FuncExpr, injector *injector, selectedExprsReverse dictionaryFields) (*compilerResult, error) {
-	
+func (w *WhereType) funcExpr(x *sqlparser.FuncExpr, injector *injector, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
+
 	if x.Name.String() == internal.FnMarkSpecialTextArgs {
 		return params.funcExpr(x, injector)
 	}

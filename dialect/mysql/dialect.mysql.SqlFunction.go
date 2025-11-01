@@ -97,6 +97,9 @@ var aggregateFunc = map[string]string{
 
 func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (string, error) {
 	fnName := strings.ToLower(delegator.FuncName)
+	if fnName == "if" {
+		return d.SqlFunctionIf(delegator)
+	}
 	if strings.Contains(fnName, ".") {
 		items := strings.Split(fnName, ".")
 		if items[0] == "list" {
@@ -136,3 +139,5 @@ func (d *mySqlDialect) SqlFunction(delegator *types.DialectDelegateFunction) (st
 	}
 
 }
+
+

@@ -57,7 +57,9 @@ func (s *smarty) from(selectStm *sqlparser.Select, subSetInfoList map[string]sub
 			return s.convertToJoinTableExpr(comparisonExprs, aliasedExpr, subSetInfoList)
 		}
 	} else {
-
+		// if not found from function, then detect table name by function name
+		// example:
+		// dsl is "user(id, name),where(id=1)"
 		return s.convertToTableExprs(selectStm, subSetInfoList)
 	}
 	return ""

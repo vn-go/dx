@@ -35,10 +35,10 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*Sma
 	if err != nil {
 		return nil, err
 	}
-	var sqlArgs = make([]any, len(compileArgs))
-	for j, v := range i.val.reIndex {
-		sqlArgs[v] = compileArgs[j]
-	}
+	// var sqlArgs = make([]any, len(compileArgs))
+	// for j, v := range i.val.reIndex {
+	// 	sqlArgs[v] = compileArgs[j]
+	// }
 
 	return &SmartSqlParser{
 		Query:        i.val.Content,

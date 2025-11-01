@@ -9,7 +9,7 @@ import (
 
 type sorting struct{}
 
-func (s *sorting) resolveOrderBy(exprs sqlparser.OrderBy, injector *injector, reverse dictionaryFields) (*compilerResult, error) {
+func (s *sorting) resolveOrderBy(exprs sqlparser.OrderBy, injector *injector, reverse *dictionaryFields) (*compilerResult, error) {
 	items := []string{}
 	for _, x := range exprs {
 		switch fx := x.Expr.(type) {
