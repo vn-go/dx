@@ -277,6 +277,31 @@ func (c *helperType) QuoteExpression(expr string) (string, error) {
 	})
 
 }
+func (c *helperType) RemoveLineComments(input string) string {
+	// B1: Chuẩn hóa line break về \n
+	input = strings.ReplaceAll(input, "\r\n", "\n")
+
+	// B2: Regex match // tới hết dòng
+	re := regexp.MustCompile(`//[^\n]*`)
+
+	// B3: Thay thế bằng chuỗi rỗng
+	result := re.ReplaceAllString(input, "")
+
+	// B4: Trim khoảng trắng thừa ở đầu/cuối từng dòng
+	lines := strings.Split(result, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+
+	// B5: Gộp lại, bỏ dòng trống
+	out := []string{}
+	for _, line := range lines {
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "\n")
+}
 func (c *helperType) QuoteExpression2(expr string) (string, error) {
 
 	return OnceCall("helperType/QuoteExpression2/"+expr, func() (string, error) {

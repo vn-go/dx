@@ -2,15 +2,39 @@ package sql
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
 type contentNode struct {
 }
 
+// ReplaceParamFunctions thay thế các hàm đặc biệt bằng ?
+// và trả về chuỗi SQL mới cùng danh sách các tham số đã bắt được.
+func replaceParamFunctions(sql string) (string, []string) {
+	// Regex match 2 loại hàm: dx__GetParams(...) hoặc dx__system_get_params_info(...)
+	re := regexp.MustCompile(`\b(` + GET_PARAMS_FUNC + `|` + internal.FnMarkSpecialTextArgs + `)\s*\(([^)]*)\)`)
+
+	params := []string{}
+
+	// ReplaceAllStringFunc để xử lý từng match
+	newSQL := re.ReplaceAllStringFunc(sql, func(match string) string {
+		params = append(params, match)
+		return "?"
+	})
+
+	return newSQL, params
+}
+
 func (c *contentNode) toText(node sqlparser.SQLNode) string {
+	ret := smartier.ToText(node)
+	x, _ := replaceParamFunctions(ret)
+	return x
+}
+func (c *contentNode) toText1(node sqlparser.SQLNode) string {
 	switch n := node.(type) {
 	case *sqlparser.ColName:
 		return c.colNameToText(n)
@@ -43,6 +67,13 @@ func (c *contentNode) toText(node sqlparser.SQLNode) string {
 			return "?"
 		}
 		return string(n.Val)
+	case *sqlparser.ParenExpr:
+		return fmt.Sprintf("(%s)", c.toText(n.Expr))
+	case *sqlparser.AndExpr:
+		return fmt.Sprintf("(%s and %s)", c.toText(n.Left), c.toText(n.Right))
+	case *sqlparser.OrExpr:
+		return fmt.Sprintf("(%s or %s)", c.toText(n.Left), c.toText(n.Right))
+
 	default:
 		panic((fmt.Sprintf("unhandled node type: %T. See contentNode.toText. File %s", n, `sql\content.go`)))
 	}
