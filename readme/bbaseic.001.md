@@ -31,7 +31,7 @@ if err != nil {
 ----------------------------
 SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1` WHERE `T1`.`username` = ?
 ----------------------------
-```
+```go
 userInfos := []struct {
     Id       uint64 `db:"pk;auto" json:"id"`
     Username string `db:"size:50;uk" json:"username"`
