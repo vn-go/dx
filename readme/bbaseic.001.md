@@ -13,8 +13,42 @@ db, err := dx.Open("mysql", dsn)
 if err != nil {
     panic(err)
 }
+## SELECT CƠ BẢN – LẤY CÁC CỘT CỤ THỂ
 ----------------------------
 SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1`
 ----------------------------
 ```
+userInfos := []struct {
+    Id       uint64 `db:"pk;auto" json:"id"`
+    Username string `db:"size:50;uk" json:"username"`
+}{}
+```go
+err = db.DslQuery(&userInfos, "user(id, username)")
+if err != nil {
+    panic(err)
+}
+## SELECT VỚI ĐIỀU KIỆN
+----------------------------
+SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1` WHERE `T1`.`username` = ?
+----------------------------
+```
+userInfos := []struct {
+    Id       uint64 `db:"pk;auto" json:"id"`
+    Username string `db:"size:50;uk" json:"username"`
+}{}
+```go
+err = db.DslQuery(&userInfos, "user(id, username),where(username='admin')")
+if err != nil {
+    panic(err)
+}
 
+## QUY TẮC BẮT BUỘC: **MỌI BIỂU THỨC KHÔNG LẤY TRỰC TIẾP TỪ CỘT PHẢI CÓ ALIAS**
+
+> **BẮT LỖI NGAY TẠI GO – TRƯỚC KHI GỬI XUỐNG DATABASE ENGINE**
+
+---
+
+### Lỗi thường gặp
+
+```go
+err = db.DslQuery(&userInfos, "user(count(userid), roleid), where(username like '%%admin%%')")

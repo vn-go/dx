@@ -16,17 +16,18 @@ func TestBasic(t *testing.T) {
 		panic(err)
 	}
 	userInfos := []struct {
-		Id       uint64 `db:"pk;auto" json:"id"`
-		Username string `db:"size:50;uk" json:"username"`
+		Users  uint64 `db:"pk;auto" json:"id"`
+		RoleId string `db:"size:50;uk" json:"username"`
 	}{}
-	err = db.DslQuery(&userInfos, "user(id, username)")
+	err = db.DslQuery(&userInfos, "user(count(userid) , roleid),where(username like '%%admin%%')")
 	if err != nil {
 		panic(err)
 	}
+
 	/*
-		----------------------------
-		SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1`
-		----------------------------
+		bat loi truoc khi chuyen den database engine
+		panic: Please add a name (alias) for the expression 'count(user.userid)'. [recovered, repanicked]
+
 	*/
 }
 func TestQuery(t *testing.T) {
