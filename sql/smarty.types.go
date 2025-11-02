@@ -60,6 +60,9 @@ func (s *smarty) simple(simpleQuery string) (string, []int, error) {
 	return s.compile(selectStm, map[string]subsetInfo{})
 
 }
+func Compact(simpleQuery string) (string, []int, error) {
+	return smartier.simple(simpleQuery)
+}
 
 // return sql, index of offset in dynamic args, index of limit in dynamic args, error
 func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subsetInfo) (string, []int, error) {
@@ -101,6 +104,9 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 		if ret.where == "" && ret.groupBy == "" && ret.sort == "" && ret.selects == "" {
 			return unionSource, nil, nil
 		} else {
+			if ret.selects == "*" {
+				return unionSource, nil, nil
+			}
 			ret.from = "(" + unionSource + ") T"
 		}
 	} else if strFrom := smartier.from(selectStm, subSetInfoList); strFrom != "" {

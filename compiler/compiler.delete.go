@@ -51,16 +51,7 @@ func (cmp *compiler) createDictionaryForDelete(tables []string, fields map[strin
 			moreMapEntity[strings.ToLower(mAlias)] = x
 
 		}
-		//else {
-		// 	alais, foud := typeToAlias[x.EntityType]
-		// 	if !foud {
-		// 		typeToAlias[x.EntityType] = fmt.Sprintf("T%d", c)
-		// 		newMap[tbl] = alais
-		// 		c++
-		// 	} else {
-		// 		newMap[tbl] = alais
-		// 	}
-		// }
+
 	}
 	for k, v := range moreMapEntity {
 		mapEntities[k] = v

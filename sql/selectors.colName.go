@@ -142,6 +142,11 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 	if ent != nil {
 		return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "field '%s' was not found in dataset '%s'", t.Name.String(), ent.EntityType.Name())
 	}
+	ret := &compilerResult{
+		Content:         injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
+		OriginalContent: fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()),
+	}
 
-	panic("unimplemented, see selectors.colName")
+	return ret, nil
+	//panic("unimplemented, see selectors.colName")
 }

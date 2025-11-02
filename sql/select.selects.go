@@ -322,27 +322,48 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 	selectedExprs := dictionaryFields{}
 	if expr.TableName.IsEmpty() {
 		i := 1
-		for _, x := range injector.dict.entities {
+		//get all tables in query
+		tables := map[string]string{}
+		keysTables := []string{}
+		for k, v := range injector.dict.tableAlias {
+			if _, ok := tables[v]; !ok {
+				tables[v] = k
+				keysTables = append(keysTables, v)
+			}
+		}
+		keysTables = internal.Helper.SortStrings(keysTables)
+		for _, qrAlias := range keysTables {
 			aliasTable := fmt.Sprintf("T%d", i)
-			for _, col := range x.Cols {
 
-				aliasField := injector.dialect.Quote(col.Field.Name)
-				if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
-					aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
+			if x, ok := injector.dict.entities[tables[qrAlias]]; ok {
+				if fx, ok := injector.dict.tableAlias[strings.ToLower(x.EntityType.Name())]; ok {
+					aliasTable = fx
 				}
-				strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+aliasField)
-				selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
-					Expr:  injector.dialect.Quote(aliasTable, col.Name),
-					Alias: col.Name,
-				}
-				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))
-				if _, ok := injector.fields[refFieldKey]; !ok {
-					injector.fields[refFieldKey] = refFieldInfo{
-						EntityName:      x.EntityType.Name(),
-						EntityFieldName: col.Field.Name,
+				for _, col := range x.Cols {
+
+					aliasField := injector.dialect.Quote(col.Field.Name)
+					if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
+						aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
+					}
+					strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+aliasField)
+					selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
+						Expr:  injector.dialect.Quote(aliasTable, col.Name),
+						Alias: col.Name,
+					}
+					refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))
+					if _, ok := injector.fields[refFieldKey]; !ok {
+						injector.fields[refFieldKey] = refFieldInfo{
+							EntityName:      x.EntityType.Name(),
+							EntityFieldName: col.Field.Name,
+						}
 					}
 				}
+			} else if subQuery, ok := injector.dict.subqueryEntites[qrAlias]; ok {
+				for _, col := range subQuery.fields {
+					strSelectItems = append(strSelectItems, injector.dialect.Quote(col.source, col.field)+" "+injector.dialect.Quote(col.field))
+				}
 			}
+
 			i++
 		}
 	} else {

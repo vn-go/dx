@@ -2,6 +2,7 @@ package internal
 
 import (
 	"regexp"
+	sortTexts "sort"
 	"strconv"
 	"sync"
 )
@@ -20,6 +21,13 @@ type initExtractParamMatrix struct {
 }
 
 var initExtractParamMatrixCach sync.Map
+
+func (c *helperType) SortStrings(items []string) []string {
+	sorted := make([]string, len(items))
+	copy(sorted, items)
+	sortTexts.Strings(sorted)
+	return sorted
+}
 
 // ExtractParamMatrix builds a mapping from new arg indexes to original arg indexes.
 // Example: {1}, {2}, {3}, {2} => map[0:0, 1:1, 2:2, 3:1]

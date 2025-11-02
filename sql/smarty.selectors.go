@@ -93,9 +93,8 @@ func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select, subSetInfoList 
 // check node is in select clause
 func (s *smarty) isSelecteNode(expr sqlparser.SQLNode, subSetInfoList map[string]subsetInfo) bool {
 	switch expr := expr.(type) {
-	// case *sqlparser.FuncExpr:
-
-	// 	return keywordFuncMap[string(expr.Name.Lowered())]
+	case *sqlparser.FuncExpr:
+		return !keywordFuncMap[string(expr.Name.Lowered())]
 	case *sqlparser.BinaryExpr:
 		return !unions.isUnion(expr, subSetInfoList)
 	default:

@@ -20,7 +20,7 @@ func (f from) subquery(x *sqlparser.Subquery, alias string, injector *injector) 
 	defer func() {
 
 		backupDict.fields = internal.UnionMap(backupDict.fields, injector.dict.fields)
-		backupDict.tableAlias = internal.UnionMap(backupDict.tableAlias, injector.dict.tableAlias)
+		//backupDict.tableAlias = internal.UnionMap(backupDict.tableAlias, injector.dict.tableAlias)
 		backupDict.subqueryEntites = internal.UnionMap(backupDict.subqueryEntites, injector.dict.subqueryEntites)
 		injector.dict = backupDict
 
