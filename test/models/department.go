@@ -12,6 +12,7 @@ type Department struct {
 	ParentID  *int
 	ManagerID *uint64 `db:"ix" json:"managerId"` // ✅ Thêm manager_id
 	BaseModel
+	LocationID *int `db:"ix" json:"locationId"`
 }
 
 func init() {

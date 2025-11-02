@@ -23,13 +23,13 @@ func (s *smarty) getMapTableAlias(tableAliasNodes []sqlparser.SQLNode) map[strin
 	}
 	return ret
 }
-func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]bool) []string {
+func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]bool, cmpType CMP_TYP) []string {
 	switch t := node.(type) {
 	case *sqlparser.AliasedExpr:
-		return s.extractTables(t.Expr, visitedTable)
+		return s.extractTables(t.Expr, visitedTable, cmpType)
 	case *sqlparser.ComparisonExpr:
-		r := s.extractTables(t.Left, visitedTable)
-		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		r := s.extractTables(t.Left, visitedTable, cmpType)
+		r = append(r, s.extractTables(t.Right, visitedTable, cmpType)...)
 		return r
 	case *sqlparser.ColName:
 		if !t.Qualifier.IsEmpty() {
@@ -45,6 +45,9 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 	case *sqlparser.FuncExpr:
 		if t.Qualifier.IsEmpty() {
 			// function name is table name or dataset name
+			if _, ok := joinTypeFuncMap[strings.ToLower(t.Name.String())]; ok && cmpType == CMP_JOIN {
+				return s.extractTables(t.Exprs, visitedTable, cmpType)
+			}
 			if _, ok := keywordFuncMap[strings.ToLower(t.Name.String())]; !ok {
 				if _, ok := sqlFuncWhitelist[strings.ToLower(t.Name.String())]; !ok {
 					return []string{
@@ -55,7 +58,7 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 			} else {
 				items := []string{}
 				for _, x := range t.Exprs {
-					items = append(items, s.extractTables(x, visitedTable)...)
+					items = append(items, s.extractTables(x, visitedTable, cmpType)...)
 				}
 				return items
 			}
@@ -68,14 +71,14 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 		} else if strings.ToLower(t.Qualifier.String()) == "list" {
 			retItems := []string{}
 			for _, x := range t.Exprs {
-				retItems = append(retItems, s.extractTables(x, visitedTable)...)
+				retItems = append(retItems, s.extractTables(x, visitedTable, cmpType)...)
 
 			}
 			return retItems
 		} else {
 			items := []string{}
 			for _, x := range t.Exprs {
-				items = append(items, s.extractTables(x, visitedTable)...)
+				items = append(items, s.extractTables(x, visitedTable, cmpType)...)
 			}
 			return items
 		}
@@ -85,22 +88,22 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 	case sqlparser.SelectExprs:
 		r := []string{}
 		for _, expr := range t {
-			r = append(r, s.extractTables(expr, visitedTable)...)
+			r = append(r, s.extractTables(expr, visitedTable, cmpType)...)
 		}
 		return r
 	case *sqlparser.SQLVal:
 		return []string{}
 	case *sqlparser.AndExpr:
-		r := s.extractTables(t.Left, visitedTable)
-		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		r := s.extractTables(t.Left, visitedTable, cmpType)
+		r = append(r, s.extractTables(t.Right, visitedTable, cmpType)...)
 		return r
 	case *sqlparser.OrExpr:
-		r := s.extractTables(t.Left, visitedTable)
-		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		r := s.extractTables(t.Left, visitedTable, cmpType)
+		r = append(r, s.extractTables(t.Right, visitedTable, cmpType)...)
 		return r
 	case *sqlparser.BinaryExpr:
-		r := s.extractTables(t.Left, visitedTable)
-		r = append(r, s.extractTables(t.Right, visitedTable)...)
+		r := s.extractTables(t.Left, visitedTable, cmpType)
+		r = append(r, s.extractTables(t.Right, visitedTable, cmpType)...)
 		return r
 	case *sqlparser.StarExpr:
 		if t.TableName.Name.IsEmpty() {
@@ -133,7 +136,14 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 	}
 
 	strOn := s.ToText(comparisionNodes[0].node)
-	tables := s.extractTables(comparisionNodes[0].node, map[string]bool{})
+	if fn, ok := comparisionNodes[0].node.(*sqlparser.AliasedExpr).Expr.(*sqlparser.FuncExpr); ok {
+		strOn = s.ToText(fn.Exprs[0])
+		if joinType, ok := joinTypeFuncMap[strings.ToLower(fn.Name.String())]; ok {
+			comparisionNodes[0].joinType = joinType
+		}
+
+	}
+	tables := s.extractTables(comparisionNodes[0].node, map[string]bool{}, CMP_JOIN)
 	strLeft := tables[0]
 	tableHasUsed := map[string]bool{}
 	tableHasUsed[strLeft] = true
@@ -165,7 +175,7 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 
 	strJoin := strLeft + " " + comparisionNodes[0].joinType + " JOIN " + strRight + " ON " + strOn
 	for i := 1; i < len(comparisionNodes); i++ {
-		tables := s.extractTables(comparisionNodes[i].node, map[string]bool{})
+		tables := s.extractTables(comparisionNodes[i].node, map[string]bool{}, CMP_JOIN)
 		nextTable := tables[1]
 		for _, table := range tables {
 			if !tableHasUsed[table] {
@@ -187,6 +197,13 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		}
 
 		joinNext := s.ToText(comparisionNodes[i].node)
+		if fn, ok := comparisionNodes[i].node.(*sqlparser.AliasedExpr).Expr.(*sqlparser.FuncExpr); ok {
+			joinNext = s.ToText(fn.Exprs[0])
+			if joinType, ok := joinTypeFuncMap[strings.ToLower(fn.Name.String())]; ok {
+				comparisionNodes[0].joinType = joinType
+			}
+
+		}
 		strJoin += " " + comparisionNodes[i].joinType + " JOIN " + nextTable + " ON " + joinNext
 	}
 

@@ -1,5 +1,13 @@
 # DSL Query – Hướng dẫn sử dụng
+## ALIAS TRONG DSL – CÁCH HOẠT ĐỘNG
 
+| Nguồn | Ưu tiên | Ví dụ |
+|------|--------|------|
+| `as tên` trong DSL | 1 | `location(city as cityName)` → `cityName` |
+| Tên field trong struct | 2 | `City string` → `City` |
+| Tên cột DB | 3 | `city` → `city` |
+
+> **Lưu ý:** Nếu struct có field `City`, thì `as cityName` → **bị bỏ qua**
 > Viết truy vấn SQL ngắn gọn, dễ đọc, tự động xử lý `JOIN`, `UNION`, `GROUP BY`, `COUNT`, `SUM`, v.v.
 
 ---
@@ -31,6 +39,7 @@ if err != nil {
 ----------------------------
 SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1` WHERE `T1`.`username` = ?
 ----------------------------
+
 ```go
 userInfos := []struct {
     Id       uint64 `db:"pk;auto" json:"id"`
@@ -46,9 +55,37 @@ if err != nil {
 
 > **BẮT LỖI NGAY TẠI GO – TRƯỚC KHI GỬI XUỐNG DATABASE ENGINE**
 
----
+
 
 ### Lỗi thường gặp
 
 ```go
-err = db.DslQuery(&userInfos, "user(count(userid), roleid), where(username like '%%admin%%')")
+err = db.DslQuery(&userInfos, "user(count(userid), roleid), where(username like '%admin%')")
+
+------------
+panic: Please add a name (alias) for the expression 'count(user.userid)'. [recovered, repanicked]
+
+---------------------------
+
+## VÍ DỤ: JOIN 3 BẢNG – `user` → `role` → `department`
+
+> **Mục tiêu:**  
+> Lấy thông tin người dùng (`id`, `username`) cùng với **tên vai trò** và **tên phòng ban**.
+
+---
+
+### DSL Query – CHỈ 7 DÒNG
+
+```go
+query := `
+    user(id, username), 
+    role(name as roleName), 
+    department(name as deptName),
+    
+    from(
+        left(user.roleId = role.id), 
+        left(user.departmentId = department.id)
+    ),
+    
+    where(user.id = ?)
+`

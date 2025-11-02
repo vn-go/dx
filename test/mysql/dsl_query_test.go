@@ -9,17 +9,41 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+	type Location struct {
+		// Khóa chính (BẮT BUỘC)
+		ID int `db:"pk;auto" json:"id"`
+
+		// Các cột khác
+		City string `db:"size:100" json:"city"`
+		Code string `db:"size:50" json:"code"`
+
+		// ... các trường cần thiết khác
+		// BaseModel (Nếu bạn sử dụng BaseModel)
+	}
+	dx.AddModels(&Location{}) // add model to dx truoc khi open database
 	var dsn string = "root:123456@tcp(127.0.0.1:3306)/hrm2"
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
 	}
+
 	userInfos := []struct {
 		Users  uint64 `db:"pk;auto" json:"id"`
 		RoleId string `db:"size:50;uk" json:"username"`
 	}{}
-	err = db.DslQuery(&userInfos, "user(count(userid) , roleid),where(username like '%%admin%%')")
+
+	query := `user(id, username), 
+          role(name as roleName), 
+          department(name as deptName),
+          location(city), //-- Thêm bảng thứ 4
+          
+          from(left(user.roleId = role.id), 
+               left(user.departmentId = department.id), 
+               left(department.locationId = location.id)), //-- Thêm điều kiện nối thứ 3
+
+          where(user.id = ?)`
+	err = db.DslQuery(&userInfos, query, 10, 100)
 	if err != nil {
 		panic(err)
 	}
