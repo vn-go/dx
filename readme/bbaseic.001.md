@@ -132,4 +132,7 @@ type Location struct {
 	if err != nil {
 		panic(err)
 	}
+----------------------------
+SELECT `T1`.`id` `Id`, `T1`.`username` `Username`, `T2`.`name` `roleName`, `T3`.`name` `deptName`, `T4`.`city` `City` FROM `sys_users` `T1` left join  `sys_roles` `T2` ON `T1`.`role_id` = `T2`.`id` join  `departments` `T3` ON `T1`.`department_id` = `T3`.`id` join  `locations` `T4` ON `T3`.`location_id` = `T4`.`id` WHERE `T1`.`id` = ?
+----------------------------
     ```
