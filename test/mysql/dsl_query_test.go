@@ -9,18 +9,28 @@ import (
 )
 
 func TestBasic(t *testing.T) {
-	type Location struct {
-		// Khóa chính (BẮT BUỘC)
-		ID int `db:"pk;auto" json:"id"`
-
-		// Các cột khác
-		City string `db:"size:100" json:"city"`
-		Code string `db:"size:50" json:"code"`
-
-		// ... các trường cần thiết khác
-		// BaseModel (Nếu bạn sử dụng BaseModel)
+	type Account struct {
+		ID   uint64 `db:"pk;auto" json:"id"`
+		Name string `db:"size:100" json:"name"`
+		// Các field khác nếu cần
+		Email    string `db:"size:100" json:"email"`
+		IsActive bool   `db:"default:true" json:"isActive"`
 	}
-	dx.AddModels(&Location{}) // add model to dx truoc khi open database
+	type Admin struct {
+		ID   uint64 `db:"pk;auto" json:"id"`
+		Name string `db:"size:100" json:"name"`
+		// Các field khác nếu cần
+		Role  string `db:"size:50" json:"role"`
+		Level int    `db:"default:1" json:"level"`
+	}
+	type Manager struct {
+		ID   uint64 `db:"pk;auto" json:"id"`
+		Name string `db:"size:100" json:"name"`
+		// Các field khác nếu cần
+		Department string  `db:"size:100" json:"department"`
+		Salary     float64 `db:"default:0" json:"salary"`
+	}
+	dx.AddModels(&Account{}, Admin{}, Manager{}) // add model to dx truoc khi open database
 	var dsn string = "root:123456@tcp(127.0.0.1:3306)/hrm2"
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", dsn)
@@ -28,22 +38,17 @@ func TestBasic(t *testing.T) {
 		panic(err)
 	}
 
-	userInfos := []struct {
-		Users  uint64 `db:"pk;auto" json:"id"`
-		RoleId string `db:"size:50;uk" json:"username"`
+	people := []struct {
+		Id   uint64 `db:"pk;auto" json:"id"`
+		Name string `db:"size:50;uk" json:"username"`
 	}{}
 
-	query := `user(id, username), 
-          role(name as roleName), 
-          department(name as deptName),
-          location(city), //-- Thêm bảng thứ 4
-          
-          from(left(user.roleId = role.id), 
-               left(user.departmentId = department.id), 
-               left(department.locationId = location.id)), //-- Thêm điều kiện nối thứ 3
-
-          where(user.id = ?)`
-	err = db.DslQuery(&userInfos, query, 10, 100)
+	query := `
+		   account(id, name)+
+			admin(id, name)+
+			manager(id, name)
+	  `
+	err = db.DslQuery(&people, query)
 	if err != nil {
 		panic(err)
 	}

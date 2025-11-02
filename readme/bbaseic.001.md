@@ -135,4 +135,69 @@ type Location struct {
 ----------------------------
 SELECT `T1`.`id` `Id`, `T1`.`username` `Username`, `T2`.`name` `roleName`, `T3`.`name` `deptName`, `T4`.`city` `City` FROM `sys_users` `T1` left join  `sys_roles` `T2` ON `T1`.`role_id` = `T2`.`id` join  `departments` `T3` ON `T1`.`department_id` = `T3`.`id` join  `locations` `T4` ON `T3`.`location_id` = `T4`.`id` WHERE `T1`.`id` = ?
 ----------------------------
-    ```
+
+```
+# Hướng dẫn sử dụng DSQL (DSL Query) với `dx` trong Go
+
+Hướng dẫn này giúp bạn **kết hợp dữ liệu từ nhiều bảng khác nhau** (`Account`, `Admin`, `Manager`) vào **một slice struct duy nhất** bằng cách sử dụng **cú pháp DSQL** (Domain Specific Language Query) của thư viện `dx`.
+
+---
+
+## 1. Cấu trúc Model (Struct)
+
+```go
+type Account struct {
+    ID       uint64 `db:"pk;auto" json:"id"`
+    Name     string `db:"size:100" json:"name"`
+    Email    string `db:"size:100" json:"email"`
+    IsActive bool   `db:"default:true" json:"isActive"`
+}
+
+type Admin struct {
+    ID    uint64 `db:"pk;auto" json:"id"`
+    Name  string `db:"size:100" json:"name"`
+    Role  string `db:"size:50" json:"role"`
+    Level int    `db:"default:1" json:"level"`
+}
+
+type Manager struct {
+    ID         uint64  `db:"pk;auto" json:"id"`
+    Name       string  `db:"size:100" json:"name"`
+    Department string  `db:"size:100" json:"department"`
+    Salary     float64 `db:"default:0" json:"salary"`
+}
+
+dx.AddModels(&Account{}, Admin{}, Manager{}) // add model to dx truoc khi open database
+	var dsn string = "root:123456@tcp(127.0.0.1:3306)/hrm2"
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+
+	people := []struct {
+		Id   uint64 `db:"pk;auto" json:"id"`
+		Name string `db:"size:50;uk" json:"username"`
+	}{}
+
+	query := `
+		   account(id, name)+
+			admin(id, name)+
+			manager(id, name)
+	  `
+	err = db.DslQuery(&people, query)
+	if err != nil {
+		panic(err)
+	}
+
+----------------------------
+
+ 
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `accounts` `T1`
+ union all
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `admins` `T1`
+ union all
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `managers` `T1`
+----------------------------
+
+```
