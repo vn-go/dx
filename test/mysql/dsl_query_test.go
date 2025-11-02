@@ -8,6 +8,27 @@ import (
 	_ "github.com/vn-go/dx/test/models"
 )
 
+func TestBasic(t *testing.T) {
+	var dsn string = "root:123456@tcp(127.0.0.1:3306)/hrm2"
+	dx.Options.ShowSql = true
+	db, err := dx.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+	userInfos := []struct {
+		Id       uint64 `db:"pk;auto" json:"id"`
+		Username string `db:"size:50;uk" json:"username"`
+	}{}
+	err = db.DslQuery(&userInfos, "user(id, username)")
+	if err != nil {
+		panic(err)
+	}
+	/*
+		----------------------------
+		SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1`
+		----------------------------
+	*/
+}
 func TestQuery(t *testing.T) {
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", dsn)

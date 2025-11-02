@@ -1,11 +1,20 @@
-# DSL Query – Siêu Thông Minh, Siêu Ngắn, Siêu Mạnh!
+# DSL Query – Hướng dẫn sử dụng
 
-> **"Viết 1 dòng – Làm cả thế giới!"**  
-> **Không cần `AS`, `JOIN`, `ON`, `*`, `GROUP BY`, `UNION ALL`** – DSL tự hiểu!
+> Viết truy vấn SQL ngắn gọn, dễ đọc, tự động xử lý `JOIN`, `UNION`, `GROUP BY`, `COUNT`, `SUM`, v.v.
 
 ---
 
-## 1. CƠ BẢN: `SELECT` NGẮN NHẤT TRONG 1 BẢNG
+## CÀI ĐẶT & KẾT NỐI MYSQL
 
-```dsl
-user(id, username)
+```go
+var dsn string = "root:123456@tcp(127.0.0.1:3306)/hrm2"
+dx.Options.ShowSql = true
+db, err := dx.Open("mysql", dsn)
+if err != nil {
+    panic(err)
+}
+----------------------------
+SELECT `T1`.`id` `Id`, `T1`.`username` `Username` FROM `sys_users` `T1`
+----------------------------
+```
+
