@@ -48,13 +48,21 @@ func TestQuery2(t *testing.T) {
 		Id       uint64 `db:"pk;auto" json:"id"`
 		Username string `db:"size:50;uk" json:"username"`
 	}{}
+	type Admin struct {
+		Id       uint64 `db:"pk;auto" json:"id"`
+		Username string `db:"size:50;uk" json:"username"`
+		Name     string `db:"size:100" json:"name"` // hoặc dùng Username nếu không có Name
+		// ... các field khác tương tự User nếu cần
+	}
+
+	dx.AddModels(&Admin{})
 	dx.Options.ShowSql = true
 	db, err := dx.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
-	expectexSql := "SELECT * FROM item `i` INNER JOIN (SELECT q1.ItemID as ItemId, sum(q1.Amount) as Total FROM (SELECT incrementDetail.ItemID as ItemId, incrementDetail.Amount FROM incrementDetail UNION ALL SELECT decrementDetail.ItemID as ItemId, decrementDetail.Amount * -1 as Amount FROM decrementDetail)  q1) `q2` ON i.id = q2.itemId"
+	expectexSql := "SELECT d.name, stats.userCount FROM department `d` INNER JOIN (SELECT u.userId as id, count(*) userCount FROM (SELECT user.id as userId, user.username FROM user UNION ALL SELECT admin.id as userId, admin.username FROM admin)  u) `stats` ON d.managerID = stats.id"
 	query := `
 		
 			subsets(incrementDetail(ItemID ItemId, Amount) + 
@@ -64,7 +72,25 @@ func TestQuery2(t *testing.T) {
 			i(),q2()	 		
 		
 	`
-
+	query = `
+    subsets(incrementDetail(ItemID ItemId, Amount) + 
+                decrementDetail(ItemID ItemId, Amount * -1 Amount)) q1,
+    subsets(q1(ItemID ItemId, sum(Amount) Total)) q2,
+    from(item i, i.id=q2.ItemId),
+    i(), q2.Total
+`
+	query = `
+subsets(user(id userId, username) + admin(id userId, username)) u,
+subsets(u(userId id),count(*) userCount) stats,  // ✅ dua count(*) userCount vao trong u(...)
+from(department d, d.managerID=stats.id),         // ✅ Dùng alias mới
+d.name, stats.userCount
+`
+	query = `
+    subsets(user(id userId, username) + admin(id userId, username)) u,
+    subsets(u(userId id), count(*) userCount) stats,
+    from(department d, d.managerID=stats.id),
+    d.name, stats.userCount
+`
 	sql, err := db.Compact(query)
 	if err != nil {
 		panic(err)

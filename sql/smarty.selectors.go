@@ -47,6 +47,12 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 						}
 						continue
 					}
+				} else {
+					if _, ok := keywordFuncMap[fn.Name.Lowered()]; !ok {
+						strExpr := s.ToText(fn)
+						items = append(items, strExpr+" "+aliasNode.As.String())
+						continue
+					}
 				}
 
 			}
@@ -94,7 +100,12 @@ func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select, subSetInfoList 
 func (s *smarty) isSelecteNode(expr sqlparser.SQLNode, subSetInfoList map[string]subsetInfo) bool {
 	switch expr := expr.(type) {
 	case *sqlparser.FuncExpr:
-		return !keywordFuncMap[string(expr.Name.Lowered())]
+		if _, ok := sqlFuncWhitelist[string(expr.Name.Lowered())]; ok {
+			return true
+		} else {
+			return !keywordFuncMap[string(expr.Name.Lowered())]
+		}
+
 	case *sqlparser.BinaryExpr:
 		return !unions.isUnion(expr, subSetInfoList)
 	default:

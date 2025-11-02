@@ -15,6 +15,12 @@ func (t *tableApply) resolve(node sqlparser.SQLNode, table string) sqlparser.SQL
 		return t.aliasedExpr(n, table)
 	case *sqlparser.FuncExpr:
 		return t.funcExpr(n, table)
+	case *sqlparser.StarExpr:
+		return &sqlparser.StarExpr{
+			TableName: sqlparser.TableName{
+				Name: sqlparser.NewTableIdent(table),
+			},
+		}
 	default:
 
 		panic(fmt.Sprintf("not implement %T. ref tableApply.resolve file%s ", n, `sql\smarty.smarty.tableApplier.go`))
@@ -73,6 +79,9 @@ func (t *tableApply) expr(expr sqlparser.SQLNode, table string) sqlparser.SQLNod
 		n.Expr = t.expr(n.Expr, table).(sqlparser.Expr)
 		return n
 	case *sqlparser.SQLVal:
+		return n
+	case *sqlparser.StarExpr:
+		n.TableName = t.expr(n.TableName, table).(sqlparser.TableName)
 		return n
 	default:
 		panic(fmt.Sprintf("not implement %T. ref tableApply.expr file%s ", n, `sql\smarty.smarty.tableApplier.go`))

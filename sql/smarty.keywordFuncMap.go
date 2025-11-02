@@ -59,7 +59,7 @@ var keywordFuncMap = map[string]bool{
 	"skip":  true,
 	"take":  true,
 
-	"count": true, "sum": true, "avg": true, "min": true, "max": true,
+	
 }
 var crossTabFunctionMap = map[string]bool{
 	"count": true, "sum": true, "avg": true, "min": true, "max": true,

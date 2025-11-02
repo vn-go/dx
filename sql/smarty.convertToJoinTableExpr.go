@@ -46,9 +46,12 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 		if t.Qualifier.IsEmpty() {
 			// function name is table name or dataset name
 			if _, ok := keywordFuncMap[strings.ToLower(t.Name.String())]; !ok {
-				return []string{
-					t.Name.String(),
+				if _, ok := sqlFuncWhitelist[strings.ToLower(t.Name.String())]; !ok {
+					return []string{
+						t.Name.String(),
+					}
 				}
+
 			} else {
 				items := []string{}
 				for _, x := range t.Exprs {
@@ -99,6 +102,12 @@ func (s *smarty) extractTables(node sqlparser.SQLNode, visitedTable map[string]b
 		r := s.extractTables(t.Left, visitedTable)
 		r = append(r, s.extractTables(t.Right, visitedTable)...)
 		return r
+	case *sqlparser.StarExpr:
+		if t.TableName.Name.IsEmpty() {
+			return []string{}
+		} else {
+			return []string{t.TableName.Name.String()}
+		}
 
 	default:
 		panic(fmt.Sprintf("unknown type %T, smarty.extractTables", t))

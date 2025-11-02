@@ -66,7 +66,18 @@ func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP
 		ret.Content = "(" + ret.Content + ")"
 		ret.OriginalContent = "(" + ret.OriginalContent + ")"
 		return ret, nil
-
+	case *sqlparser.StarExpr:
+		if x.TableName.Name.IsEmpty() {
+			return &compilerResult{
+				OriginalContent: "*",
+				Content:         "*",
+			}, nil
+		} else {
+			return &compilerResult{
+				OriginalContent: x.TableName.Name.String() + ".*",
+				Content:         injector.dialect.Quote(x.TableName.Name.String()) + ".*",
+			}, nil
+		}
 	default:
 		panic(fmt.Sprintf("unhandled node type %T. see  expCmp.resolve, file %s", x, `sql\where.comparisonExpr.go`))
 	}
