@@ -50,7 +50,8 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				break
 			}
 		} else if subqueryEntity, ok := injector.dict.subqueryEntites[strings.ToLower(alias)]; ok {
-			return s.colNameInSubquery(t, injector, subqueryEntity)
+
+			return s.colNameInSubquery(t, injector, &subqueryEntity)
 
 		} else {
 			if cmpTyp == CMP_WHERE || cmpTyp == CMP_ORDER_BY {
@@ -66,18 +67,29 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				return nil, newCompilerError(ERR_FIELD_NOT_FOUND, "Field '%s' was not found", t.Name.String())
 			}
 			if t.Qualifier.IsEmpty() {
-				return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
+				if len(injector.dict.subqueryEntites) == 1 {
+					for k := range injector.dict.subqueryEntites {
+						alias = k
+						break
+					}
+				} else {
+					return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
+				}
+
 			}
-			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "Dataset '%s' was not found", t.Qualifier.Name.String())
+			if alias == "" {
+				return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "Dataset '%s' was not found", t.Qualifier.Name.String())
+			}
+
 		}
 	}
 
 	key := strings.ToLower(fmt.Sprintf("%s.%s", alias, t.Name.String()))
 	fr := refFields{}
 	if field, ok := injector.dict.fields[key]; ok {
-		refFieldKey := fmt.Sprintf("%s.%s", alias, t.Name.String())
+		refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", alias, t.Name.String()))
 		retAlias := alias
-		if ent.EntityType != nil {
+		if ent != nil && ent.EntityType != nil {
 			refFieldKey = strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), field.EntityField.Field.Name))
 			retAlias = field.EntityField.Field.Name
 			fr = refFields{ // add ref field for permission check
@@ -93,6 +105,10 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 			Typ:   field.Typ,
 			Alias: retAlias,
 		}
+
+		if field.EntityField != nil {
+			refFieldKey = field.EntityField.Name
+		}
 		ret := &compilerResult{
 			Content:         field.Expr,
 			OriginalContent: originalContent,
@@ -102,7 +118,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				strings.ToLower(field.Expr): cmpField,
 			},
 			selectedExprsReverse: dictionaryFields{ // hold reverse of selected exprs for where clause compiler
-				field.EntityField.Name: cmpField,
+				refFieldKey: cmpField,
 			},
 			nonAggregateFields: dictionaryFields{ // hold non aggregate fields for group by clause compiler
 				strings.ToLower(field.Expr): cmpField,

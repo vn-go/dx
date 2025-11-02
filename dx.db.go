@@ -12,6 +12,7 @@ type DB struct {
 	*db.DB
 	Dialect types.Dialect
 }
+
 type TxOptions struct {
 	// Isolation is the transaction isolation level.
 	// If zero, the driver or database's default level is used.

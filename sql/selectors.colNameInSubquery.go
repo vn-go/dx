@@ -8,7 +8,7 @@ import (
 )
 
 // get colum select in subquery
-func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, qrEntity subqueryEntity) (*compilerResult, error) {
+func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, qrEntity *subqueryEntity) (*compilerResult, error) {
 	key := strings.ToLower(fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()))
 
 	if x, ok := qrEntity.fields[key]; ok {
@@ -17,7 +17,8 @@ func (s selectors) colNameInSubquery(t *sqlparser.ColName, injector *injector, q
 			OriginalContent: fmt.Sprintf("%s.%s", t.Qualifier.Name.String(), t.Name.String()),
 			selectedExprsReverse: dictionaryFields{
 				key: &dictionaryField{
-					Expr: injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
+					Expr:              injector.dialect.Quote(t.Qualifier.Name.String(), t.Name.String()),
+					IsInAggregateFunc: false,
 				},
 			},
 			IsInSubquery:   true,

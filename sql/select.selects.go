@@ -237,12 +237,22 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 		}
 
 		if x.As.IsEmpty() {
-			if r.IsInSubquery {
+			if cmpType == CMP_SUBQUERY {
+				// if r.AliasOfContent == "" {
+
+				// }
 				return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
 			}
+
+			// if r.IsInSubquery {
+			// 	// if r.AliasOfContent == "" {
+
+			// 	// }
+			// 	return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
+			// }
 			selectedExprsReverse.merge(r.selectedExprsReverse)
 		} else {
-			if cmpType == CMP_SELECT {
+			if cmpType == CMP_SELECT || cmpType == CMP_SUBQUERY {
 				(*selectedExprsReverse)[x.As.Lowered()] = &dictionaryField{
 					Expr:              r.Content,
 					IsInAggregateFunc: r.IsInAggregateFunc,
@@ -250,11 +260,24 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 				}
 			}
 		}
-
+		aliasField := x.As.String()
+		if x.As.IsEmpty() {
+			aliasField = r.AliasOfContent
+		}
+		if aliasField == "" {
+			return nil, newCompilerError(ERR_EXPRESION_REQUIRE_ALIAS, "Please add a name (alias) for the expression '%s'.", r.OriginalContent)
+		}
+		r.selectedExprs.merge(dictionaryFields{
+			strings.ToLower(aliasField): &dictionaryField{
+				Expr:              r.Content,
+				IsInAggregateFunc: r.IsInAggregateFunc,
+				Alias:             aliasField,
+			},
+		})
 		ret := &compilerResult{
 			OriginalContent:      r.OriginalContent,
 			Content:              r.Content,
-			AliasOfContent:       r.AliasOfContent,
+			AliasOfContent:       aliasField,
 			selectedExprs:        r.selectedExprs,
 			nonAggregateFields:   r.nonAggregateFields,
 			selectedExprsReverse: *selectedExprsReverse,
@@ -271,17 +294,20 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 		} else {
 			ret.OutputFields = []outputField{
 				{
-					Name:         r.AliasOfContent,
+					Name:         aliasField,
 					IsCalculated: r.IsExpression,
 				},
 			}
 		}
 		if cmpType == CMP_SELECT {
-			(*selectedExprsReverse)[strings.ToLower(ret.AliasOfContent)] = &dictionaryField{
+			(*selectedExprsReverse)[strings.ToLower(aliasField)] = &dictionaryField{
 				Expr:              r.Content,
 				IsInAggregateFunc: r.IsInAggregateFunc,
-				Alias:             ret.AliasOfContent,
+				Alias:             aliasField,
 			}
+		}
+		if len(ret.selectedExprs) == 0 {
+			panic("selectedExprs is empty")
 		}
 		return ret, nil
 

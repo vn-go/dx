@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
 	"github.com/vn-go/dx/dialect/factory"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sql"
+	"github.com/vn-go/dx/sqlparser"
 )
 
 var cnn = "sqlserver://sa:123456@localhost:1433?database=hrm"
@@ -286,4 +288,28 @@ func TestSelectSubQueryUnion(t *testing.T) {
 	}
 	fmt.Println(sqlCompiled.Query)
 
+}
+func TestCTE(t *testing.T) {
+	sql := `WITH 
+		CTE_BangTam1 AS (
+			SELECT Col1 FROM BangA
+		),
+		CTE_BangTam2 AS (
+			
+			SELECT Col2 FROM BangB 
+		),
+		CTE_BangTam3 AS (
+			
+			SELECT Col3 FROM BangC
+		)
+			SELECT * FROM CTE_BangTam2`
+	sql, err := internal.Helper.QuoteExpression(sql)
+	if err != nil {
+		panic(err)
+	}
+	node, err := sqlparser.Parse(sql)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(node)
 }

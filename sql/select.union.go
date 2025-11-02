@@ -27,6 +27,7 @@ func (s selectors) union(expr *sqlparser.Union, injector *injector) (*compilerRe
 	l.Args = append(l.Args, r.Args...)
 	l.Content = "\n " + strings.Join(sqlSource, "\n ")
 	l.Fields.merge(r.Fields)
+	//l.selectedExprs = internal.UnionMap(l.selectedExprs, r.selectedExprs)
 	return l, nil
 }
 

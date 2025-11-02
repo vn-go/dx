@@ -20,7 +20,14 @@ func (f *from) joinTableExpr(t *sqlparser.JoinTableExpr, injector *injector, joi
 		return nil, err
 	}
 	selectedExprsReverse := dictionaryFields{}
-	condition, err := exp.resolve(t.Condition.On, injector, CMP_JOIN, &selectedExprsReverse)
+	onExpr := t.Condition.On.(sqlparser.SQLNode)
+	if fn, ok := onExpr.(*sqlparser.FuncExpr); ok {
+		if fn.Name.String() == FIX_ERROR_FULL_JOIN && fn.Qualifier.String() == FIX_ERROR {
+			onExpr = fn.Exprs[0]
+			t.Join = "FULL OUTER JOIN"
+		}
+	}
+	condition, err := exp.resolve(onExpr, injector, CMP_JOIN, &selectedExprsReverse)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ var joinTypeFuncMap = map[string]string{
 	"inner": "INNER",
 
 	"outer": "OUTER",
+	"full":  "`FULL OUTER`",
 }
 
 type joinCondition struct {
@@ -33,12 +34,17 @@ func (s *smarty) from(selectStm *sqlparser.Select, subSetInfoList map[string]sub
 		aliasedExpr := []sqlparser.SQLNode{}
 		for _, expr := range dsSourceFunc.Exprs {
 			if fnNode := detect[*sqlparser.FuncExpr](expr); fnNode != nil {
-				if joinType, ok := joinTypeFuncMap[fnNode.Name.Lowered()]; ok {
-					comparisonExprs = append(comparisonExprs, joinCondition{
-						node:     fnNode.Exprs[0],
-						joinType: joinType,
-					})
-					continue
+				if _, ok := joinTypeFuncMap[fnNode.Name.Lowered()]; ok {
+					if fnNode.Name.Lowered() == "full" {
+						// sqlparser can not parse full outer join, so we need to convert it to left outer join and right outer join
+						fnNode.Qualifier = sqlparser.NewTableIdent(FIX_ERROR)
+						fnNode.Name = sqlparser.NewColIdent(sqlparser.Backtick(FIX_ERROR_FULL_JOIN))
+						comparisonExprs = append(comparisonExprs, joinCondition{
+							node: fnNode,
+						})
+						continue
+					}
+
 				}
 			}
 			if isNode[*sqlparser.ComparisonExpr](expr) {

@@ -41,10 +41,12 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*Sma
 	// }
 
 	return &SmartSqlParser{
-		Query:        i.val.Content,
-		Args:         compileArgs,
-		ScopeAccess:  i.val.Fields,
-		OutputFields: i.val.OutputFields,
+		Query:              i.val.Content,
+		Args:               compileArgs,
+		ScopeAccess:        i.val.Fields,
+		AccessScope:        i.val.AccessScope,
+		Hash256AccessScope: i.val.Hash256AccessScope,
+		OutputFields:       i.val.OutputFields,
 	}, nil
 
 }
@@ -113,6 +115,16 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 		}
 
 	}
+	ret.AccessScope = accessScopes{}
+	itemsForHash256Key := []string{}
+	for k, v := range ret.Fields {
+		if _, ok := ret.AccessScope[strings.ToLower(v.EntityName)]; !ok {
+			ret.AccessScope[strings.ToLower(v.EntityName)] = map[string]string{}
+		}
+		ret.AccessScope[strings.ToLower(v.EntityName)][strings.ToLower(v.EntityFieldName)] = k
+		itemsForHash256Key = append(itemsForHash256Key, k)
+	}
+	ret.Hash256AccessScope = internal.Helper.Hash256(strings.Join(itemsForHash256Key, ""))
 	return ret, nil
 
 }

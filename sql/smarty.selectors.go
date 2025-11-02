@@ -19,9 +19,9 @@ func (s *smarty) where(selectStm *sqlparser.Select) string {
 }
 
 // smarty.selectors.go
-func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string]string) (string, error) {
+func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string]string, subSetInfoList map[string]subsetInfo) (string, error) {
 	items := []string{}
-	nodes := s.extractSelectNodes(selectStm)
+	nodes := s.extractSelectNodes(selectStm, subSetInfoList)
 	for _, node := range nodes {
 		if fn := detect[*sqlparser.FuncExpr](node); fn != nil {
 			if fn.Name.Lowered() == "crosstab" {
@@ -52,6 +52,9 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 			}
 		}
 		if fx, ok := node.(*sqlparser.AliasedExpr); ok {
+			if unions.isUnion(fx.Expr, subSetInfoList) {
+				continue
+			}
 			if !fx.As.IsEmpty() {
 				fieldAliasMap[string(fx.As.Lowered())] = s.ToText(fx.Expr)
 			}
@@ -64,13 +67,13 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 	return strings.Join(items, ", "), nil
 }
 
-func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQLNode {
+func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select, subSetInfoList map[string]subsetInfo) []sqlparser.SQLNode {
 	nodes := []sqlparser.SQLNode{}
 	for _, expr := range selectStm.SelectExprs {
 		switch n := expr.(type) {
 		case *sqlparser.AliasedExpr:
 
-			if s.isSelecteNode(n.Expr) {
+			if s.isSelecteNode(n.Expr, subSetInfoList) {
 				nodes = append(nodes, n)
 			}
 		// case *sqlparser.FuncExpr:
@@ -87,10 +90,14 @@ func (s *smarty) extractSelectNodes(selectStm *sqlparser.Select) []sqlparser.SQL
 	*/
 }
 
-func (s *smarty) isSelecteNode(expr sqlparser.SQLNode) bool {
+// check node is in select clause
+func (s *smarty) isSelecteNode(expr sqlparser.SQLNode, subSetInfoList map[string]subsetInfo) bool {
 	switch expr := expr.(type) {
-	case *sqlparser.FuncExpr:
-		return !keywordFuncMap[string(expr.Name.Lowered())]
+	// case *sqlparser.FuncExpr:
+
+	// 	return keywordFuncMap[string(expr.Name.Lowered())]
+	case *sqlparser.BinaryExpr:
+		return !unions.isUnion(expr, subSetInfoList)
 	default:
 		return true
 	}

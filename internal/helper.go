@@ -2,6 +2,8 @@ package internal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -28,6 +30,14 @@ type helperType struct {
 	reAsAlias              *regexp.Regexp
 	bufPool                *sync.Pool
 	mapGoTypeToSqlNodeType map[reflect.Type]sqlparser.ValType
+}
+
+func (h *helperType) Hash256(s string) string {
+	// Tạo SHA256 hash
+	hash := sha256.Sum256([]byte(s))
+
+	// Convert thành hex string
+	return hex.EncodeToString(hash[:])
 }
 
 func (h *helperType) GetSqlTypeFfromGoType(fieldType reflect.Type) sqlparser.ValType {
@@ -656,12 +666,13 @@ func newHelper() *helperType {
 			"union": true, "all": true,
 			"limit": true, "having": true, "is": true, "null": true, "offset": true,
 			"delete": true, "update": true, "set": true,
+			"with":                true,
 			FnMarkSpecialTextArgs: true,
 		},
 		keywords2: map[string]bool{
 			"as": true, "and": true, "or": true, "not": true,
 			"case": true, "when": true, "then": true, "else": true, "end": true,
-			"inner": true, "left": true, "right": true, "full": true,
+			"inner": true, "left": true, "right": true,
 			"on": true, "using": true,
 			"like":  true,
 			"limit": true, "having": true, "is": true, "null": true, "offset": true,

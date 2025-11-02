@@ -29,6 +29,7 @@ func (f *from) resolve(expr sqlparser.TableExprs, injector *injector) (*compiler
 			}
 			items = append(items, r.Content)
 			ret.Fields = internal.UnionMap(ret.Fields, r.Fields)
+			ret.selectedExprs = internal.UnionMap(ret.selectedExprs, r.selectedExprs)
 
 		case *sqlparser.JoinTableExpr:
 

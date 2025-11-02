@@ -70,7 +70,7 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 	}
 
 	fieldAliasMap := map[string]string{}
-	ret.selects, err = smartier.selectors(selectStm, fieldAliasMap)
+	ret.selects, err = smartier.selectors(selectStm, fieldAliasMap, subSetInfoList)
 	if err != nil {
 		return "", nil, err
 	}
@@ -82,23 +82,26 @@ func (s *smarty) compile(selectStm *sqlparser.Select, refSubsets map[string]subs
 	if err != nil {
 		return "", nil, err
 	}
-	ret.limit = simpleSqlWithArgs{
-		Content:     limitAndOffsetInfo.take,
-		IndexOfArgs: limitAndOffsetInfo.indexOfArgTake,
+	if limitAndOffsetInfo != nil {
+		ret.limit = simpleSqlWithArgs{
+			Content:     limitAndOffsetInfo.take,
+			IndexOfArgs: limitAndOffsetInfo.indexOfArgTake,
+		}
+		ret.offset = simpleSqlWithArgs{
+			Content:     limitAndOffsetInfo.skip,
+			IndexOfArgs: limitAndOffsetInfo.indexOfArgSkip,
+		}
 	}
-	ret.offset = simpleSqlWithArgs{
-		Content:     limitAndOffsetInfo.skip,
-		IndexOfArgs: limitAndOffsetInfo.indexOfArgSkip,
-	}
+
 	unionSource, err := unions.extractUnionInfo(selectStm, subSetInfoList)
 	if err != nil {
 		return "", nil, err
 	}
 	if unionSource != "" {
-		if ret.where == "" && ret.groupBy == "" && ret.sort == "" {
+		if ret.where == "" && ret.groupBy == "" && ret.sort == "" && ret.selects == "" {
 			return unionSource, nil, nil
 		} else {
-			ret.from = "(" + unionSource + ")"
+			ret.from = "(" + unionSource + ") T"
 		}
 	} else if strFrom := smartier.from(selectStm, subSetInfoList); strFrom != "" {
 		ret.from = strFrom

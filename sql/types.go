@@ -86,6 +86,7 @@ func (o outputFields) String() string {
 	return string(bff)
 }
 
+type accessScopes map[string]map[string]string
 type compilerResult struct {
 	// limit                       string
 	// offset                      string
@@ -108,7 +109,9 @@ type compilerResult struct {
 		value: refFieldInfo
 		Note: dataset name is the name of entity struct, colunm name is the name of field in entity struct
 	*/
-	Fields refFields
+	Fields             refFields
+	AccessScope        accessScopes
+	Hash256AccessScope string
 	/*
 		after compiled to sql, we need to know the type of each selector in the result set.
 
@@ -335,8 +338,10 @@ func (s smartSqlParserArgs) String() string {
 }
 
 type SmartSqlParser struct {
-	Query        string
-	Args         smartSqlParserArgs
-	ScopeAccess  refFields
-	OutputFields outputFields
+	Query              string
+	Args               smartSqlParserArgs
+	ScopeAccess        refFields
+	OutputFields       outputFields
+	AccessScope        accessScopes
+	Hash256AccessScope string
 }
