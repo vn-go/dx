@@ -42,13 +42,20 @@ func TestBasic(t *testing.T) {
 		Id   uint64 `db:"pk;auto" json:"id"`
 		Name string `db:"size:50;uk" json:"username"`
 	}{}
-
+	type NameCount struct {
+		Total int64  `json:"total"`
+		Name  string `json:"name"`
+	}
+	nameCount:=[]NameCount{}
 	query := `
-		   account(id, name)+
-			admin(id, name)+
-			manager(id, name)
+        subsets(
+		        account(id, name)+
+			    admin(id, name)+
+			    manager(id, name)
+            ) p,
+        from(p),count(p.id) Total, name Name
 	  `
-	err = db.DslQuery(&people, query)
+	err = db.DslQuery(&nameCount, query)
 	if err != nil {
 		panic(err)
 	}

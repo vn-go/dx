@@ -181,9 +181,10 @@ dx.AddModels(&Account{}, Admin{}, Manager{}) // add model to dx truoc khi open d
 	}{}
 
 	query := `
-		   account(id, name)+
-			admin(id, name)+
-			manager(id, name)
+        
+		account(id, name)+
+		admin(id, name)+
+		manager(id, name)
 	  `
 	err = db.DslQuery(&people, query)
 	if err != nil {
@@ -200,4 +201,33 @@ dx.AddModels(&Account{}, Admin{}, Manager{}) // add model to dx truoc khi open d
  SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `managers` `T1`
 ----------------------------
 
+```
+```go
+type NameCount struct {
+		Total int64  `json:"total"`
+		Name  string `json:"name"`
+	}
+	nameCount:=[]NameCount{}
+	query := `
+        subsets(
+		        account(id, name)+
+			    admin(id, name)+
+			    manager(id, name)
+            ) p,
+        from(p),count(p.id) Total, name Name
+	  `
+	err = db.DslQuery(&nameCount, query)
+	if err != nil {
+		panic(err)
+	}
+
+----------------------------
+SELECT count(`p`.`ID`) `Total`, `p`.`Name` `Name` FROM (
+ 
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `accounts` `T1`
+ union all
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `admins` `T1`
+ union all
+ SELECT `T1`.`id` `ID`, `T1`.`name` `Name` FROM `managers` `T1`) `p` GROUP BY `p`.`Name`
+----------------------------
 ```
