@@ -74,7 +74,7 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 						break
 					}
 				} else {
-					return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s' is ambiguous, specify dataset name", t.Name.String())
+					return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s'", t.Name.String())
 				}
 
 			}

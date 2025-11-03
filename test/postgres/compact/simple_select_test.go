@@ -35,10 +35,12 @@ func TestQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	r := db.QueryModel(tModels.User{})
+	r := db.QueryModel(tModels.User{}).RightJoin(tModels.Department{}, "user.departmentId=department.id").Select(
+		"department.id",
+	)
 	r.Limit(10)
 	r.Offset(20)
-	r.Sort("id desc")
+	r.Sort("Id desc")
 	sql, err := r.Analize()
 	if err != nil {
 		panic(err)

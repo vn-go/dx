@@ -70,12 +70,12 @@ func QueryItems[TResult any](db *DB, dsl string, args ...any) ([]TResult, error)
 	}
 	return items, nil
 }
-func (db *DB) QueryModel(model any) queryObject {
+func (db *DB) QueryModel(model any) *queryObject {
 	typ := reflect.TypeOf(model)
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
-	return queryObject{
+	return &queryObject{
 		db:            db,
 		source:        []string{typ.Name()},
 		tables:        []string{typ.Name()},
@@ -171,6 +171,11 @@ func (q *queryObject) Analize() (*sql.SmartSqlParser, error) {
 		fmt.Sprintf("from(%s)", strings.Join(q.source, ",")),
 	}
 	args = append(args, q.sourceArgs...)
+	if len(q.selectors) > 0 {
+		dslItems = append(dslItems, fmt.Sprintf("select(%s)", strings.Join(q.selectors, ",")))
+		args = append(args, q.selectorsArgs...)
+	}
+
 	var strFilter string
 	if q.filter != "" {
 		strFilter = fmt.Sprintf("where(%s)", q.filter)

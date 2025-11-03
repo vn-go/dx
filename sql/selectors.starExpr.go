@@ -13,6 +13,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 	strSelectItems := []string{}
 	selectedExprs := dictionaryFields{}
 	outputFields := []outputField{}
+	selectedExprsReverse := dictionaryFields{}
 	if expr.TableName.IsEmpty() {
 		i := 1
 		//get all tables in query
@@ -33,10 +34,11 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					aliasTable = fx
 				}
 				for _, col := range x.Cols {
-
+					aliasKey := col.Field.Name
 					aliasField := injector.dialect.Quote(col.Field.Name)
 					if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alias
 						aliasField = injector.dialect.Quote(x.EntityType.Name() + "_" + col.Field.Name)
+						aliasKey = fmt.Sprintf("%s_%s", x.EntityType.Name(), col.Field.Name)
 					}
 					strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+aliasField)
 					selectedExprs[strings.ToLower(fmt.Sprintf("%s.%s", aliasTable, col.Field.Name))] = &dictionaryField{
@@ -52,10 +54,14 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					}
 
 					outputFields = append(outputFields, outputField{
-						Name:         col.Field.Name,
+						Name:         aliasField,
 						IsCalculated: false,
 						FieldType:    internal.Helper.ToNullableType(col.Field.Type),
 					})
+					selectedExprsReverse[strings.ToLower(aliasKey)] = &dictionaryField{
+						Expr:  injector.dialect.Quote(aliasTable, col.Name),
+						Alias: col.Name,
+					}
 				}
 			} else if subQuery, ok := injector.dict.subqueryEntites[qrAlias]; ok {
 				for _, col := range subQuery.fields {
@@ -88,10 +94,11 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 	}
 	strSelect := strings.Join(strSelectItems, ", ")
 	return &compilerResult{
-		Content:       strSelect,
-		Args:          nil,
-		Fields:        injector.fields,
-		selectedExprs: selectedExprs,
-		OutputFields:  outputFields,
+		Content:              strSelect,
+		Args:                 nil,
+		Fields:               injector.fields,
+		selectedExprs:        selectedExprs,
+		OutputFields:         outputFields,
+		selectedExprsReverse: selectedExprsReverse,
 	}, nil
 }
