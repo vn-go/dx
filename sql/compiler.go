@@ -124,6 +124,7 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	for i := 0; i < len(ret.OutputFields); i++ {
 		ret.OutputFields[i].DbType = internal.Helper.GetSqlTypeFfromGoType(ret.OutputFields[i].FieldType)
 	}
+	ret.Hash256OutputFields = ret.OutputFields.ToHas256Key()
 	return ret, nil
 
 }

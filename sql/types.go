@@ -1,10 +1,13 @@
 package sql
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/vn-go/dx/dialect/types"
@@ -82,7 +85,27 @@ type outputField struct {
 }
 type outputFields []outputField
 
-func toCamelCase(name string) string {
+func (o *outputFields) ToHas256Key() string {
+	if o == nil || len(*o) == 0 {
+		return ""
+	}
+
+	// Dùng strings.Builder thay vì []string + strings.Join để tránh alloc trung gian
+	var b strings.Builder
+	for i, f := range *o {
+		if i > 0 {
+			b.WriteByte(',') // phân cách
+		}
+		b.WriteString(f.Name)
+		b.WriteByte('/')
+		b.WriteString(f.FieldType.String())
+	}
+
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
+}
+
+func (o *outputFields) toCamelCase(name string) string {
 	if name == "" {
 		return name
 	}
@@ -103,7 +126,23 @@ func toCamelCase(name string) string {
 	}
 	return string(runes)
 }
-func (o *outputFields) ToStruct() reflect.Type {
+
+type initToStruct struct {
+	val  reflect.Type
+	once sync.Once
+}
+
+var initToStructCache sync.Map
+
+func (o *outputFields) ToStruct(key string) reflect.Type {
+	a, _ := initToStructCache.LoadOrStore(key, &initToStruct{})
+	i := a.(*initToStruct)
+	i.once.Do(func() {
+		i.val = o.ToStructNoCache()
+	})
+	return i.val
+}
+func (o *outputFields) ToStructNoCache() reflect.Type {
 	var fields []reflect.StructField
 
 	for _, f := range *o {
@@ -115,14 +154,14 @@ func (o *outputFields) ToStruct() reflect.Type {
 		fields = append(fields, reflect.StructField{
 			Name: f.Name,
 			Type: fieldType,
-			Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s"`, toCamelCase(f.Name))),
+			Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s"`, o.toCamelCase(f.Name))),
 		})
 	}
 
 	return reflect.StructOf(fields)
 }
-func (o *outputFields) ToArrayOfStruct() reflect.Type {
-	return reflect.SliceOf(o.ToStruct())
+func (o *outputFields) ToArrayOfStruct(key string) reflect.Type {
+	return reflect.SliceOf(o.ToStruct(key))
 }
 func (o outputFields) String() string {
 	bff, err := json.MarshalIndent(o, "", "  ")
@@ -210,10 +249,11 @@ type compilerResult struct {
 
 	*/
 	//allFields dictionaryFields
-	IsInAggregateFunc bool
-	OutputFields      []outputField
-	ResultType        reflect.Type
-	ResultDbType      sqlparser.ValType
+	IsInAggregateFunc   bool
+	OutputFields        outputFields
+	Hash256OutputFields string
+	ResultType          reflect.Type
+	ResultDbType        sqlparser.ValType
 }
 
 // After compiled to sql, we need to know the type of each field in the result set.

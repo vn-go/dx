@@ -221,7 +221,7 @@ func (q *queryObject) ToArray() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return q.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct())
+	return q.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
 }
 func (db *DB) ScanRowsToArrayStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
 	defer rows.Close()
@@ -283,7 +283,12 @@ func (db *DB) FindFirst(fromModel any, selector, conditional string, args ...any
 	if err != nil {
 		return nil, err
 	}
-	returnType := sql.OutputFields.ToStruct()
+	returnType := sql.OutputFields.ToStruct(sql.Hash256AccessScope)
+	if Options.ShowSql {
+		fmt.Println("-------------------")
+		fmt.Println(sql.Query)
+		fmt.Println("-------------------")
+	}
 	r, err := db.Query(sql.Query, sql.Args...)
 	if err != nil {
 		return nil, err
@@ -310,7 +315,7 @@ func (db *DB) Find(fromModel any, selector, conditional string, args ...any) (an
 		return nil, err
 	}
 
-	returnType := sql.OutputFields.ToStruct()
+	returnType := sql.OutputFields.ToStruct(sql.Hash256AccessScope)
 
 	rows, err := db.Query(sql.Query, sql.Args...)
 	if err != nil {

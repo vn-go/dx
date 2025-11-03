@@ -91,7 +91,11 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					Expr:  injector.dialect.Quote(aliasTable, col.Name),
 					Alias: col.Name,
 				}
-
+				outputFields = append(outputFields, outputField{
+					Name:         col.Field.Name,
+					IsCalculated: false,
+					FieldType:    internal.Helper.ToNullableType(col.Field.Type),
+				})
 			}
 		} else {
 			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "dataset %s not found", expr.TableName.Name.String())

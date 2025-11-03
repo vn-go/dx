@@ -14,20 +14,64 @@ import (
 var dsn = "postgres://postgres:123456@localhost:5432/hrm?sslmode=disable&"
 
 func TestFindRole(t *testing.T) {
+	dx.Options.ShowSql = true
+	expectedData := `{"id":2302,"roleId":"e0d4573b-85cc-4b12-b146-a2f9eadc9d9f","code":"X-0000","name":"Role-0000","description":"","createdOn":"2025-10-09T18:04:28.523906+07:00","modifiedOn":null,"createdBy":"admin","isActive":true}`
+	//dataResult := []byte(expectedData)
 	db, err := dx.Open("postgres", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	data, err := db.FindFirst(tModels.Role{}, "id,createdOn", "code='X-0000'")
+	data, err := db.FindFirst(tModels.Role{}, "", "code='X-0000'")
 	if err != nil {
 		t.Fatal(err)
 	}
-	bff, err := json.MarshalIndent(data, "", "  ")
+	bff, err := json.Marshal(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println(string(bff))
+	assert.Equal(t, expectedData, string(bff))
+}
+func BenchmarkFindRole(b *testing.B) {
+	expectedData := `{"id":2302,"roleId":"e0d4573b-85cc-4b12-b146-a2f9eadc9d9f","code":"X-0000","name":"Role-0000","description":"","createdOn":"2025-10-09T18:04:28.523906+07:00","modifiedOn":null,"createdBy":"admin","isActive":true}`
+	//dataResult := []byte(expectedData)
+	db, err := dx.Open("postgres", dsn)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	b.Run("FindRole", func(b *testing.B) {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			data, err := db.FindFirst(tModels.Role{}, "", "code='X-0000'")
+			if err != nil {
+				panic(err)
+			}
+			bff, err := json.Marshal(data)
+			if err != nil {
+				panic(err)
+			}
+			assert.Equal(b, expectedData, string(bff))
+		}
+	})
+	b.Run("FindRole-Parallel", func(b *testing.B) {
+		b.ResetTimer()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				data, err := db.FindFirst(tModels.Role{}, "", "code='X-0000'")
+				if err != nil {
+					panic(err)
+				}
+				bff, err := json.Marshal(data)
+				if err != nil {
+					panic(err)
+				}
+				assert.Equal(b, expectedData, string(bff))
+			}
+		})
+	})
+
 }
 func TestSimpleSelect(t *testing.T) {
 	db, err := dx.Open("postgres", dsn)
