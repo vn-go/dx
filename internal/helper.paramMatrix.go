@@ -1,10 +1,14 @@
 package internal
 
 import (
+	"reflect"
 	"regexp"
 	sortTexts "sort"
 	"strconv"
+	"strings"
 	"sync"
+
+	"github.com/vn-go/dx/sqlparser"
 )
 
 var placeholderRegexp = regexp.MustCompile(`\{(\d+)\}`)
@@ -142,6 +146,40 @@ func (c *helperType) extractParamMatrix(sql string) (*ExtractParamMatrixInfo, er
 	ret.Sql = string(result)
 	ret.NewSize = currentNewIndex
 	return ret, nil
+}
+
+func (c *helperType) CombineType(t1, t2 reflect.Type, operator string) reflect.Type {
+	if strings.ToLower(operator) == "and" {
+		return c.ToNullableType(reflect.TypeOf(true))
+	}
+	if strings.ToLower(operator) == "or" {
+		return c.ToNullableType(reflect.TypeOf(true))
+	}
+	if strings.ToLower(operator) == "not" {
+		return c.ToNullableType(reflect.TypeOf(true))
+	}
+	var ret reflect.Type
+	if t1 == nil && t2 == nil {
+		return ret
+	}
+	if t1 == nil {
+		return c.ToNullableType(t2)
+	}
+	return c.ToNullableType(t1)
+}
+func (c *helperType) CombineToDbTypeType(t1, t2 reflect.Type, operator string) sqlparser.ValType {
+	return c.GetSqlTypeFfromGoType(c.CombineType(t1, t2, operator))
+}
+func (c *helperType) ToNullableType(t reflect.Type) reflect.Type {
+	if t == nil {
+		return nil
+	}
+	// Nếu đã là pointer hoặc interface thì coi như nullable rồi
+	if t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
+		return t
+	}
+	// Còn lại thì lấy pointer của type
+	return reflect.PtrTo(t)
 }
 
 // ApplyMatrix builds a new args slice from the matrix mapping.

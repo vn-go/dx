@@ -3,6 +3,7 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
@@ -75,6 +76,8 @@ func (r *refFields) merge(fields refFields) refFields {
 type outputField struct {
 	Name         string
 	IsCalculated bool
+	FieldType    reflect.Type
+	DbType       sqlparser.ValType
 }
 type outputFields []outputField
 
@@ -166,6 +169,8 @@ type compilerResult struct {
 	//allFields dictionaryFields
 	IsInAggregateFunc bool
 	OutputFields      []outputField
+	ResultType        reflect.Type
+	ResultDbType      sqlparser.ValType
 }
 
 // After compiled to sql, we need to know the type of each field in the result set.

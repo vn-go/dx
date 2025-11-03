@@ -2,9 +2,11 @@ package sql
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/vn-go/dx/dialect/types"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -34,12 +36,13 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 		HandledByDialect: false,
 	}
 	originItems := []string{}
-
+	argsTypes := []reflect.Type{}
 	for _, arg := range expr.Exprs {
 		argResult, err := e.resolve(arg, injector, cmpType, selectedExprsReverse)
 		if err != nil {
 			return nil, err
 		}
+		argsTypes = append(argsTypes, argResult.ResultType)
 		ret.Fields.merge(argResult.Fields)
 		delegator.Args = append(delegator.Args, argResult.Content)
 		originItems = append(originItems, argResult.OriginalContent)
@@ -63,7 +66,8 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 		ret.nonAggregateFields = dictionaryFields{} // no need to keep non-aggregate fields
 	}
 	ret.IsExpression = true
-
+	ret.ResultType = internal.Helper.CombineTypeByFunc(fName, argsTypes)
+	ret.ResultDbType = internal.Helper.CombineDbTypeByFunc(fName, argsTypes)
 	return ret, nil
 	//panic(fmt.Sprintf("unhandled node type %s. see  expCmp.funcExpr, file %s", expr.Name.String(), `sql\where.comparisonExpr.go`))
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/vn-go/dx/entity"
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -124,6 +125,8 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 				strings.ToLower(field.Expr): cmpField,
 			},
 			AliasOfContent: field.Alias,
+			ResultType:     field.EntityField.Field.Type,
+			ResultDbType:   internal.Helper.GetSqlTypeFfromGoType(field.EntityField.Field.Type),
 		}
 		//selectedExprsReverse.merge(ret.selectedExprsReverse)
 		return ret, nil

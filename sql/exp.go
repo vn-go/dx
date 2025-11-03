@@ -24,6 +24,8 @@ const (
 type expCmp struct {
 }
 
+
+
 func (e *expCmp) resolve(node sqlparser.SQLNode, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
 	switch x := node.(type) {
 	case *sqlparser.AndExpr:

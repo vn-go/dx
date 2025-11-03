@@ -3,6 +3,7 @@ package sql
 import (
 	"fmt"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
 
@@ -30,6 +31,8 @@ func (e *expCmp) binary(leftExpr sqlparser.Expr, rightExpr sqlparser.Expr, opera
 		selectedExprsReverse: *left.selectedExprsReverse.merge(right.selectedExprsReverse),
 		IsExpression:         true,
 		IsInAggregateFunc:    left.IsInAggregateFunc || right.IsInAggregateFunc,
+		ResultType:           internal.Helper.CombineType(left.ResultType, right.ResultType, operator),
+		ResultDbType:         internal.Helper.CombineToDbTypeType(left.ResultType, right.ResultType, operator),
 	}
 
 	return ret, nil

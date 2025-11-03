@@ -35,10 +35,6 @@ func (c compiler) Resolve(dialect types.Dialect, query string, arg ...any) (*Sma
 	if err != nil {
 		return nil, err
 	}
-	// var sqlArgs = make([]any, len(compileArgs))
-	// for j, v := range i.val.reIndex {
-	// 	sqlArgs[v] = compileArgs[j]
-	// }
 
 	return &SmartSqlParser{
 		Query:              i.val.Content,
@@ -125,6 +121,9 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 		itemsForHash256Key = append(itemsForHash256Key, k)
 	}
 	ret.Hash256AccessScope = internal.Helper.Hash256(strings.Join(itemsForHash256Key, ""))
+	for i := 0; i < len(ret.OutputFields); i++ {
+		ret.OutputFields[i].DbType = internal.Helper.GetSqlTypeFfromGoType(ret.OutputFields[i].FieldType)
+	}
 	return ret, nil
 
 }

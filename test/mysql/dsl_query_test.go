@@ -46,7 +46,6 @@ func TestBasic(t *testing.T) {
 		Total int64  `json:"total"`
 		Name  string `json:"name"`
 	}
-	nameCount:=[]NameCount{}
 	query := `
         subsets(
 		        account(id, name)+
@@ -55,7 +54,7 @@ func TestBasic(t *testing.T) {
             ) p,
         from(p),count(p.id) Total, name Name
 	  `
-	err = db.DslQuery(&nameCount, query)
+	err = db.DslQuery(&people, query)
 	if err != nil {
 		panic(err)
 	}

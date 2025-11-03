@@ -41,6 +41,9 @@ func (h *helperType) Hash256(s string) string {
 }
 
 func (h *helperType) GetSqlTypeFfromGoType(fieldType reflect.Type) sqlparser.ValType {
+	if fieldType == nil {
+		return -1
+	}
 	typ := fieldType
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
