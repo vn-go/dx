@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vn-go/dx"
 	_ "github.com/vn-go/dx/test/models"
+	tModels "github.com/vn-go/dx/test/models"
 )
 
 var dsn = "postgres://postgres:123456@localhost:5432/hrm?sslmode=disable&"
@@ -26,4 +27,57 @@ func TestSimpleSelect(t *testing.T) {
 	assert.Equal(t, expectSql, sql.Query)
 	fmt.Println(sql.Query)
 	fmt.Println(sql.OutputFields.String())
+}
+func TestQuery(t *testing.T) {
+	dx.Options.ShowSql = true
+	db, err := dx.Open("postgres", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	r := db.QueryModel(tModels.User{})
+	r.Limit(10)
+	r.Offset(20)
+	r.Sort("id desc")
+	sql, err := r.Analize()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql.Query)
+	fmt.Println(sql.OutputFields.String())
+	total, err := r.Count()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(total)
+}
+func BenchmarkQuery(b *testing.B) {
+	db, err := dx.Open("postgres", dsn)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	sqlExpected := `SELECT "user"."id" "Id", "user"."user_id" "UserId", "user"."username" "Username", "user"."hash_password" "HashPassword", "user"."email" "Email", "user"."phone" "Phone", "user"."created_on" "CreatedOn", "user"."modified_on" "ModifiedOn", "user"."is_active" "IsActive", "user"."latest_login_fail" "LatestLoginFail", "user"."latest_login" "LatestLogin", "user"."role_code" "RoleCode", "user"."last_time_change_password" "LastTimeChangePassword", "user"."is_tenant_admin" "IsTenantAdmin", "user"."role_id" "RoleId", "user"."is_sys_admin" "IsSysAdmin", "user"."created_by" "CreatedBy", "user"."department_id" "DepartmentId" FROM "sys_users" "user" ORDER BY "user"."id" desc LIMIT $2 OFFSET $1`
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		r := db.QueryModel(tModels.User{})
+		r.Limit(10)
+		r.Offset(20)
+		r.Sort("id desc")
+		sql, err := r.Analize()
+		if err != nil {
+			panic(err)
+		}
+		assert.Equal(b, sqlExpected, sql.Query)
+
+		total, err := r.Count()
+		if err != nil {
+			panic(err)
+		}
+		assert.Equal(b, int64(0), total)
+		// fmt.Println(total)
+		// fmt.Println(sql.Query)
+		//fmt.Println(sql.OutputFields.String())
+	}
 }
