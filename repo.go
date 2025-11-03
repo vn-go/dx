@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	sqlDB "database/sql"
+
 	"github.com/vn-go/dx/sql"
 )
 
@@ -203,5 +205,117 @@ func (q *queryObject) Analize() (*sql.SmartSqlParser, error) {
 
 	dsl := strings.Join(dslItems, ",")
 	return q.db.Smart(dsl, args...)
+
+}
+func (q *queryObject) ToArray() (any, error) {
+	sql, err := q.Analize()
+	if err != nil {
+		return nil, err
+	}
+	if Options.ShowSql {
+		fmt.Println("-------------------")
+		fmt.Println(sql.Query)
+		fmt.Println("-------------------")
+	}
+	rows, err := q.db.Query(sql.Query, sql.Args...)
+	if err != nil {
+		return nil, err
+	}
+	return q.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct())
+}
+func (db *DB) ScanRowsToArrayStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
+	defer rows.Close()
+	sliceType := reflect.SliceOf(reflect.PointerTo(returnType))
+	sliceValue := reflect.MakeSlice(sliceType, 0, 8)
+	for rows.Next() {
+		item, err := db.ScanRowToStruct(rows, returnType) // dùng hàm ánh xạ struct tối ưu của bạn
+		if err != nil {
+			return nil, err
+		}
+		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(item))
+	}
+
+	// Trả về slice interface{}
+	return sliceValue.Interface(), nil
+}
+func (db *DB) ScanRowToStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
+	dest := reflect.New(returnType).Interface()
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	v := reflect.ValueOf(dest).Elem()
+	fields := make([]any, len(cols))
+	defer rows.Close()
+	if rows.Next() {
+		for i, col := range cols {
+			f := v.FieldByNameFunc(func(name string) bool {
+				return strings.EqualFold(name, col)
+			})
+			if f.IsValid() && f.CanSet() {
+				fields[i] = f.Addr().Interface()
+			} else {
+				var dummy any
+				fields[i] = &dummy
+			}
+		}
+
+		err = rows.Scan(fields...)
+		return dest, err
+	}
+	return nil, nil
+}
+func (db *DB) FindFirst(fromModel any, selector, conditional string, args ...any) (any, error) {
+	typ := reflect.TypeOf(fromModel)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if selector == "" {
+		selector = typ.Name() + "()"
+	} else {
+		selector = fmt.Sprintf("%s(%s)", typ.Name(), selector)
+	}
+	if conditional != "" {
+		selector += ",where(" + conditional + ")"
+	}
+	sql, err := db.Smart(selector, args...)
+	if err != nil {
+		return nil, err
+	}
+	returnType := sql.OutputFields.ToStruct()
+	r, err := db.Query(sql.Query, sql.Args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return db.ScanRowToStruct(r, returnType)
+}
+func (db *DB) Find(fromModel any, selector, conditional string, args ...any) (any, error) {
+	typ := reflect.TypeOf(fromModel)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	if selector == "" {
+		selector = typ.Name() + "()"
+	} else {
+		selector = fmt.Sprintf("%s(%s)", typ.Name(), selector)
+	}
+	if conditional != "" {
+		selector += ",where(" + conditional + ")"
+	}
+
+	sql, err := db.Smart(selector, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	returnType := sql.OutputFields.ToStruct()
+
+	rows, err := db.Query(sql.Query, sql.Args...)
+	if err != nil {
+		return nil, err
+	}
+	return db.ScanRowsToArrayStruct(rows, returnType)
 
 }

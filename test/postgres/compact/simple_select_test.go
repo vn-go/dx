@@ -1,6 +1,7 @@
 package compact_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -12,6 +13,22 @@ import (
 
 var dsn = "postgres://postgres:123456@localhost:5432/hrm?sslmode=disable&"
 
+func TestFindRole(t *testing.T) {
+	db, err := dx.Open("postgres", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	data, err := db.FindFirst(tModels.Role{}, "id,createdOn", "code='X-0000'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bff, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(string(bff))
+}
 func TestSimpleSelect(t *testing.T) {
 	db, err := dx.Open("postgres", dsn)
 	if err != nil {

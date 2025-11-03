@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/entity"
@@ -81,6 +82,48 @@ type outputField struct {
 }
 type outputFields []outputField
 
+func toCamelCase(name string) string {
+	if name == "" {
+		return name
+	}
+
+	runes := []rune(name)
+
+	// Nếu 2 ký tự đầu viết hoa (vd: APIResponse), thì hạ tất cả cho đến khi gặp chữ thường
+	// Ví dụ: "APIResponse" -> "apiResponse", "HTTPStatus" -> "httpStatus"
+	for i := 0; i < len(runes); i++ {
+		if i == 0 {
+			runes[i] = unicode.ToLower(runes[i])
+		} else if i+1 < len(runes) && unicode.IsUpper(runes[i]) && unicode.IsUpper(runes[i+1]) {
+			runes[i] = unicode.ToLower(runes[i])
+		} else {
+			runes[i] = unicode.ToLower(runes[i])
+			break
+		}
+	}
+	return string(runes)
+}
+func (o *outputFields) ToStruct() reflect.Type {
+	var fields []reflect.StructField
+
+	for _, f := range *o {
+		fieldType := f.FieldType
+		if fieldType == nil {
+			fieldType = reflect.TypeOf((*interface{})(nil)).Elem() // interface{}
+		}
+
+		fields = append(fields, reflect.StructField{
+			Name: f.Name,
+			Type: fieldType,
+			Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s"`, toCamelCase(f.Name))),
+		})
+	}
+
+	return reflect.StructOf(fields)
+}
+func (o *outputFields) ToArrayOfStruct() reflect.Type {
+	return reflect.SliceOf(o.ToStruct())
+}
 func (o outputFields) String() string {
 	bff, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
