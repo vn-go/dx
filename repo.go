@@ -266,6 +266,7 @@ func (db *DB) ScanRowToStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, e
 	}
 	return nil, nil
 }
+
 func (db *DB) FindFirst(fromModel any, selector, conditional string, args ...any) (any, error) {
 	typ := reflect.TypeOf(fromModel)
 	if typ.Kind() == reflect.Ptr {
