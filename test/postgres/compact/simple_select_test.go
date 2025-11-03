@@ -36,7 +36,7 @@ func TestQuery(t *testing.T) {
 	}
 	defer db.Close()
 	r := db.QueryModel(tModels.User{}).RightJoin(tModels.Department{}, "user.departmentId=department.id").Select(
-		"department.id",
+		"user()",
 	)
 	r.Limit(10)
 	r.Offset(20)

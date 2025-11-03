@@ -39,11 +39,15 @@ func (s *smarty) selectors(selectStm *sqlparser.Select, fieldAliasMap map[string
 			} else if aliasNode, ok := node.(*sqlparser.AliasedExpr); ok {
 				if aliasNode.As.IsEmpty() { // means function name is table name
 					if _, ok := keywordFuncMap[fn.Name.Lowered()]; !ok {
-						for _, x := range fn.Exprs {
-							nodeWithTable := tableApplier.resolve(x, fn.Name.String())
-							strExpr := s.ToText(nodeWithTable)
+						if len(fn.Exprs) > 0 {
+							for _, x := range fn.Exprs {
+								nodeWithTable := tableApplier.resolve(x, fn.Name.String())
+								strExpr := s.ToText(nodeWithTable)
 
-							items = append(items, strExpr)
+								items = append(items, strExpr)
+							}
+						} else {
+							items = append(items, fn.Name.String()+".*")
 						}
 						continue
 					}

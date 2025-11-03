@@ -87,6 +87,11 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					Expr:  injector.dialect.Quote(aliasTable, col.Name),
 					Alias: col.Name,
 				}
+				selectedExprsReverse[strings.ToLower(col.Field.Name)] = &dictionaryField{
+					Expr:  injector.dialect.Quote(aliasTable, col.Name),
+					Alias: col.Name,
+				}
+
 			}
 		} else {
 			return nil, newCompilerError(ERR_DATASET_NOT_FOUND, "dataset %s not found", expr.TableName.Name.String())

@@ -172,7 +172,7 @@ func (q *queryObject) Analize() (*sql.SmartSqlParser, error) {
 	}
 	args = append(args, q.sourceArgs...)
 	if len(q.selectors) > 0 {
-		dslItems = append(dslItems, fmt.Sprintf("select(%s)", strings.Join(q.selectors, ",")))
+		dslItems = append(dslItems, strings.Join(q.selectors, ","))
 		args = append(args, q.selectorsArgs...)
 	}
 
