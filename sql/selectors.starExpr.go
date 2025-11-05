@@ -52,9 +52,12 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 							EntityFieldName: col.Field.Name,
 						}
 					}
-
+					outputAlias := col.Field.Name
+					if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alia{
+						outputAlias = fmt.Sprintf("%s_%s", x.EntityType.Name(), col.Field.Name)
+					}
 					outputFields = append(outputFields, outputField{
-						Name:         col.Field.Name,
+						Name:         outputAlias,
 						IsCalculated: false,
 						FieldType:    internal.Helper.ToNullableType(col.Field.Type),
 						DbType:       internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
