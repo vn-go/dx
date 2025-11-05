@@ -1,6 +1,7 @@
 package dx
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -324,4 +325,136 @@ func (db *DB) Find(fromModel any, selector, conditional string, args ...any) (an
 	}
 	return db.ScanRowsToArrayStruct(rows, returnType)
 
+}
+
+type dataSet struct {
+	source        string
+	sourceArgs    []any
+	filter        string
+	filterArgs    []any
+	orders        []string
+	orderArgs     []any
+	limit         *uint64
+	offset        *uint64
+	selectors     []string
+	selectorsArgs []any
+	ctx           context.Context
+	db            *DB
+}
+
+func (db *DB) Dataset() *dataSet {
+	return &dataSet{
+		db: db,
+	}
+}
+func (db *DB) DatasetWithContext(ctx context.Context) *dataSet {
+	return &dataSet{
+		db:  db,
+		ctx: ctx,
+	}
+}
+func (ds *dataSet) From(source string, args ...any) *dataSet {
+	ds.source = source
+	ds.sourceArgs = args
+	return ds
+}
+func (ds *dataSet) Where(filter string, args ...any) *dataSet {
+	ds.filter = filter
+	ds.filterArgs = args
+	return ds
+}
+func (ds *dataSet) Sort(orders ...string) *dataSet {
+	ds.orders = orders
+	return ds
+}
+func (ds *dataSet) SortDesc(orders ...string) *dataSet {
+	for _, order := range orders {
+		ds.orders = append(ds.orders, order+" desc")
+	}
+	return ds
+}
+func (ds *dataSet) Limit(limit uint64) *dataSet {
+	ds.limit = &limit
+	return ds
+}
+func (ds *dataSet) Offset(offset uint64) *dataSet {
+	ds.offset = &offset
+	return ds
+}
+func (ds *dataSet) Select(fields string, args ...any) *dataSet {
+	ds.selectors = append(ds.selectors, fields)
+	ds.selectorsArgs = append(ds.selectorsArgs, args...)
+	return ds
+}
+func (ds *dataSet) Analize() (*sql.SmartSqlParser, error) {
+	args := []any{}
+	dslItems := []string{
+		fmt.Sprintf("from(%s)", ds.source),
+	}
+	args = append(args, ds.sourceArgs...)
+	if len(ds.selectors) > 0 {
+		dslItems = append(dslItems, strings.Join(ds.selectors, ","))
+		args = append(args, ds.selectorsArgs...)
+	}
+
+	var strFilter string
+	if ds.filter != "" {
+		strFilter = fmt.Sprintf("where(%s)", ds.filter)
+		dslItems = append(dslItems, strFilter)
+		args = append(args, ds.filterArgs...)
+	}
+	var strOrders string
+	if len(ds.orders) > 0 {
+		strOrders = fmt.Sprintf("sort(%s)", strings.Join(ds.orders, ","))
+		dslItems = append(dslItems, strOrders)
+		args = append(args, ds.orderArgs...)
+	}
+	var strLimit string
+	if ds.limit != nil {
+		strLimit = "take(?)"
+		dslItems = append(dslItems, strLimit)
+		args = append(args, *ds.limit)
+	}
+	var strOffset string
+	if ds.offset != nil {
+		strOffset = "skip(?)"
+		dslItems = append(dslItems, strOffset)
+		args = append(args, *ds.offset)
+	}
+
+	dsl := strings.Join(dslItems, ",")
+	return ds.db.Smart(dsl, args...)
+
+}
+func (ds *dataSet) ToArray() (any, error) {
+	sql, err := ds.Analize()
+	if err != nil {
+		return nil, err
+	}
+	if Options.ShowSql {
+		fmt.Println("-------------------")
+		fmt.Println(sql.Query)
+		fmt.Println("-------------------")
+	}
+	rows, err := ds.db.Query(sql.Query, sql.Args...)
+	if err != nil {
+		return nil, err
+	}
+	return ds.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
+}
+func (ds *dataSet) First() (any, error) {
+	sql, err := ds.Analize()
+	if err != nil {
+		return nil, err
+	}
+	if Options.ShowSql {
+		fmt.Println("-------------------")
+		fmt.Println(sql.Query)
+		fmt.Println("-------------------")
+	}
+	rows, err := ds.db.Query(sql.Query, sql.Args...)
+	if err != nil {
+		return nil, err
+	}
+	return ds.db.ScanRowToStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
 }
