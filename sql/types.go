@@ -338,8 +338,7 @@ type injector struct {
 	fields     refFields
 	textParams []string
 
-	args       arguments
-	numoFTable int
+	args arguments
 }
 
 /*

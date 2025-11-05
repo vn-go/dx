@@ -77,7 +77,12 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 		}
 	} else {
 		if ent, ok := injector.dict.entities[strings.ToLower(expr.TableName.Name.String())]; ok {
-			aliasTable := "T1"
+			aliasTable := ""
+			if fx, ok := injector.dict.tableAlias[strings.ToLower(ent.EntityType.Name())]; ok {
+				aliasTable = fx
+			} else {
+				aliasTable = ent.EntityType.Name()
+			}
 			for _, col := range ent.Cols {
 				strSelectItems = append(strSelectItems, injector.dialect.Quote(aliasTable, col.Name)+" "+injector.dialect.Quote(col.Field.Name))
 				refFieldKey := strings.ToLower(fmt.Sprintf("%s.%s", ent.EntityType.Name(), col.Field.Name))
