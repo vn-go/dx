@@ -149,6 +149,8 @@ func (o *outputFields) ToStructNoCache() reflect.Type {
 		fieldType := f.FieldType
 		if fieldType == nil {
 			fieldType = reflect.TypeOf((*interface{})(nil)).Elem() // interface{}
+		} else if fieldType.Kind() != reflect.Ptr {
+			fieldType = reflect.PointerTo(fieldType)
 		}
 
 		fields = append(fields, reflect.StructField{
