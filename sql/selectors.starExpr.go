@@ -54,9 +54,10 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					}
 
 					outputFields = append(outputFields, outputField{
-						Name:         aliasField,
+						Name:         col.Field.Name,
 						IsCalculated: false,
 						FieldType:    internal.Helper.ToNullableType(col.Field.Type),
+						DbType:       internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
 					})
 					selectedExprsReverse[strings.ToLower(aliasKey)] = &dictionaryField{
 						Expr:  injector.dialect.Quote(aliasTable, col.Name),

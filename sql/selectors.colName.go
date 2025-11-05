@@ -74,7 +74,15 @@ func (s selectors) colName(t *sqlparser.ColName, injector *injector, cmpTyp CMP_
 						break
 					}
 				} else {
-					return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s'", t.Name.String())
+					if len(injector.dict.entities) > 1 {
+						return nil, newCompilerError(ERR_AMBIGUOUS_FIELD_NAME, "'%s'", t.Name.String())
+					} else {
+						for _, v := range injector.dict.entities {
+							alias = v.EntityType.Name()
+							break
+						}
+					}
+
 				}
 
 			}
