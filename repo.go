@@ -233,7 +233,10 @@ func (db *DB) ScanRowsToArrayStruct(rows *sqlDB.Rows, returnType reflect.Type) (
 		if err != nil {
 			return nil, err
 		}
-		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(item))
+		if item != nil {
+			sliceValue = reflect.Append(sliceValue, reflect.ValueOf(item))
+		}
+
 	}
 
 	// Trả về slice interface{}
@@ -248,24 +251,20 @@ func (db *DB) ScanRowToStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, e
 
 	v := reflect.ValueOf(dest).Elem()
 	fields := make([]any, len(cols))
-	defer rows.Close()
-	if rows.Next() {
-		for i, col := range cols {
-			f := v.FieldByNameFunc(func(name string) bool {
-				return strings.EqualFold(name, col)
-			})
-			if f.IsValid() && f.CanSet() {
-				fields[i] = f.Addr().Interface()
-			} else {
-				var dummy any
-				fields[i] = &dummy
-			}
+	for i, col := range cols {
+		f := v.FieldByNameFunc(func(name string) bool {
+			return strings.EqualFold(name, col)
+		})
+		if f.IsValid() && f.CanSet() {
+			fields[i] = f.Addr().Interface()
+		} else {
+			var dummy any
+			fields[i] = &dummy
 		}
-
-		err = rows.Scan(fields...)
-		return dest, err
 	}
-	return nil, nil
+
+	err = rows.Scan(fields...)
+	return dest, err
 }
 
 func (db *DB) FindFirst(fromModel any, selector, conditional string, args ...any) (any, error) {
@@ -456,5 +455,9 @@ func (ds *dataSet) First() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ds.db.ScanRowToStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
+	defer rows.Close()
+	for rows.Next() {
+		return ds.db.ScanRowToStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
+	}
+	return nil, nil
 }
