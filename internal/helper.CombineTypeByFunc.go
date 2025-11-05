@@ -18,20 +18,21 @@ func SQLFuncSumReturnType(argTypes []reflect.Type) reflect.Type {
 	}
 	t := unwrapType(argTypes[0])
 
+	// Nếu là sql.NullInt64 hoặc tương tự -> trả về type Go cơ bản
 	switch {
 	case t.AssignableTo(reflect.TypeOf(sql.NullInt64{})):
-		return reflect.TypeOf(sql.NullInt64{})
+		return reflect.TypeOf(int64(0))
 	case t.AssignableTo(reflect.TypeOf(sql.NullFloat64{})):
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	}
 
 	switch t.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return reflect.TypeOf(sql.NullInt64{})
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return reflect.TypeOf(sql.NullInt64{})
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		// SUM của số nguyên có thể overflow, nên thường trả về int64
+		return reflect.TypeOf(int64(0))
 	case reflect.Float32, reflect.Float64:
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	default:
 		return nil
 	}
@@ -45,17 +46,17 @@ func SQLFuncAvgReturnType(argTypes []reflect.Type) reflect.Type {
 	}
 	t := unwrapType(argTypes[0])
 
+	// Nếu là sql.NullFloat64 hoặc kiểu float -> AVG luôn trả float64
 	switch {
 	case t.AssignableTo(reflect.TypeOf(sql.NullFloat64{})):
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	}
 
-	// AVG luôn trả về float64 hoặc sql.NullFloat64
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64:
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	default:
 		return nil
 	}
@@ -71,37 +72,37 @@ func SQLFuncMinMaxReturnType(argTypes []reflect.Type) reflect.Type {
 
 	switch {
 	case t.AssignableTo(reflect.TypeOf(sql.NullInt64{})):
-		return reflect.TypeOf(sql.NullInt64{})
+		return reflect.TypeOf(int64(0))
 	case t.AssignableTo(reflect.TypeOf(sql.NullFloat64{})):
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	case t.AssignableTo(reflect.TypeOf(sql.NullString{})):
-		return reflect.TypeOf(sql.NullString{})
+		return reflect.TypeOf("")
 	case t.AssignableTo(reflect.TypeOf(sql.NullTime{})):
-		return reflect.TypeOf(sql.NullTime{})
+		return reflect.TypeOf(time.Time{})
 	}
 
 	switch t.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return reflect.TypeOf(sql.NullInt64{})
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return reflect.TypeOf(sql.NullInt64{})
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return reflect.TypeOf(int64(0))
 	case reflect.Float32, reflect.Float64:
-		return reflect.TypeOf(sql.NullFloat64{})
+		return reflect.TypeOf(float64(0))
 	case reflect.String:
-		return reflect.TypeOf(sql.NullString{})
+		return reflect.TypeOf("")
 	case reflect.Struct:
 		if t.AssignableTo(reflect.TypeOf(time.Time{})) {
-			return reflect.TypeOf(sql.NullTime{})
+			return reflect.TypeOf(time.Time{})
 		}
 	}
+
 	return nil
 }
 
 // --- COUNT ----------------------------------------------------
 
 func SQLFuncCountReturnType(_ []reflect.Type) reflect.Type {
-	// COUNT luôn trả về số nguyên
-	return reflect.TypeOf(sql.NullInt64{})
+	// COUNT trong SQL luôn trả về số nguyên (int64)
+	return reflect.TypeOf(int64(0))
 }
 
 // --- Helper ---------------------------------------------------
