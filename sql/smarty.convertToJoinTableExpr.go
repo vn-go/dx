@@ -151,7 +151,13 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		if n, ok := subSetInfoList[strings.ToLower(aliasLeft)]; ok {
 			strLeft = "(" + n.query + ") " + sqlparser.Backtick(aliasLeft)
 		} else {
-			strLeft = aliasLeft + " " + sqlparser.Backtick(strLeft)
+			if strings.EqualFold(aliasLeft, strLeft) {
+				strLeft = aliasLeft
+			} else {
+
+				strLeft = aliasLeft + " " + sqlparser.Backtick(strLeft)
+			}
+
 		}
 
 		tableHasUsed[aliasLeft] = true
@@ -164,7 +170,13 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		if n, ok := subSetInfoList[strings.ToLower(aliasRight)]; ok {
 			strRight = "(" + n.query + ") " + sqlparser.Backtick(aliasRight)
 		} else {
-			strRight = aliasRight + " " + sqlparser.Backtick(strRight)
+			if strings.EqualFold(aliasRight, strRight) {
+				strRight = aliasRight
+			} else {
+
+				strRight = aliasRight + " " + sqlparser.Backtick(strRight)
+			}
+
 		}
 
 		tableHasUsed[aliasRight] = true
@@ -189,7 +201,11 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 			if n, ok := subSetInfoList[strings.ToLower(aliasTable)]; ok {
 				nextTable = "(" + n.query + ") " + sqlparser.Backtick(aliasTable)
 			} else {
-				nextTable = aliasTable + " " + sqlparser.Backtick(nextTable)
+				if strings.EqualFold(aliasTable, nextTable) {
+					nextTable = aliasTable
+				} else {
+					nextTable = aliasTable + " " + sqlparser.Backtick(nextTable)
+				}
 			}
 			tableHasUsed[aliasTable] = true
 		} else if subset, ok := subSetInfoList[strings.ToLower(nextTable)]; ok {
