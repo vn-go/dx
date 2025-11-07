@@ -227,5 +227,8 @@ func (q *dynamicQuery) ToItemWithContext(ctx context.Context, db *DB) (any, erro
 }
 
 func NewDynamicQuery(selector string, args ...interface{}) *dynamicQuery {
-	return acquireDynamicQuery()
+	ret := acquireDynamicQuery()
+	ret.selector = selector
+	ret.selectorArgs = args
+	return ret
 }
