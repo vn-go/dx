@@ -10,6 +10,7 @@ import (
 	"github.com/vn-go/dx/sql"
 )
 
+// -------------------
 type dslQuery[TResult any] struct {
 	selector     string
 	selectorArgs []interface{}
@@ -23,6 +24,65 @@ type dslQuery[TResult any] struct {
 	filterArgs   []interface{}
 }
 
+// reset: trả về trạng thái "mới" trước khi Put vào pool
+func (q *dslQuery[TResult]) reset() {
+	q.selector = ""
+	if q.selectorArgs != nil {
+		// giữ slice but set len=0 để reuse backing array
+		q.selectorArgs = q.selectorArgs[:0]
+	}
+	q.source = ""
+	if q.sourceArgs != nil {
+		q.sourceArgs = q.sourceArgs[:0]
+	}
+	q.skip = nil
+	q.take = nil
+	q.orderBy = ""
+	if q.orderByArgs != nil {
+		q.orderByArgs = q.orderByArgs[:0]
+	}
+	q.filter = ""
+	if q.filterArgs != nil {
+		q.filterArgs = q.filterArgs[:0]
+	}
+}
+
+type initNewDSLQueryPool struct {
+	once sync.Once
+	pool *sync.Pool
+}
+
+var initNewDSLQueryPoolSyncMap sync.Map
+
+// newDSLQueryPool returns a singleton *sync.Pool per TResult type.
+func newOrGetDSLQueryPool[TResult any]() *sync.Pool {
+	key := reflect.TypeFor[TResult]() // or reflect.TypeOf((*TResult)(nil)).Elem()
+	if key.Kind() == reflect.Ptr {
+		key = key.Elem()
+	}
+
+	actual, _ := initNewDSLQueryPoolSyncMap.LoadOrStore(key, &initNewDSLQueryPool{})
+	entry := actual.(*initNewDSLQueryPool)
+
+	entry.once.Do(func() {
+		entry.pool = &sync.Pool{
+			New: func() interface{} {
+				return &dslQuery[TResult]{}
+			},
+		}
+	})
+
+	return entry.pool
+}
+
+// ReleaseDSLQuery: reset rồi trả object vào pool
+func releaseDSLQuery[TResult any](p *sync.Pool, q *dslQuery[TResult]) {
+	if q == nil {
+		return
+	}
+	q.reset()
+	p.Put(q)
+}
 func (q *dslQuery[TResult]) Join(source string, args ...interface{}) *dslQuery[TResult] {
 	q.source = source
 	q.sourceArgs = args
@@ -145,23 +205,34 @@ func (q *dslQuery[TResult]) buildForGetFirst(db *DB) (query *sql.SmartSqlParser,
 	return query, err
 }
 func (q *dslQuery[TResult]) ToArray(db *DB) ([]TResult, error) {
+	// Đảm bảo luôn trả lại object về pool
+	defer releaseDSLQuery(newOrGetDSLQueryPool[TResult](), q)
+
+	// Build query
 	query, err := q.Build(db)
 	if err != nil {
 		return nil, err
 	}
+
+	// Prepare ị slice of result
 	var ret []TResult
 	sliceVal := reflect.ValueOf(&ret).Elem()
+
+	// Thực thi query
 	rows, err := db.Query(query.Query, query.Args...)
 	if err != nil {
 		return nil, err
 	}
-	cols, fectInfo := q.getColumnsName()
 	defer rows.Close()
-	fetchUnsafe(rows, sliceVal.Addr().Interface(), cols, fectInfo)
-	return ret, nil
 
+	// Lấy thông tin cột và ánh xạ dữ liệu
+	cols, fetchInfo := q.getColumnsName()
+	fetchUnsafe(rows, sliceVal.Addr().Interface(), cols, fetchInfo)
+
+	return ret, nil
 }
 func (q *dslQuery[TResult]) ToItem(db *DB) (*TResult, error) {
+	defer releaseDSLQuery(newOrGetDSLQueryPool[TResult](), q)
 	query, err := q.buildForGetFirst(db)
 	if err != nil {
 		return nil, err
@@ -189,7 +260,37 @@ func (q *dslQuery[TResult]) ToItem(db *DB) (*TResult, error) {
 	return &ret[0], nil
 
 }
+func (q *dslQuery[TResult]) ToItemWithContext(ctx context.Context, db *DB) (*TResult, error) {
+	defer releaseDSLQuery(newOrGetDSLQueryPool[TResult](), q)
+	query, err := q.buildForGetFirst(db)
+	if err != nil {
+		return nil, err
+	}
+	var ret []TResult
+	sliceVal := reflect.ValueOf(&ret).Elem()
+	rows, err := db.QueryContext(ctx, query.Query, query.Args...)
+	if err != nil {
+		return nil, err
+	}
+
+	_, fectInfo := q.getColumnsName()
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	err = fetchUnsafe(rows, sliceVal.Addr().Interface(), cols, fectInfo)
+	if err != nil {
+		return nil, err
+	}
+	if len(ret) == 0 {
+		return nil, nil
+	}
+	return &ret[0], nil
+
+}
 func (q *dslQuery[TResult]) ToArrayWithContext(ctx context.Context, db *DB) ([]TResult, error) {
+	defer releaseDSLQuery(newOrGetDSLQueryPool[TResult](), q)
 	query, err := q.Build(db)
 	if err != nil {
 		return nil, err
@@ -207,9 +308,24 @@ func (q *dslQuery[TResult]) ToArrayWithContext(ctx context.Context, db *DB) ([]T
 
 }
 func NewQuery[TResult any](selector string, args ...interface{}) *dslQuery[TResult] {
-	return &dslQuery[TResult]{
-		selector:     selector,
-		selectorArgs: args,
-	}
 
+	// get correspoding pool for TResult (init if not exist)
+	pool := newOrGetDSLQueryPool[TResult]()
+
+	// get object from pool
+	q := pool.Get().(*dslQuery[TResult])
+
+	// Re-init (looks like constructor)
+	q.selector = selector
+	q.selectorArgs = append(q.selectorArgs[:0], args...) // giữ lại backing array để tái sử dụng
+	q.source = ""
+	q.sourceArgs = q.sourceArgs[:0]
+	q.skip = nil
+	q.take = nil
+	q.orderBy = ""
+	q.orderByArgs = q.orderByArgs[:0]
+	q.filter = ""
+	q.filterArgs = q.filterArgs[:0]
+
+	return q
 }
