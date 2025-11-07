@@ -30,6 +30,21 @@ func getStructMeta(t reflect.Type) *structMeta {
 	metaCache.Store(t, m)
 	return m
 }
+func (db *DB) DslToArray(dslQuery string, args ...interface{}) (any, error) {
+	// Compile DSL → SQL
+	query, err := db.Smart(dslQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query(query.Query, query.Args...)
+	if err != nil {
+		fmt.Println(query.Query)
+		return nil, err
+	}
+
+	return db.ScanRowsToArrayStruct(rows, query.OutputFields.ToStruct(query.OutputFields.ToHas256Key()))
+}
 func (db *DB) DslQuery(result any, dslQuery string, args ...interface{}) error {
 	rv := reflect.ValueOf(result)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Slice {
