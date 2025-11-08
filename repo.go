@@ -238,9 +238,24 @@ func (db *DB) ScanRowsToArrayStruct(rows *sqlDB.Rows, returnType reflect.Type) (
 		}
 
 	}
-
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	// Trả về slice interface{}
 	return sliceValue.Interface(), nil
+}
+func (db *DB) ExecToArrayByType(typ reflect.Type, query string, args ...any) (any, error) {
+	if Options.ShowSql {
+		fmt.Println("-------")
+		fmt.Println(query)
+		fmt.Println("------")
+	}
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return db.ScanRowsToArrayStruct(rows, typ)
+
 }
 func (db *DB) ScanRowToStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
 	dest := reflect.New(returnType).Interface()
@@ -294,8 +309,15 @@ func (db *DB) FindFirst(fromModel any, selector, conditional string, args ...any
 	if err != nil {
 		return nil, err
 	}
-
-	return db.ScanRowToStruct(r, returnType)
+	defer r.Close()
+	if r.Next() {
+		ret, err := db.ScanRowToStruct(r, returnType)
+		if err != nil {
+			return nil, err
+		}
+		return ret, nil
+	}
+	return nil, r.Err()
 }
 func (db *DB) Find(fromModel any, selector, conditional string, args ...any) (any, error) {
 	typ := reflect.TypeOf(fromModel)
@@ -459,5 +481,5 @@ func (ds *dataSet) First() (any, error) {
 	for rows.Next() {
 		return ds.db.ScanRowToStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
 	}
-	return nil, nil
+	return nil, rows.Err()
 }

@@ -13,74 +13,67 @@ type param struct {
 func (p *param) sqlVal(expr *sqlparser.SQLVal, injector *injector) (*compilerResult, error) {
 	switch expr.Type {
 	case sqlparser.IntVal:
-		val, err := internal.Helper.ToIntFormBytes(expr.Val)
+		val, err := internal.Helper.ToIntFromBytes(expr.Val)
 		if err != nil {
 			return nil, err // invalid argument for dynamic param function
 		}
-		injector.args = append(injector.args, argument{
-			val: val,
-		})
+		newArgs := argument{
+			val:        val,
+			isConstant: true,
+		}
+		injector.args = append(injector.args, newArgs)
+		newArgs.index = len(injector.args)
 		return &compilerResult{
 			OriginalContent: string(expr.Val),
 			Content:         injector.dialect.ToParam(len(injector.args), sqlparser.IntVal),
 			Args: arguments{
-				argument{
-					index: len(injector.args),
-					val:   val,
-				},
+				newArgs,
 			},
 			IsExpression: true,
 		}, nil
 	case sqlparser.BitVal:
 		val := internal.Helper.ToBoolFromBytes(expr.Val)
-
-		injector.args = append(injector.args, argument{
-			val: val,
-		})
+		newArg := argument{
+			val:        val,
+			isConstant: true,
+		}
+		injector.args = append(injector.args, newArg)
+		newArg.index = len(injector.args)
 		return &compilerResult{
 			OriginalContent: string(expr.Val),
 			Content:         injector.dialect.ToParam(len(injector.args), sqlparser.IntVal),
 			Args: arguments{
-				argument{
-					index: len(injector.args),
-					val:   val,
-				},
+				newArg,
 			},
 			IsExpression: true,
 		}, nil
 	case sqlparser.FloatVal:
 		val := internal.Helper.ToBoolFromBytes(expr.Val)
-
-		injector.args = append(injector.args, argument{
-			val: val,
-		})
+		newArg := argument{
+			val:        val,
+			isConstant: true,
+		}
+		injector.args = append(injector.args, newArg)
+		newArg.index = len(injector.args)
 		return &compilerResult{
 			OriginalContent: string(expr.Val),
 			Content:         injector.dialect.ToParam(len(injector.args), sqlparser.IntVal),
-			Args: arguments{
-				argument{
-					index: len(injector.args),
-					val:   val,
-				},
-			},
-			IsExpression: true,
+			Args:            arguments{newArg},
+			IsExpression:    true,
 		}, nil
 	case sqlparser.StrVal:
 		val := string(expr.Val)
-
-		injector.args = append(injector.args, argument{
-			val: val,
-		})
+		newArg := argument{
+			val:        val,
+			isConstant: true,
+		}
+		injector.args = append(injector.args, newArg)
+		newArg.index = len(injector.args)
 		return &compilerResult{
 			OriginalContent: val,
 			Content:         injector.dialect.ToParam(len(injector.args), sqlparser.IntVal),
-			Args: arguments{
-				argument{
-					index: len(injector.args),
-					val:   val,
-				},
-			},
-			IsExpression: true,
+			Args:            arguments{newArg},
+			IsExpression:    true,
 		}, nil
 	default:
 		panic(fmt.Sprintf("unsupported type: %d. See param.sqlVal, file %s", expr.Type, `sql\params.go`))
@@ -104,32 +97,39 @@ func (p *param) funcExpr(x *sqlparser.FuncExpr, injector *injector) (*compilerRe
 	if x.Name.String() == GET_PARAMS_FUNC { // this is dynamic param sent by calling compiled function
 
 		val := p.extract(x.Exprs[0])
-		indexOfArg, err := internal.Helper.ToIntFormBytes(*&val.Val)
+		indexOfArg, err := internal.Helper.ToIntFromBytes(val.Val)
 		if err != nil {
 			return nil, err // invalid argument for dynamic param function
 		}
-		injector.args = append(injector.args, argument{
-			index: indexOfArg,
-		})
+		newArgs := argument{
+			index:      indexOfArg,
+			isConstant: false,
+		}
+		injector.args = append(injector.args, newArgs)
 		return &compilerResult{
 			OriginalContent: "?",
 			Content:         injector.dialect.ToParam(len(injector.args), -1), // -1 means dynamic param type
 			IsExpression:    true,
+			Args:            arguments{newArgs},
+			
 		}, nil
 	}
 	if x.Name.String() == internal.FnMarkSpecialTextArgs { // this is a function call to get current timestamp
 		val := p.extract(x.Exprs[0])
-		indexOfArg, err := internal.Helper.ToIntFormBytes(*&val.Val)
+		indexOfArg, err := internal.Helper.ToIntFromBytes(val.Val)
 		if err != nil {
 			return nil, err // invalid argument for dynamic param function
 		}
-		injector.args = append(injector.args, argument{
-			val: injector.textParams[indexOfArg],
-		})
+		newArgs := argument{
+			val:        injector.textParams[indexOfArg],
+			isConstant: true,
+		}
+		injector.args = append(injector.args, newArgs)
 		return &compilerResult{
 			OriginalContent: "?",
 			Content:         injector.dialect.ToParam(len(injector.args), -1), // -1 means dynamic param type
 			IsExpression:    true,
+			Args:            arguments{newArgs},
 		}, nil
 	}
 	panic(fmt.Sprintf("unsupported function: %s. see param.funcExpr, file %s", x.Name.String(), `sql\params.go`))

@@ -61,6 +61,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 						IsCalculated: false,
 						FieldType:    internal.Helper.ToNullableType(col.Field.Type),
 						DbType:       internal.Helper.GetSqlTypeFfromGoType(col.Field.Type),
+						Expression:   injector.dialect.Quote(aliasTable, col.Name),
 					})
 					selectedExprsReverse[strings.ToLower(aliasKey)] = &dictionaryField{
 						Expr:  injector.dialect.Quote(aliasTable, col.Name),
@@ -104,6 +105,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					Name:         col.Field.Name,
 					IsCalculated: false,
 					FieldType:    internal.Helper.ToNullableType(col.Field.Type),
+					Expression:   injector.dialect.Quote(aliasTable, col.Name),
 				})
 			}
 		} else {

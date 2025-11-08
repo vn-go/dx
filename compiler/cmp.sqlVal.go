@@ -21,7 +21,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		if cmpType == C_LIMIT || cmpType == C_OFFSET {
 			return string(expr.Val), nil
 		}
-		intVal, err := internal.Helper.ToIntFormBytes(expr.Val)
+		intVal, err := internal.Helper.ToIntFromBytes(expr.Val)
 		if err != nil {
 			return "", err
 		}
@@ -33,7 +33,7 @@ func (cmp *compiler) sqlVal(expr *sqlparser.SQLVal, cmpType COMPILER, args *inte
 		})
 		return cmp.dialect.ToParam(indexInSql, expr.Type), nil
 	case sqlparser.FloatVal:
-		floatVal, err := internal.Helper.ToFloatFormBytes(expr.Val)
+		floatVal, err := internal.Helper.ToFloatFromBytes(expr.Val)
 		if err != nil {
 			return "", err
 		}

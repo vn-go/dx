@@ -37,6 +37,7 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 	}
 	originItems := []string{}
 	argsTypes := []reflect.Type{}
+	newArgs := arguments{}
 	for _, arg := range expr.Exprs {
 		argResult, err := e.resolve(arg, injector, cmpType, selectedExprsReverse)
 		if err != nil {
@@ -49,6 +50,7 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 		ret.nonAggregateFields.merge(argResult.nonAggregateFields)
 		ret.Fields.merge(argResult.Fields) // important: we need to get all field for data acess permission check
 		ret.selectedExprsReverse.merge(argResult.selectedExprsReverse)
+		newArgs = append(newArgs, argResult.Args...)
 	}
 	content, err := injector.dialect.SqlFunction(&delegator)
 	if err != nil {
@@ -68,6 +70,7 @@ func (e *expCmp) funcExpr(expr *sqlparser.FuncExpr, injector *injector, cmpType 
 	ret.IsExpression = true
 	ret.ResultType = internal.Helper.CombineTypeByFunc(fName, argsTypes)
 	ret.ResultDbType = internal.Helper.CombineDbTypeByFunc(fName, argsTypes)
+	ret.Args = newArgs
 	return ret, nil
 	//panic(fmt.Sprintf("unhandled node type %s. see  expCmp.funcExpr, file %s", expr.Name.String(), `sql\where.comparisonExpr.go`))
 }

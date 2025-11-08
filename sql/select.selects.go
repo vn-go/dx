@@ -18,12 +18,25 @@ func sortStrings(items []string) []string {
 	return sorted
 }
 
-// select.selects.go
-func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+type getSelectStatementResult struct {
+	selectStatement types.SelectStatement
+	compilerResult  compilerResult
+	args            argsBoard
+}
+
+func (s selectors) getSelectStatement(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*getSelectStatementResult, error) {
 	ret := compilerResult{
 		OutputFields: []outputField{},
 	}
 	selectStatement := types.SelectStatement{}
+	argsB := argsBoard{
+		Source:   arguments{},
+		Selector: arguments{},
+		Filter:   arguments{},
+		Sort:     arguments{},
+		Having:   arguments{},
+		GroupBy:  arguments{},
+	}
 
 	r, err := froms.resolve(expr.From, injector)
 	if err != nil {
@@ -60,8 +73,10 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 		ret.selectedExprsReverse = internal.UnionMap(ret.selectedExprsReverse, r.selectedExprsReverse)
 		ret.IsInAggregateFunc = ret.IsInAggregateFunc || r.IsInAggregateFunc
 		ret.OutputFields = append(ret.OutputFields, r.OutputFields...)
+		argsB.Selector = append(argsB.Selector, r.Args...)
 	}
 	selectStatement.Selector = strings.Join(itemSelectors, ", ")
+
 	//goupByItems := []string{}
 	//checkGroupBy := map[string]bool{}
 	havingItems := []string{}
@@ -153,6 +168,7 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	}
 	if expr.OrderBy != nil {
 		r, err := sort.resolveOrderBy(expr.OrderBy, injector, &ret.selectedExprsReverse)
+
 		if err != nil {
 			return nil, err
 		}
@@ -167,47 +183,18 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 			if err != nil {
 				return nil, err
 			}
-			// if val, ok := find[*sqlparser.SQLVal](expr.Limit.Offset); ok {
-			// 	indexOfOffsetInArgs, err := internal.Helper.ToIntFormBytes(val.Val)
-			// 	if err != nil {
-			// 		return nil, err
-			// 	}
-			// 	selectStatement.Offset = &types.SelectStatementArg{
-			// 		Content: offset.Content,
-			// 		Index:   indexOfOffsetInArgs - 1, // decrement 1 because the first argument is starta at 0 while sql parse use 1 for start index
-			// 	}
 
-			// } else {
-			// 	selectStatement.Offset = &types.SelectStatementArg{
-			// 		Content: offset.Content,
-			// 	}
-			// }
 			selectStatement.Offset = &types.SelectStatementArg{
 				Content: offset.Content,
 			}
-			// selectStatement.Limit = smartier.ToText(expr.Limit.Rowcount)
-			// ret.offset = smartier.ToText(expr.Limit.Offset)
+
 		}
 		if expr.Limit.Rowcount != nil {
 			limit, err := exp.resolve(expr.Limit.Rowcount, injector, CMP_SELECT, &ret.selectedExprsReverse)
 			if err != nil {
 				return nil, err
 			}
-			// if val, ok := find[*sqlparser.SQLVal](expr.Limit.Rowcount); ok {
-			// 	indexOfLimitInArgs, err := internal.Helper.ToIntFormBytes(val.Val)
-			// 	if err != nil {
-			// 		return nil, err
-			// 	}
-			// 	selectStatement.Limit = &types.SelectStatementArg{
-			// 		Content: limit.Content,
-			// 		Index:   indexOfLimitInArgs - 1, // decrement 1 because the first argument is starta at 0 while sql parse use 1 for start index
-			// 	}
 
-			// } else {
-			// 	selectStatement.Limit = &types.SelectStatementArg{
-			// 		Content: limit.Content,
-			// 	}
-			// }
 			selectStatement.Limit = &types.SelectStatementArg{
 				Content: limit.Content,
 			}
@@ -218,7 +205,20 @@ func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType C
 	ret.Content = injector.dialect.GetSelectStatement(selectStatement)
 	ret.Args = injector.args
 
-	return &ret, nil
+	return &getSelectStatementResult{
+		selectStatement: selectStatement,
+		compilerResult:  ret,
+		args:            argsB,
+	}, nil
+}
+
+// select.selects.go
+func (s selectors) selects(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*compilerResult, error) {
+	r, err := s.getSelectStatement(expr, injector, cmpType)
+	if err != nil {
+		return nil, err
+	}
+	return &r.compilerResult, nil
 }
 
 func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmpType CMP_TYP, selectedExprsReverse *dictionaryFields) (*compilerResult, error) {
@@ -285,6 +285,7 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 			IsInAggregateFunc:    r.IsInAggregateFunc,
 			Fields:               r.Fields,
 			OutputFields:         []outputField{},
+			Args:                 r.Args,
 		}
 
 		if !x.As.IsEmpty() {
@@ -292,12 +293,14 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 				Name:         x.As.String(),
 				IsCalculated: r.IsExpression,
 				FieldType:    r.ResultType,
+				Expression:   r.Content,
 			})
 		} else {
 			ret.OutputFields = append(ret.OutputFields, outputField{
 				Name:         aliasField,
 				IsCalculated: r.IsExpression,
 				FieldType:    r.ResultType,
+				Expression:   r.Content,
 			})
 
 		}

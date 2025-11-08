@@ -24,43 +24,49 @@ type simpleSql struct {
 	limit   simpleSqlWithArgs
 }
 type initSimpleCache struct {
-	val     string
-	reIndex []int
-	err     error
-	once    sync.Once
+	val        string
+	reIndex    []int
+	textParams []string
+	err        error
+	once       sync.Once
 }
 
 var initSimpleCacheMap sync.Map
 
 // return sql, index of offset in dynamic args, index of limit in dynamic args, error
-func (s *smarty) simpleCache(simpleQuery string) (string, []int, error) {
+func (s *smarty) simpleCache(simpleQuery string) (string, []int, []string, error) {
 	a, _ := initSimpleCacheMap.LoadOrStore(simpleQuery, &initSimpleCache{})
 	cache := a.(*initSimpleCache)
 	cache.once.Do(func() {
-		cache.val, cache.reIndex, cache.err = s.simple(simpleQuery)
+		cache.val, cache.reIndex, cache.textParams, cache.err = s.simple(simpleQuery)
 	})
-	return cache.val, cache.reIndex, cache.err
+	return cache.val, cache.reIndex, cache.textParams, cache.err
 }
 
 // return sql, index of offset in dynamic args, index of limit in dynamic args, error
-func (s *smarty) simple(simpleQuery string) (string, []int, error) {
+func (s *smarty) simple(simpleQuery string) (string, []int, []string, error) {
 	simpleQuery = internal.Helper.RemoveLineComments(simpleQuery)
+	simpleQuery, textParams := internal.Helper.InspectStringParam(simpleQuery)
 	str, err := internal.Helper.QuoteExpression2(simpleQuery)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	tk := sqlparser.NewStringTokenizer("select " + str)
 	stm, err := sqlparser.ParseNext(tk)
 
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	selectStm := stm.(*sqlparser.Select)
-	return s.compile(selectStm, map[string]subsetInfo{})
+	ret, reindex, err := s.compile(selectStm, map[string]subsetInfo{})
+	if err != nil {
+		return "", nil, nil, err
+	}
+	return ret, reindex, textParams, nil
 
 }
-func Compact(simpleQuery string) (string, []int, error) {
+func Compact(simpleQuery string) (string, []int, []string, error) {
 	return smartier.simple(simpleQuery)
 }
 

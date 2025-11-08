@@ -29,7 +29,7 @@ func (cmp *compilerFilterType) ResolveParams(dialect types.Dialect, strFilter st
 	}
 	switch n.Type {
 	case sqlparser.ValArg:
-		pIndex, err := internal.Helper.ToIntFormBytes(n.Val[2:])
+		pIndex, err := internal.Helper.ToIntFromBytes(n.Val[2:])
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
 		}
@@ -41,7 +41,7 @@ func (cmp *compilerFilterType) ResolveParams(dialect types.Dialect, strFilter st
 		}, nil
 
 	case sqlparser.FloatVal:
-		value, err := internal.Helper.ToFloatFormBytes(n.Val)
+		value, err := internal.Helper.ToFloatFromBytes(n.Val)
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
 		}
@@ -53,7 +53,7 @@ func (cmp *compilerFilterType) ResolveParams(dialect types.Dialect, strFilter st
 			IsConstant: true,
 		}, nil
 	case sqlparser.IntVal:
-		value, err := internal.Helper.ToIntFormBytes(n.Val)
+		value, err := internal.Helper.ToIntFromBytes(n.Val)
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("'%s' is invalid expression", strFilter))
 		}

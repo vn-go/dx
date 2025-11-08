@@ -382,6 +382,20 @@ type SelectStatement struct {
 	Offset   *SelectStatementArg
 	Limit    *SelectStatementArg
 }
+
+func (s SelectStatement) Clone() SelectStatement {
+	return SelectStatement{
+		Source:   s.Source,
+		Selector: s.Selector,
+		Filter:   s.Filter,
+		Sort:     s.Sort,
+		Having:   s.Having,
+		GroupBy:  s.GroupBy,
+		Offset:   s.Offset,
+		Limit:    s.Limit,
+	}
+}
+
 type CompilerError struct {
 	Message string
 	Args    []interface{}

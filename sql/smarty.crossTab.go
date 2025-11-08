@@ -55,7 +55,7 @@ func (f *crossTab) resolveFull(fnFor, fnSelect *sqlparser.FuncExpr, fieldAliasMa
 	if minValNode.Type != sqlparser.IntVal {
 		return "", newCompilerError(ERR_SYNTAX, "Invalid min value for 'for' function. Expr '%s' in '%s'", smartier.ToText(fnFor.Exprs[1]), smartier.ToText(fnFor))
 	}
-	minVal, err := internal.Helper.ToIntFormBytes(minValNode.Val)
+	minVal, err := internal.Helper.ToIntFromBytes(minValNode.Val)
 	if err != nil {
 		return "", newCompilerError(ERR_SYNTAX, "Invalid min value for 'for' function. Expr '%s' in '%s'", smartier.ToText(fnFor.Exprs[1]), smartier.ToText(fnFor))
 	}
@@ -66,7 +66,7 @@ func (f *crossTab) resolveFull(fnFor, fnSelect *sqlparser.FuncExpr, fieldAliasMa
 	if maxValNode.Type != sqlparser.IntVal {
 		return "", newCompilerError(ERR_SYNTAX, "Invalid max value for 'for' function. Expr '%s' in '%s'", smartier.ToText(fnFor.Exprs[2]), smartier.ToText(fnFor))
 	}
-	maxVal, err := internal.Helper.ToIntFormBytes(maxValNode.Val)
+	maxVal, err := internal.Helper.ToIntFromBytes(maxValNode.Val)
 	if err != nil {
 		return "", newCompilerError(ERR_SYNTAX, "Invalid max value for 'for' function. Expr '%s' in '%s'", smartier.ToText(fnFor.Exprs[2]), smartier.ToText(fnFor))
 	}

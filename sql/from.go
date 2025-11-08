@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sqlparser"
 )
@@ -74,6 +75,27 @@ func (f *from) selectStatement(sqlStm sqlparser.Statement, injector *injector, c
 		return selector.selects(expr, injector, cmpType)
 	case *sqlparser.Union:
 		return selector.union(expr, injector)
+
+	default:
+		panic(fmt.Sprintf("not support statement type: %T. see compiler.Resolve", sqlStm))
+
+	}
+}
+func (f *from) getSelectStatement(sqlStm sqlparser.Statement, injector *injector, cmpType CMP_TYP) (*getSelectStatementResult, error) {
+	switch expr := sqlStm.(type) {
+	case *sqlparser.Select:
+		return selector.getSelectStatement(expr, injector, cmpType)
+	case *sqlparser.Union:
+		ret, err := selector.union(expr, injector)
+		if err != nil {
+			return nil, err
+		}
+		return &getSelectStatementResult{
+			selectStatement: types.SelectStatement{
+				Source: ret.Content,
+			},
+			compilerResult: *ret,
+		}, nil
 
 	default:
 		panic(fmt.Sprintf("not support statement type: %T. see compiler.Resolve", sqlStm))

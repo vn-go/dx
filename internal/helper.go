@@ -567,7 +567,7 @@ func (c *helperType) ToInt(strV string) (int, error) {
 	// Return the parsed integer value and nil error
 	return i, nil
 }
-func (c *helperType) ToIntFormBytes(v []byte) (int, error) {
+func (c *helperType) ToIntFromBytes(v []byte) (int, error) {
 	// Convert the byte slice to string
 	strV := string(v)
 
@@ -600,7 +600,7 @@ func (c *helperType) ToFloat(strV string) (float64, error) {
 	// Return the parsed float64 value and nil error
 	return f, nil
 }
-func (c *helperType) ToFloatFormBytes(v []byte) (float64, error) {
+func (c *helperType) ToFloatFromBytes(v []byte) (float64, error) {
 	// Convert byte slice to string
 	strV := string(v)
 

@@ -31,7 +31,7 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 
 	switch x.Type {
 	case sqlparser.ValArg:
-		index, err := internal.Helper.ToIntFormBytes(x.Val[2:])
+		index, err := internal.Helper.ToIntFromBytes(x.Val[2:])
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("%s is invalid ", selector))
 		}
@@ -50,7 +50,7 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 			OriginalExpr:  "'" + value + "'",
 		}, nil
 	case sqlparser.IntVal:
-		value, err := internal.Helper.ToIntFormBytes(x.Val)
+		value, err := internal.Helper.ToIntFromBytes(x.Val)
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("%s is invalid ", selector))
 		}
@@ -61,7 +61,7 @@ func (cmp *cmpSelectorType) resolveValue(dialect types.Dialect, x *sqlparser.SQL
 			OriginalExpr:  string(x.Val),
 		}, nil
 	case sqlparser.FloatVal:
-		value, err := internal.Helper.ToFloatFormBytes(x.Val)
+		value, err := internal.Helper.ToFloatFromBytes(x.Val)
 		if err != nil {
 			return nil, NewCompilerError(fmt.Sprintf("%s is invalid ", selector))
 		}

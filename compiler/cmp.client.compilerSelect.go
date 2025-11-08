@@ -147,7 +147,7 @@ func (cmp *cmpSelectorType) resolve(dialect types.Dialect,
 	if x, ok := n.(*sqlparser.FuncExpr); ok {
 		if x.Name.String() == internal.FnMarkSpecialTextArgs && len(x.Exprs) == 1 {
 			n := x.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
-			index, err := internal.Helper.ToIntFormBytes(n.Val)
+			index, err := internal.Helper.ToIntFromBytes(n.Val)
 			if err != nil {
 				return nil, fmt.Errorf("%s is not int value", string(n.Val))
 			}

@@ -33,6 +33,7 @@ func (e *expCmp) binary(leftExpr sqlparser.Expr, rightExpr sqlparser.Expr, opera
 		IsInAggregateFunc:    left.IsInAggregateFunc || right.IsInAggregateFunc,
 		ResultType:           internal.Helper.CombineType(left.ResultType, right.ResultType, operator),
 		ResultDbType:         internal.Helper.CombineToDbTypeType(left.ResultType, right.ResultType, operator),
+		
 	}
 
 	return ret, nil

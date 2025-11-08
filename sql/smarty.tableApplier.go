@@ -83,6 +83,10 @@ func (t *tableApply) expr(expr sqlparser.SQLNode, table string) sqlparser.SQLNod
 	case *sqlparser.StarExpr:
 		n.TableName = t.expr(n.TableName, table).(sqlparser.TableName)
 		return n
+	case *sqlparser.ComparisonExpr:
+		n.Left = t.expr(n.Left, table).(sqlparser.Expr)
+		n.Right = t.expr(n.Right, table).(sqlparser.Expr)
+		return n
 	default:
 		panic(fmt.Sprintf("not implement %T. ref tableApply.expr file%s ", n, `sql\smarty.smarty.tableApplier.go`))
 	}

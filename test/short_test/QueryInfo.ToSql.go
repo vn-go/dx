@@ -310,7 +310,7 @@ func (q *QueryInfo) resolveExpr(n sqlparser.Expr, resolver resolveType) (*expr, 
 			node := n.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
 
 			indexOfStaticTextArg := -1
-			indexOfStaticTextArg, err := internal.Helper.ToIntFormBytes(node.Val)
+			indexOfStaticTextArg, err := internal.Helper.ToIntFromBytes(node.Val)
 			if err != nil {
 				return nil, err
 			}
@@ -453,7 +453,7 @@ func (q *QueryInfo) resolveSQLVal(n *sqlparser.SQLVal, resolver resolveType) (*e
 		}, nil
 	case sqlparser.FloatVal:
 
-		val, err := internal.Helper.ToFloatFormBytes(n.Val)
+		val, err := internal.Helper.ToFloatFromBytes(n.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -472,7 +472,7 @@ func (q *QueryInfo) resolveSQLVal(n *sqlparser.SQLVal, resolver resolveType) (*e
 		}, nil
 	case sqlparser.IntVal:
 
-		val, err := internal.Helper.ToIntFormBytes(n.Val)
+		val, err := internal.Helper.ToIntFromBytes(n.Val)
 
 		if err != nil {
 			return nil, err
@@ -492,7 +492,7 @@ func (q *QueryInfo) resolveSQLVal(n *sqlparser.SQLVal, resolver resolveType) (*e
 		}, nil
 	case sqlparser.StrVal:
 
-		val, err := internal.Helper.ToIntFormBytes(n.Val)
+		val, err := internal.Helper.ToIntFromBytes(n.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -510,7 +510,7 @@ func (q *QueryInfo) resolveSQLVal(n *sqlparser.SQLVal, resolver resolveType) (*e
 			SqlNodType: n.Type,
 		}, nil
 	case sqlparser.ValArg:
-		indexOfDynamicArgs, err := internal.Helper.ToIntFormBytes(n.Val[2:])
+		indexOfDynamicArgs, err := internal.Helper.ToIntFromBytes(n.Val[2:])
 		if err != nil {
 			return nil, err
 		}

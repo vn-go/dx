@@ -260,7 +260,7 @@ func (cmp *compilerFilterType) Resolve(dialect types.Dialect, strFilter string, 
 	case *sqlparser.FuncExpr:
 		if x.Name.String() == internal.FnMarkSpecialTextArgs {
 			n := x.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
-			index, err := internal.Helper.ToIntFormBytes(n.Val)
+			index, err := internal.Helper.ToIntFromBytes(n.Val)
 			if err != nil {
 				return nil, fmt.Errorf("%s is not int value", string(n.Val))
 			}

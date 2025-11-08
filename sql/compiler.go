@@ -75,8 +75,9 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	isNotStartWithSelect := !c.startWithSelectKeyword(query)
 	reIndex := []int{}
 	querySimple := ""
+	var textParams []string
 	if isNotStartWithSelect {
-		querySimple, reIndex, err = smartier.simple(query)
+		querySimple, reIndex, textParams, err = smartier.simple(query)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +88,7 @@ func (c compiler) ResolveNoCache(dialect types.Dialect, query string) (*compiler
 	}
 	inputSql := internal.Helper.ReplaceQuestionMarks(query, GET_PARAMS_FUNC)
 
-	queryCompiling, textParams := internal.Helper.InspectStringParam(inputSql)
+	queryCompiling, _ := internal.Helper.InspectStringParam(inputSql)
 	injector := newInjector(dialect, textParams)
 	if !isNotStartWithSelect {
 		queryCompiling, err = internal.Helper.QuoteExpression(queryCompiling)

@@ -162,7 +162,8 @@ func (q *dynamicQuery) ToArray(db *DB) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	returnType := query.OutputFields.ToArrayOfStruct(query.OutputFields.ToHas256Key())
+
+	returnType := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
 	ret, err := db.ScanRowsToArrayStruct(rows, returnType)
 	return ret, err
 }
@@ -202,8 +203,16 @@ func (q *dynamicQuery) ToItem(db *DB) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	returnType := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
-	return db.ScanRowToStruct(rows, returnType)
+	if rows.Next() {
+		result, err := db.ScanRowToStruct(rows, returnType)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	return nil, rows.Err()
 }
 func (q *dynamicQuery) ToItemWithContext(ctx context.Context, db *DB) (any, error) {
 	defer releaseDynamicQuery(q)
@@ -221,8 +230,17 @@ func (q *dynamicQuery) ToItemWithContext(ctx context.Context, db *DB) (any, erro
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	returnType := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
-	return db.ScanRowToStruct(rows, returnType)
+	if rows.Next() {
+		ret, err := db.ScanRowToStruct(rows, returnType)
+		if err != nil {
+			return nil, err
+		}
+		return ret, nil
+	}
+	return nil, rows.Err()
 
 }
 

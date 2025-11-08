@@ -13,7 +13,7 @@ func TestSelfJoin(t *testing.T) {
 				department parent,
 				left(dept.parentId = parent.id),
 			)`
-	sql, _, err := smartier.simple(str)
+	sql, _, _, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +28,7 @@ func BenchmarkTestSelfJoin(b *testing.B) {
 			)`
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		sql, _, err := smartier.simpleCache(str)
+		sql, _, _, err := smartier.simpleCache(str)
 		if err != nil {
 			panic(err)
 		}
@@ -46,7 +46,7 @@ func Test0001(t *testing.T) {
 					emp.userId = usr.id,
 			),emp.code+dept.code Code, where(emp.id = select(max(emp.id)))`
 	str = `max(emp.id), from(employee emp)`
-	sql, _, err := smartier.simple(str)
+	sql, _, _, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +61,7 @@ func BenchmarkTest0001(b *testing.B) {
 					emp.department_id = department.id,
 					emp.userId = usr.id,
 			),emp.code+dept.code Code`
-	sql, _, err := smartier.simple(str)
+	sql, _, _, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}

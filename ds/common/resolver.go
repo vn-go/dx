@@ -18,7 +18,7 @@ func (r *resolver) SQLVal(expr *sqlparser.SQLVal, injectInfo *InjectInfo) (*Reso
 	// 		OriginalContent: "'" + string(expr.Val) + "",
 	// 	}, nil
 	case sqlparser.IntVal:
-		value, err := internal.Helper.ToIntFormBytes(expr.Val)
+		value, err := internal.Helper.ToIntFromBytes(expr.Val)
 		if err != nil {
 			return nil, err
 		}

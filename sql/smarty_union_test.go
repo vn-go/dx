@@ -13,7 +13,7 @@ func TestSmartyUnion(t *testing.T) {
 	union(qr1+qr2*qr3),
 	`
 
-	sql, _, err :=smartier.simple(str)
+	sql, _, _, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func TestSmartyUnion2(t *testing.T) {
 		from( all), all.name,sum(all.amount) TotalAmount
 
 	`
-	sql, _, err :=smartier.simple(str)
+	sql, _, _, err := smartier.simple(str)
 	if err != nil {
 		panic(err)
 	}

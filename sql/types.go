@@ -30,20 +30,24 @@ type argument struct {
 
 
 	*/
-	index int
+	index      int
+	isConstant bool
 }
 type arguments []argument
 
 func (a arguments) ToArray(dynamicArgs []any) ([]any, error) {
 	ret := make([]any, len(a))
 	for i, arg := range a {
+
+		if arg.isConstant {
+			ret[i] = arg.val
+			continue
+		}
 		if arg.index > 0 {
 			if arg.index > len(dynamicArgs) {
 				return nil, fmt.Errorf("dynamic arg index out of range. index: %d, dynamic args length: %d", arg.index, len(dynamicArgs))
 			}
 			ret[i] = dynamicArgs[arg.index-1]
-		} else {
-			ret[i] = arg.val
 		}
 	}
 	return ret, nil
@@ -82,6 +86,7 @@ type outputField struct {
 	IsCalculated bool
 	FieldType    reflect.Type
 	DbType       sqlparser.ValType
+	Expression   string
 }
 type outputFields []outputField
 
@@ -329,7 +334,14 @@ type dictionary struct {
 	aliasToEntity   map[string]*entity.Entity
 	subqueryEntites map[string]subqueryEntity
 }
-
+type argsBoard struct {
+	Source   arguments // from
+	Selector arguments // select field here
+	Filter   arguments // where clause
+	Sort     arguments // order by clause
+	Having   arguments
+	GroupBy  arguments
+}
 type injector struct {
 	dict    *dictionary
 	dialect types.Dialect
@@ -403,6 +415,9 @@ func newCompilerError(errType ERR_TYPE, message string, args ...any) error {
 		Type:    errType,
 	}
 }
+
+var NewCompilerError = newCompilerError
+
 func traceCompilerError(err error, args ...any) error {
 	if ce, ok := err.(*CompilerError); ok {
 		if ce.TraceArgs == nil {

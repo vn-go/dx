@@ -13,7 +13,7 @@ func (cmp *compiler) funcExpr(expr *sqlparser.FuncExpr, cmpType COMPILER, args *
 	strArgs := []string{}
 	if expr.Name.String() == internal.FnMarkSpecialTextArgs && len(expr.Exprs) == 1 {
 		n := expr.Exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.SQLVal)
-		index, err := internal.Helper.ToIntFormBytes(n.Val)
+		index, err := internal.Helper.ToIntFromBytes(n.Val)
 		if err != nil {
 			return "", fmt.Errorf("%s is not int value", string(n.Val))
 		}

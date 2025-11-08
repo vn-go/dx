@@ -34,7 +34,7 @@ func SQLFuncSumReturnType(argTypes []reflect.Type) reflect.Type {
 	case reflect.Float32, reflect.Float64:
 		return reflect.TypeOf(float64(0))
 	default:
-		return nil
+		return reflect.TypeFor[any]()
 	}
 }
 
@@ -138,7 +138,12 @@ func (c *helperType) CombineTypeByFunc(funcName string, argTypes []reflect.Type)
 	if r, ok := mapFuncReturnTypes[funcName]; ok {
 		return r
 	}
-
+	if funcName == "IF" {
+		return reflect.TypeFor[any]()
+	}
+	if funcName == "LEN" {
+		return reflect.TypeFor[int64]()
+	}
 	panic(fmt.Sprintf("Unsupported function: %s, ref helperType.CombineTypeByFunc,file %s", funcName, `internal\helper.CombineTypeByFunc.go`))
 }
 func (c *helperType) CombineDbTypeByFunc(funcName string, argTypes []reflect.Type) sqlparser.ValType {

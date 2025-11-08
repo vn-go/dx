@@ -41,7 +41,7 @@ func (fx *InspectStatement) ResolveSQLVal(n *sqlparser.SQLVal, cType C_TYPE, arg
 	paramIndex := len(*args) + 1
 	switch n.Type {
 	case sqlparser.IntVal:
-		val, err := internal.Helper.ToIntFormBytes(n.Val)
+		val, err := internal.Helper.ToIntFromBytes(n.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func (fx *InspectStatement) ResolveSQLVal(n *sqlparser.SQLVal, cType C_TYPE, arg
 			Content: fx.Dialect.ToParam(paramIndex, n.Type),
 		}, nil
 	case sqlparser.FloatVal:
-		val, err := internal.Helper.ToFloatFormBytes(n.Val)
+		val, err := internal.Helper.ToFloatFromBytes(n.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func (fx *InspectStatement) ResolveFuncExpr(n *sqlparser.FuncExpr, cType C_TYPE,
 		selectExpr := n.Exprs[0].(*sqlparser.AliasedExpr)
 		sqlVal := selectExpr.Expr.(*sqlparser.SQLVal)
 		paramIndex := len(*args) + 1
-		apostropheIndex, err := internal.Helper.ToIntFormBytes(sqlVal.Val)
+		apostropheIndex, err := internal.Helper.ToIntFromBytes(sqlVal.Val)
 		if err != nil {
 			return nil, err
 		}
