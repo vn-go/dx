@@ -17,5 +17,5 @@ func (db *DB) InsertWithContext(ctx context.Context, data interface{}) error {
 		return err
 	}
 
-	return dbutils.DbUtils.Insert.Insert(db.DB, data, ctx)
+	return dbutils.DbUtils.Insert.Insert(db.DB, data, ctx, Options.ShowSql)
 }

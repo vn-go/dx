@@ -13,5 +13,5 @@ func (db *DB) Insert(data interface{}) error {
 		return err
 	}
 
-	return dbutils.DbUtils.Insert.Insert(db.DB, data, context.Background())
+	return dbutils.DbUtils.Insert.Insert(db.DB, data, context.Background(), Options.ShowSql)
 }

@@ -3,6 +3,7 @@ package dbutils
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"reflect"
 
 	"github.com/vn-go/dx/db"
@@ -15,7 +16,7 @@ import (
 type inserter struct {
 }
 
-func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context) error {
+func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context, showSql bool) error {
 	dialect := factory.DialectFactory.Create(db.Info.DriverName)
 	dataValue := reflect.ValueOf(data)
 	typ := reflect.TypeOf(data)
@@ -33,6 +34,11 @@ func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context) erro
 		if err != nil {
 			return err
 		}
+	}
+	if showSql {
+		fmt.Println("----------------------------------")
+		fmt.Println(sqlText)
+		fmt.Println("----------------------------------")
 	}
 	sqlStmt, err := db.Prepare(sqlText)
 	if err != nil {

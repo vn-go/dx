@@ -11,18 +11,20 @@ import (
 )
 
 type initMakeUpdateSqlFromTypeItem struct {
-	sql           string
-	fieldIndex    [][]int
-	keyFieldIndex [][]int
+	sql              string
+	fieldIndex       [][]int
+	keyFieldIndex    [][]int
+	keyFieldIndexPos []int
 }
 
 func makeUpdateSqlFromTypeWithCache(db *DB, typ reflect.Type) (*initMakeUpdateSqlFromTypeItem, error) {
 	key := db.DbName + "@" + db.DriverName + "@" + typ.String()
 	return internal.OnceCall(key, func() (*initMakeUpdateSqlFromTypeItem, error) {
 		ret := initMakeUpdateSqlFromTypeItem{
-			sql:           "",
-			fieldIndex:    nil,
-			keyFieldIndex: nil,
+			sql:              "",
+			fieldIndex:       nil,
+			keyFieldIndex:    nil,
+			keyFieldIndexPos: []int{},
 		}
 
 		model, err := model.ModelRegister.GetModelByType(typ)
@@ -42,6 +44,7 @@ func makeUpdateSqlFromTypeWithCache(db *DB, typ reflect.Type) (*initMakeUpdateSq
 				if col.PKName != "" {
 					conditional = append(conditional, dialect.Quote(col.Name)+" = "+dialect.ToParam(i+1, sqlparser.ValArg))
 					ret.keyFieldIndex = append(ret.keyFieldIndex, col.IndexOfField)
+					ret.keyFieldIndexPos = append(ret.keyFieldIndexPos, i)
 
 				}
 				continue
