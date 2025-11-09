@@ -18,9 +18,10 @@ type makeMssqlSqlInsertCacheItem struct {
 	indexesOfField [][]int
 	fieldNames     []string
 	fieldIndex     [][]int
+	hashAutoNmber  bool
 }
 
-func (d *mssqlDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDef, value interface{}) (string, []interface{}) {
+func (d *mssqlDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDef, value interface{}) (string, []interface{}, bool) {
 	key := d.Name() + "://" + tableName
 	actual, _ := d.cacheMakeSqlInsert.LoadOrStore(key, &makeMssqlSqlInsertInit{})
 	init := actual.(*makeMssqlSqlInsertInit)
@@ -40,21 +41,8 @@ func (d *mssqlDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDe
 			args = append(args, nil)
 		}
 	}
-	// for _, indexes := range init.val.indexesOfField {
 
-	// 	fieldVal := dataVal.Field(indexes[0])
-	// 	for _, i := range indexes[1:] {
-	// 		fieldVal = fieldVal.Field(i)
-	// 	}
-	// 	if fieldVal.IsValid() {
-	// 		args = append(args, fieldVal.Interface())
-	// 	} else {
-	// 		args = append(args, nil)
-	// 	}
-
-	// }
-
-	return init.val.sql, args
+	return init.val.sql, args, init.val.hashAutoNmber
 
 }
 func (d *mssqlDialect) makeSqlInsert(tableName string, columns []entity.ColumnDef) makeMssqlSqlInsertCacheItem {
@@ -82,7 +70,9 @@ func (d *mssqlDialect) makeSqlInsert(tableName string, columns []entity.ColumnDe
 		ret.fieldIndex = append(ret.fieldIndex, col.Field.Index)
 		index++
 	}
+
 	if insertedFieldName != "" {
+		ret.hashAutoNmber = true
 		sql += strings.Join(strFields, ", ") + ") OUTPUT INSERTED." + d.Quote(insertedFieldName) + " VALUES (" + strings.Join(strValues, ", ") + ")"
 	} else {
 		sql += strings.Join(strFields, ", ") + ") VALUES (" + strings.Join(strValues, ", ") + ")"

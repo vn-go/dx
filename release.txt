@@ -575,3 +575,10 @@ git tag -a v1.0.89 -m "fix migrate mssql"
 git push origin v1.0.89
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.89
+---
+git add .
+git commit -m "fix insert with non auto-increment pk"
+git tag -a v1.0.90 -m "fix insert with non auto-increment pk"
+git push origin v1.0.90
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.90

@@ -124,7 +124,8 @@ type Dialect interface {
 	ToBool(value string) string
 	ToParam(index int, pType sqlparser.ValType) string
 	SqlFunction(delegator *DialectDelegateFunction) (string, error)
-	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{})
+	// true if has auto increment column
+	MakeSqlInsert(tableName string, columns []entity.ColumnDef, data interface{}) (string, []interface{}, bool)
 	NewDataBase(db *db.DB, dbName string) (string, error)
 	ReplacePlaceholders(sql string) string
 	LimitAndOffset(sql string, limit, offset *uint64, orderBy string) string

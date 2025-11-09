@@ -10,11 +10,12 @@ import (
 )
 
 type makePostgresSqlInsertInit struct {
-	once sync.Once
-	val  string
+	once          sync.Once
+	val           string
+	hasAutoNumber bool
 }
 
-func (d *postgresDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDef, value interface{}) (string, []interface{}) {
+func (d *postgresDialect) MakeSqlInsert(tableName string, columns []entity.ColumnDef, value interface{}) (string, []interface{}, bool) {
 	key := d.Name() + "://" + tableName
 	actual, _ := d.cacheMakeSqlInsert.LoadOrStore(key, &makePostgresSqlInsertInit{})
 	init := actual.(*makePostgresSqlInsertInit)
@@ -28,6 +29,7 @@ func (d *postgresDialect) MakeSqlInsert(tableName string, columns []entity.Colum
 	args := []interface{}{}
 	for _, col := range columns {
 		if col.IsAuto {
+			init.hasAutoNumber = true
 			continue
 		}
 		fieldVal := dataVal.FieldByName(col.Field.Name)
@@ -39,7 +41,7 @@ func (d *postgresDialect) MakeSqlInsert(tableName string, columns []entity.Colum
 
 	}
 
-	return init.val, args
+	return init.val, args, init.hasAutoNumber
 
 }
 func (d *postgresDialect) makeSqlInsert(tableName string, columns []entity.ColumnDef) string {

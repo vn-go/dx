@@ -28,7 +28,7 @@ func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context, show
 	if err != nil {
 		return err
 	}
-	sqlText, args := dialect.MakeSqlInsert(modelInfo.Entity.TableName, modelInfo.Entity.Cols, data)
+	sqlText, args, hashAutoNmber := dialect.MakeSqlInsert(modelInfo.Entity.TableName, modelInfo.Entity.Cols, data)
 	if dialect.Name() == "mysql" {
 		sqlText, args, err = internal.Helper.FixParam(sqlText, args)
 		if err != nil {
@@ -48,10 +48,18 @@ func (r *inserter) Insert(db *db.DB, data interface{}, ctx context.Context, show
 
 	switch dialect.Name() {
 	case "mssql", "postgres":
-		var insertedID int64
-		err = sqlStmt.QueryRow(args...).Scan(&insertedID)
-		if err == nil {
-			err = r.fetchAfterInsertForQueryRow(modelInfo.Entity, dataValue, insertedID)
+		if hashAutoNmber {
+			var insertedID int64
+			err = sqlStmt.QueryRow(args...).Scan(&insertedID)
+			if err == nil {
+				err = r.fetchAfterInsertForQueryRow(modelInfo.Entity, dataValue, insertedID)
+			}
+		} else {
+			var res sql.Result
+			res, err = sqlStmt.Exec(args...)
+			if err == nil {
+				err = r.fetchAfterInsert(res, modelInfo.Entity, dataValue)
+			}
 		}
 
 	default:
