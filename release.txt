@@ -582,3 +582,11 @@ git tag -a v1.0.90 -m "fix insert with non auto-increment pk"
 git push origin v1.0.90
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.90
+//support schema refresh  mysql,PG
+---
+git add .
+git commit -m "upport schema refresh  mysql,PG"
+git tag -a v1.0.91 -m "upport schema refresh  mysql,PG"
+git push origin v1.0.91
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.91
