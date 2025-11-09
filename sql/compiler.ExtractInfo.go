@@ -16,7 +16,7 @@ type extractInfoReqiureAcessScope struct {
 type extractInfoOutputField struct {
 	OutputFields   outputFields
 	Hash256        string
-	OutputFieldMap map[string]outputField
+	OutputFieldMap map[string]OutputField
 }
 type extractInfoAccessScopeCheck struct {
 	Scope   accessScopes
@@ -24,10 +24,16 @@ type extractInfoAccessScopeCheck struct {
 }
 type ExtractInfo struct {
 	SelectStatement   types.SelectStatement
-	RequireAcessScope extractInfoReqiureAcessScope
+	RequireAcessScope ExtractInfoReqiureAcessScope
 	OuputInfo         extractInfoOutputField
 	ScopeCheck        extractInfoAccessScopeCheck
 	Args              arguments
+}
+type ExtractInfoReqiureAcessScope extractInfoReqiureAcessScope
+type ExtractInfoOutputField extractInfoOutputField
+
+func (e *ExtractInfoOutputField) NewOutputFields() outputFields {
+	return outputFields{}
 }
 
 var extractInfoPool = sync.Pool{
@@ -135,14 +141,14 @@ func (c compiler) extractInfo(dialect types.Dialect, query string) (*ExtractInfo
 		ret.OutputFields[i].DbType = internal.Helper.GetSqlTypeFfromGoType(ret.OutputFields[i].FieldType)
 	}
 	ret.Hash256OutputFields = ret.OutputFields.ToHas256Key()
-	ouputInfoMap := map[string]outputField{}
+	ouputInfoMap := map[string]OutputField{}
 	for i := 0; i < len(ret.OutputFields); i++ {
 		ouputInfoMap[strings.ToLower(ret.OutputFields[i].Name)] = ret.OutputFields[i]
 	}
 	retExtractInfo := &ExtractInfo{
 		SelectStatement: selectStatementResult.selectStatement,
 
-		RequireAcessScope: extractInfoReqiureAcessScope{
+		RequireAcessScope: ExtractInfoReqiureAcessScope{
 			Field:   ret.Fields,
 			Hash256: ret.Hash256AccessScope,
 		},

@@ -26,7 +26,7 @@ type getSelectStatementResult struct {
 
 func (s selectors) getSelectStatement(expr *sqlparser.Select, injector *injector, cmpType CMP_TYP) (*getSelectStatementResult, error) {
 	ret := compilerResult{
-		OutputFields: []outputField{},
+		OutputFields: []OutputField{},
 	}
 	selectStatement := types.SelectStatement{}
 	argsB := argsBoard{
@@ -284,19 +284,19 @@ func (s selectors) selectExpr(expr sqlparser.SelectExpr, injector *injector, cmp
 			selectedExprsReverse: *selectedExprsReverse,
 			IsInAggregateFunc:    r.IsInAggregateFunc,
 			Fields:               r.Fields,
-			OutputFields:         []outputField{},
+			OutputFields:         []OutputField{},
 			Args:                 r.Args,
 		}
 
 		if !x.As.IsEmpty() {
-			ret.OutputFields = append(ret.OutputFields, outputField{
+			ret.OutputFields = append(ret.OutputFields, OutputField{
 				Name:         x.As.String(),
 				IsCalculated: r.IsExpression,
 				FieldType:    r.ResultType,
 				Expression:   r.Content,
 			})
 		} else {
-			ret.OutputFields = append(ret.OutputFields, outputField{
+			ret.OutputFields = append(ret.OutputFields, OutputField{
 				Name:         aliasField,
 				IsCalculated: r.IsExpression,
 				FieldType:    r.ResultType,

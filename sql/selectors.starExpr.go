@@ -12,7 +12,7 @@ import (
 func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*compilerResult, error) {
 	strSelectItems := []string{}
 	selectedExprs := dictionaryFields{}
-	outputFields := []outputField{}
+	outputFields := outputFields{}
 	selectedExprsReverse := dictionaryFields{}
 	if expr.TableName.IsEmpty() {
 		i := 1
@@ -56,7 +56,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					if len(injector.dict.entities) > 1 { // if there are more than one entity, we need to add entity name to alia{
 						outputAlias = fmt.Sprintf("%s_%s", x.EntityType.Name(), col.Field.Name)
 					}
-					outputFields = append(outputFields, outputField{
+					outputFields = append(outputFields, OutputField{
 						Name:         outputAlias,
 						IsCalculated: false,
 						FieldType:    internal.Helper.ToNullableType(col.Field.Type),
@@ -101,7 +101,7 @@ func (s selectors) starExpr(expr *sqlparser.StarExpr, injector *injector) (*comp
 					Expr:  injector.dialect.Quote(aliasTable, col.Name),
 					Alias: col.Name,
 				}
-				outputFields = append(outputFields, outputField{
+				outputFields = append(outputFields, OutputField{
 					Name:         col.Field.Name,
 					IsCalculated: false,
 					FieldType:    internal.Helper.ToNullableType(col.Field.Type),

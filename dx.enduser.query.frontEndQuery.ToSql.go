@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/vn-go/dx/dialect/types"
 	"github.com/vn-go/dx/internal"
@@ -11,46 +12,78 @@ import (
 	"github.com/vn-go/dx/sqlparser"
 )
 
+type frontEndQueryToSqlResult struct {
+	Query        string
+	Args         []any
+	RequireScope sql.ExtractInfoReqiureAcessScope
+	Output       sql.ExtractInfoOutputField
+}
+
+func (fSql *frontEndQueryToSqlResult) String() string {
+	ret := fSql.Query
+	for i, arg := range fSql.Args {
+		if reflect.TypeOf(arg) == reflect.TypeFor[string]() {
+			strVal := arg.(string)
+			strVal = strings.ReplaceAll(strVal, "'", "''")
+			ret = strings.ReplaceAll(ret, fmt.Sprintf("@p%d", i+1), fmt.Sprintf("'%s'", strVal))
+		} else {
+			ret = strings.ReplaceAll(ret, fmt.Sprintf("@p%d", i+1), fmt.Sprintf("%v", arg))
+		}
+
+	}
+	return ret
+}
+
 // dx.enduser.query.frontEndQuery.ToSql.go
-func (f *frontEndQuery) ToSql() (string, []any, error) {
+func (f *frontEndQuery) ToSql() (*frontEndQueryToSqlResult, error) {
+
 	var err error
 	if f.err != nil {
-		return "", nil, f.err
+		return nil, f.err
 	}
-	argsCompile := []any{}
+	args := []any{}
+	hasAggregate := false
+	nonAggFields := []frontEndQueryResult{}
 
 	if f.selector != "" {
+		args = append(args, f.selectorsArgs...)
 		f.selectorsField, err = f.selectResolve(f.selector, f.selectorsArgs)
 		if err != nil {
 
-			return "", nil, err
+			return nil, err
 		}
 		strSelect := []string{}
 		//f.selectorsFieldMap = map[string]frontEndQueryResult{}
+
 		for _, item := range f.selectorsField {
 			f.selectorsFieldMap[strings.ToLower(item.alias)] = item
 			strSelect = append(strSelect, item.content+" "+f.db.Dialect.Quote(item.alias))
-			for _, arg := range item.args {
-
-				if arg.indexArg > 0 {
-					argsCompile = append(argsCompile, f.selectorsArgs[arg.indexArg])
-				} else {
-					argsCompile = append(argsCompile, arg.argVal)
-				}
+			if item.isAggregate {
+				hasAggregate = true
+			} else {
+				nonAggFields = append(nonAggFields, item)
 			}
 		}
 
-		f.selector = strings.Join(strSelect, ", ")
-		f.selectorsArgs = argsCompile
+		f.sqlInfo.SelectStatement.Selector = strings.Join(strSelect, ", ")
+
+		if err != nil {
+			return nil, err
+		}
+
 	}
 	if f.filter != "" {
+		args = append(args, f.filterArgs...)
 		f.filterField, err = f.filterResolve(f.filter, f.filterArgs)
 		if err != nil {
 
-			return "", nil, err
+			return nil, err
 		}
+
 		for _, field := range f.filterField {
+
 			if field.isAggregate {
+				hasAggregate = true
 				if f.sqlInfo.SelectStatement.Having != "" {
 					f.sqlInfo.SelectStatement.Having += " AND (" + field.content + ")"
 				} else {
@@ -62,14 +95,62 @@ func (f *frontEndQuery) ToSql() (string, []any, error) {
 				} else {
 					f.sqlInfo.SelectStatement.Filter = field.content
 				}
+
 			}
 		}
+
+		//filterArgs, err := f.filterArgsCompile.ToArray(f.filterArgs)
+		if err != nil {
+			return nil, err
+		}
+		//argsCompile = append(argsCompile, filterArgs...)
+	}
+	if hasAggregate {
+		groupByItems := []string{}
+		for _, item := range nonAggFields {
+			groupByItems = append(groupByItems, item.content)
+		}
+		if f.sqlInfo.SelectStatement.GroupBy != "" {
+			f.sqlInfo.SelectStatement.GroupBy += "," + strings.Join(groupByItems, ",")
+		} else {
+			f.sqlInfo.SelectStatement.GroupBy = strings.Join(groupByItems, ",")
+		}
+	}
+	argsCompile, err := f.args.ToArray(args)
+	if err != nil {
+		return nil, err
 	}
 	sqlRet := f.db.Dialect.GetSelectStatement(f.sqlInfo.SelectStatement)
-	return sqlRet, argsCompile, nil
+
+	return &frontEndQueryToSqlResult{
+		Query:        sqlRet,
+		Args:         argsCompile,
+		RequireScope: f.sqlInfo.RequireAcessScope,
+		Output:       f.OutptFields,
+	}, nil
+
 }
 
+type initFrontEndQueryFilterResolve struct {
+	val  []frontEndQueryResult
+	err  error
+	arg  sql.Args
+	once sync.Once
+}
+
+var initFrontEndQueryFilterResolveMap sync.Map
+
 func (f *frontEndQuery) filterResolve(filter string, args []any) ([]frontEndQueryResult, error) {
+	a, _ := initFrontEndQueryFilterResolveMap.LoadOrStore(filter, &initFrontEndQueryFilterResolve{})
+	i := a.(*initFrontEndQueryFilterResolve)
+	i.once.Do(func() {
+		i.val, i.err = f.filterResolveNoCache(filter, args)
+		i.arg = f.args
+	})
+	f.args = i.arg
+	return i.val, i.err
+}
+func (f *frontEndQuery) filterResolveNoCache(filter string, args []any) ([]frontEndQueryResult, error) {
 	ret := []frontEndQueryResult{}
 	strSelect, err := internal.Helper.QuoteExpression2(filter)
 	if err != nil {
@@ -112,21 +193,54 @@ type frontEndQueryResult struct {
 	isAggregate     bool
 	isExpr          bool
 	fieldType       reflect.Type
-
-	args []frontEndQueryResultArgs
+}
+type initFrontEndQuerySelectResolve struct {
+	val    []frontEndQueryResult
+	args   sql.Args
+	fields sql.ExtractInfoOutputField
+	err    error
+	once   sync.Once
 }
 
-func (f *frontEndQuery) selectResolve(selector string, args []any) ([]frontEndQueryResult, error) {
-	strSelect, err := internal.Helper.QuoteExpression2(selector)
-	if err != nil {
-		return nil, err
-	}
+var initFrontEndQuerySelectResolveMap sync.Map
 
-	selectStmt, err := sqlparser.Parse("select " + strSelect)
-	if err != nil {
-		return nil, sql.NewCompilerError(sql.ERR_SYNTAX, "syntax error : '%s'", selector)
-	}
-	return f.resolveSelect(selectStmt.(*sqlparser.Select), args)
+func (f *frontEndQuery) selectResolve(selector string, args []any) ([]frontEndQueryResult, error) {
+	a, _ := initFrontEndQuerySelectResolveMap.LoadOrStore(selector, &initFrontEndQuerySelectResolve{})
+	i := a.(*initFrontEndQuerySelectResolve)
+	i.once.Do(func() {
+		strSelect, err := internal.Helper.QuoteExpression2(selector)
+		if err != nil {
+			i.err = err
+			return
+		}
+
+		selectStmt, err := sqlparser.Parse("select " + strSelect)
+		if err != nil {
+			i.err = sql.NewCompilerError(sql.ERR_SYNTAX, "syntax error : '%s'", selector)
+
+		}
+		i.val, i.err = f.resolveSelect(selectStmt.(*sqlparser.Select), args)
+		i.args = f.args
+		i.fields = f.OutptFields
+		i.fields.OutputFields = f.OutptFields.NewOutputFields()
+		i.fields.OutputFieldMap = map[string]sql.OutputField{}
+		for _, field := range i.val {
+			f := sql.OutputField{
+				Name:         field.alias,
+				FieldType:    field.fieldType,
+				IsCalculated: field.isAggregate || field.isExpr,
+				Expression:   field.content,
+			}
+
+			i.fields.OutputFields = append(i.fields.OutputFields, f)
+			i.fields.OutputFieldMap[strings.ToLower(field.alias)] = f
+		}
+		f.OutptFields.Hash256 = f.OutptFields.OutputFields.ToHas256Key()
+
+	})
+	f.args = i.args
+	f.OutptFields = i.fields
+	return i.val, i.err
 }
 
 func (f *frontEndQuery) resolveSelect(selectStmt *sqlparser.Select, args []any) ([]frontEndQueryResult, error) {
@@ -149,9 +263,7 @@ func (f *frontEndQuery) resolveSelect(selectStmt *sqlparser.Select, args []any) 
 
 			ret.alias = alias
 			retItems = append(retItems, *ret)
-			if f.selectorsFieldMap == nil {
-				f.selectorsFieldMap = map[string]frontEndQueryResult{}
-			}
+
 			f.selectorsFieldMap[strings.ToLower(alias)] = *ret
 
 		} else {
@@ -178,13 +290,14 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 		if err != nil {
 			return nil, err
 		}
+
 		return &frontEndQueryResult{
 			content:         fmt.Sprintf("%s %s %s", left.content, expr.Operator, right.content),
 			originalContent: fmt.Sprintf("%s %s %s", left.originalContent, expr.Operator, right.originalContent),
 			fieldType:       internal.Helper.CombineType(left.fieldType, right.fieldType, expr.Operator),
 			isExpr:          true,
-			args:            append(left.args, right.args...),
-			isAggregate:     left.isAggregate || right.isAggregate,
+
+			isAggregate: left.isAggregate || right.isAggregate,
 		}, nil
 	case *sqlparser.AndExpr:
 		left, err := f.resoleExpr(expr.Left, args)
@@ -200,8 +313,8 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 			originalContent: fmt.Sprintf("%s %s %s", left.originalContent, "and", right.originalContent),
 			fieldType:       internal.Helper.CombineType(left.fieldType, right.fieldType, "and"),
 			isExpr:          true,
-			args:            append(left.args, right.args...),
-			isAggregate:     left.isAggregate || right.isAggregate,
+
+			isAggregate: left.isAggregate || right.isAggregate,
 		}, nil
 	case *sqlparser.OrExpr:
 		left, err := f.resoleExpr(expr.Left, args)
@@ -217,8 +330,8 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 			originalContent: fmt.Sprintf("%s %s %s", left.originalContent, "or", right.originalContent),
 			fieldType:       internal.Helper.CombineType(left.fieldType, right.fieldType, "or"),
 			isExpr:          true,
-			args:            append(left.args, right.args...),
-			isAggregate:     left.isAggregate || right.isAggregate,
+
+			isAggregate: left.isAggregate || right.isAggregate,
 		}, nil
 
 	case *sqlparser.ParenExpr:
@@ -231,8 +344,8 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 			originalContent: fmt.Sprintf("(%s)", r.originalContent),
 			fieldType:       r.fieldType,
 			isExpr:          true,
-			args:            r.args,
-			isAggregate:     r.isAggregate,
+
+			isAggregate: r.isAggregate,
 		}, nil
 	case *sqlparser.BinaryExpr:
 
@@ -249,8 +362,8 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 			originalContent: fmt.Sprintf("%s %s %s", left.originalContent, expr.Operator, right.originalContent),
 			fieldType:       internal.Helper.CombineType(left.fieldType, right.fieldType, expr.Operator),
 			isExpr:          true,
-			args:            append(left.args, right.args...),
-			isAggregate:     left.isAggregate || right.isAggregate,
+
+			isAggregate: left.isAggregate || right.isAggregate,
 		}, nil
 	case *sqlparser.SQLVal:
 		switch expr.Type {
@@ -259,75 +372,65 @@ func (f *frontEndQuery) resoleExpr(expr sqlparser.SQLNode, args []any) (*frontEn
 			if err != nil {
 				return nil, err
 			}
-			return &frontEndQueryResult{
-				content:         "?",
+			f.args.Add(nil, false, indexOfArg)
+			ret := &frontEndQueryResult{
+				content:         f.db.Dialect.ToParam(len(f.args), expr.Type),
 				originalContent: "?",
 				fieldType:       reflect.TypeFor[any](),
 				isExpr:          true,
-				args: []frontEndQueryResultArgs{
-					{
-						indexArg: indexOfArg,
-					},
-				},
-			}, nil
+			}
+
+			return ret, nil
 		case sqlparser.IntVal:
 			argVal, err := internal.Helper.ToIntFromBytes(expr.Val)
 			if err != nil {
 				return nil, err
 			}
-			return &frontEndQueryResult{
-				content:         "?",
+			f.args.Add(argVal, true, 0)
+			ret := &frontEndQueryResult{
+				content:         f.db.Dialect.ToParam(len(f.args), expr.Type),
 				originalContent: "?",
 				fieldType:       reflect.TypeFor[int64](),
 				isExpr:          true,
-				args: []frontEndQueryResultArgs{
-					{
-						argVal: argVal,
-					},
-				},
-			}, nil
+			}
+
+			return ret, nil
 		case sqlparser.FloatVal:
 			argVal, err := internal.Helper.ToFloatFromBytes(expr.Val)
 			if err != nil {
 				return nil, err
 			}
-			return &frontEndQueryResult{
-				content:         "?",
+			f.args.Add(argVal, true, 0)
+			ret := &frontEndQueryResult{
+				content:         f.db.Dialect.ToParam(len(f.args), expr.Type),
 				originalContent: "?",
 				fieldType:       reflect.TypeFor[float64](),
 				isExpr:          true,
-				args: []frontEndQueryResultArgs{
-					{
-						argVal: argVal,
-					},
-				},
-			}, nil
+			}
+
+			return ret, nil
 		case sqlparser.BitVal:
 			argVal := internal.Helper.ToBoolFromBytes(expr.Val)
 
-			return &frontEndQueryResult{
-				content:         "?",
+			f.args.Add(argVal, true, 0)
+			ret := &frontEndQueryResult{
+				content:         f.db.Dialect.ToParam(len(f.args), expr.Type),
 				originalContent: "?",
 				fieldType:       reflect.TypeFor[any](),
 				isExpr:          true,
-				args: []frontEndQueryResultArgs{
-					{
-						argVal: argVal,
-					},
-				},
-			}, nil
+			}
+
+			return ret, nil
 		case sqlparser.StrVal:
-			return &frontEndQueryResult{
-				content:         "?",
+			f.args.Add(string(expr.Val), true, 0)
+			ret := &frontEndQueryResult{
+				content:         f.db.Dialect.ToParam(len(f.args), expr.Type),
 				originalContent: "?",
 				fieldType:       reflect.TypeFor[any](),
 				isExpr:          true,
-				args: []frontEndQueryResultArgs{
-					{
-						argVal: string(expr.Val),
-					},
-				},
-			}, nil
+			}
+
+			return ret, nil
 		default:
 			panic(fmt.Sprintf("unsupport sqlval type %T, ref frontEndQuery.resoleExpr", expr))
 		}
@@ -342,7 +445,7 @@ func (f *frontEndQuery) resoleFuncExpr(expr *sqlparser.FuncExpr, args []any) (*f
 	strArgs := []string{}
 	argsType := []reflect.Type{}
 	strArgsOriginal := []string{}
-	argRet := []frontEndQueryResultArgs{}
+
 	for _, x := range expr.Exprs {
 		exprStr, err := f.resoleExpr(x, args)
 		if err != nil {
@@ -355,7 +458,7 @@ func (f *frontEndQuery) resoleFuncExpr(expr *sqlparser.FuncExpr, args []any) (*f
 		strArgs = append(strArgs, exprStr.content)
 		strArgsOriginal = append(strArgsOriginal, exprStr.originalContent)
 		argsType = append(argsType, exprStr.fieldType)
-		argRet = append(argRet, exprStr.args...)
+
 	}
 	d := types.DialectDelegateFunction{
 		FuncName: expr.Name.Lowered(),
@@ -372,7 +475,6 @@ func (f *frontEndQuery) resoleFuncExpr(expr *sqlparser.FuncExpr, args []any) (*f
 			originalContent: fmt.Sprintf("%s(%s)", expr.Name.String(), strings.Join(strArgsOriginal, ", ")),
 			fieldType:       internal.Helper.CombineTypeByFunc(expr.Name.Lowered(), argsType),
 			isExpr:          true,
-			args:            argRet,
 		}, nil
 	}
 	funcContent := fmt.Sprintf("%s(%s)", expr.Name.String(), strings.Join(strArgs, ", "))
@@ -382,7 +484,6 @@ func (f *frontEndQuery) resoleFuncExpr(expr *sqlparser.FuncExpr, args []any) (*f
 		originalContent: fmt.Sprintf("%s(%s)", expr.Name.String(), strings.Join(strArgsOriginal, ", ")),
 		fieldType:       internal.Helper.CombineTypeByFunc(expr.Name.Lowered(), argsType),
 		isExpr:          true,
-		args:            argRet,
 	}, nil
 }
 

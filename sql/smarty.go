@@ -224,3 +224,7 @@ func (s *smarty) ToText(node sqlparser.SQLNode) string {
 }
 
 var smartier = &smarty{}
+
+func SqlNodeToString(node sqlparser.SQLNode) string {
+	return smartier.ToText(node)
+}

@@ -57,7 +57,7 @@ func (e *endUserQuery) IsCompileError(err error) *sql.CompilerError {
 	return nil
 }
 func (e *endUserQuery) ToSql(db *DB) (*sql.ExtractInfo, []any, error) {
-	defer putEndUserQuery(e)
+
 	if e.dslQuery == "" {
 		dlsQuery, args := e.toDlsQuery()
 

@@ -35,6 +35,12 @@ type argument struct {
 }
 type arguments []argument
 
+type Args = arguments
+type Arg argument
+
+func (a *Args) Add(val any, isConstant bool, index int) {
+	*a = append(*a, argument{val: val, isConstant: isConstant, index: index})
+}
 func (a arguments) ToArray(dynamicArgs []any) ([]any, error) {
 	ret := make([]any, len(a))
 	for i, arg := range a {
@@ -88,7 +94,8 @@ type outputField struct {
 	DbType       sqlparser.ValType
 	Expression   string
 }
-type outputFields []outputField
+type outputFields []OutputField
+type OutputField outputField
 
 func (o *outputFields) ToHas256Key() string {
 	if o == nil || len(*o) == 0 {
@@ -419,6 +426,7 @@ func newCompilerError(errType ERR_TYPE, message string, args ...any) error {
 var NewCompilerError = newCompilerError
 
 func traceCompilerError(err error, args ...any) error {
+
 	if ce, ok := err.(*CompilerError); ok {
 		if ce.TraceArgs == nil {
 			ce.TraceArgs = []any{}
