@@ -9,17 +9,19 @@ import (
 )
 
 func (db *DB) UpdateWithContext(context context.Context, item interface{}) UpdateResult {
+	val := reflect.ValueOf(item).Elem()
 	typ := reflect.TypeOf(item)
 
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
+		val = val.Elem()
 
 	}
 	info, err := makeUpdateSqlFromTypeWithCache(db, typ)
 	if err != nil {
 		return UpdateResult{RowsAffected: 0, Sql: "", Error: err}
 	}
-	val := reflect.ValueOf(item).Elem()
+
 	args := make([]interface{}, len(info.fieldIndex)+len(info.keyFieldIndex))
 	for i, index := range info.fieldIndex {
 		args[i] = val.FieldByIndex(index).Interface()
