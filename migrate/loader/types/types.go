@@ -1,6 +1,8 @@
 package types
 
-import "github.com/vn-go/dx/db"
+import (
+	"github.com/vn-go/dx/db"
+)
 
 type ColumnInfo struct {
 	/*
@@ -58,6 +60,9 @@ type DbSchema struct {
 	*/
 	Indexes     map[string]ColumnsInfo
 	ForeignKeys map[string]DbForeignKeyInfo
+	Db          *db.DB
+	Refresh     func() error
+	Schema      string
 }
 type IMigratorLoader interface {
 	GetDefaultSchema() string

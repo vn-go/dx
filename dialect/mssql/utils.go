@@ -30,6 +30,9 @@ func FindUKConstraint(dbSchema *types.DbSchema, name string) *UKConstraintResult
 	init.once.Do(func() {
 		init.val = findUKConstraint(dbSchema, name)
 	})
+	if init.val == nil {
+		cacheFindUKConstraint.Delete(name)
+	}
 	return init.val
 }
 

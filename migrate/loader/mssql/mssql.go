@@ -175,38 +175,54 @@ func (m *MigratorLoaderMssql) loadFullSchemaInternal(db *db.DB, schema string) (
 	if val, ok := m.cacheLoadFullSchema.Load(cacheKey); ok {
 		return val.(*types.DbSchema), nil
 	}
-	tables, err := m.LoadAllTable(db, schema)
-	if err != nil {
-		return nil, err
-	}
-	pks, _ := m.LoadAllPrimaryKey(db, schema)
-	uks, _ := m.LoadAllUniIndex(db, schema)
-	idxs, _ := m.LoadAllIndex(db, schema)
+	schemaData := &types.DbSchema{}
 
-	dbName := db.DbName
-	schemaData := &types.DbSchema{
-		DbName:      dbName,
-		Tables:      make(map[string]map[string]bool),
-		PrimaryKeys: pks,
-		UniqueKeys:  uks,
-		Indexes:     idxs,
+	m.cacheLoadFullSchema.Store(cacheKey, schema)
+	schemaData.Db = db
+	schemaData.DbName = db.DbName
+	schemaData.Refresh = func() error {
+
+		tables, err := m.LoadAllTable(db, schema)
+		if err != nil {
+			return err
+		}
+		pks, err := m.LoadAllPrimaryKey(db, schema)
+		if err != nil {
+			return err
+		}
+		uks, err := m.LoadAllUniIndex(db, schema)
+		if err != nil {
+			return err
+		}
+		idxs, err := m.LoadAllIndex(db, schema)
+		if err != nil {
+			return err
+		}
+		schemaData.Tables = make(map[string]map[string]bool)
+		schemaData.PrimaryKeys = pks
+		schemaData.UniqueKeys = uks
+		schemaData.Indexes = idxs
+		foreignKeys, err := m.LoadForeignKey(db, schema)
+		if err != nil {
+			return err
+		}
+		schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
+		for _, fk := range foreignKeys {
+			schemaData.ForeignKeys[fk.ConstraintName] = fk
+		}
+		for table, columns := range tables {
+			cols := make(map[string]bool)
+			for col := range columns {
+				cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
+			}
+			schemaData.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
+		}
+		return nil
 	}
-	foreignKeys, err := m.LoadForeignKey(db, schema)
+	err := schemaData.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
-	for _, fk := range foreignKeys {
-		schemaData.ForeignKeys[fk.ConstraintName] = fk
-	}
-	for table, columns := range tables {
-		cols := make(map[string]bool)
-		for col := range columns {
-			cols[strings.ToLower(col)] = true //mssql ignore case sensitive column name
-		}
-		schemaData.Tables[strings.ToLower(table)] = cols //mssql ignore case sensitive table name
-	}
-	m.cacheLoadFullSchema.Store(cacheKey, schema)
 	return schemaData, nil
 }
 

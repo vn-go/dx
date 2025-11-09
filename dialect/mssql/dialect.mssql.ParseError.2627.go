@@ -19,6 +19,10 @@ func (d *mssqlDialect) Error2627(dbSchema *types.DbSchema, err mssql.Error) *err
 		constraint = strings.Split(constraint, "'")[0]
 
 		result := FindUKConstraint(dbSchema, constraint)
+		if result == nil {
+			dbSchema.Refresh()
+			result = FindUKConstraint(dbSchema, constraint)
+		}
 		if result != nil {
 			cols := []string{}
 			fields := []string{}
