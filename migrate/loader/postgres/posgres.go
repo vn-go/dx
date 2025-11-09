@@ -37,47 +37,57 @@ func (m *MigratorLoaderPostgres) loadFullSchema(db *db.DB, schema string) (*type
 			ForeignKeys: map[string]types.DbForeignKeyInfo{},
 		}, nil
 	}
-	tables, err := m.LoadAllTable(db, schema)
-	if err != nil {
-		return nil, err
-	}
-	pks, err := m.LoadAllPrimaryKey(db, schema)
-	if err != nil {
-		return nil, err
-	}
-	uks, err := m.LoadAllUniIndex(db, schema)
-	if err != nil {
-		return nil, err
-	}
-	idxs, err := m.LoadAllIndex(db, schema)
-	if err != nil {
-		return nil, err
-	}
 
 	dbName := db.DbName
 	schemaData := &types.DbSchema{
-		DbName:      dbName,
-		Tables:      make(map[string]map[string]bool),
-		PrimaryKeys: pks,
-		UniqueKeys:  uks,
-		Indexes:     idxs,
+		DbName: dbName,
+		Tables: make(map[string]map[string]bool),
+		Db:     db,
 	}
-	foreignKeys, err := m.LoadForeignKey(db, schema)
+
+	schemaData.Refresh = func() error {
+		db := schemaData.Db
+		tables, err := m.LoadAllTable(db, schema)
+		if err != nil {
+			return err
+		}
+		pks, err := m.LoadAllPrimaryKey(db, schema)
+		if err != nil {
+			return err
+		}
+		uks, err := m.LoadAllUniIndex(db, schema)
+		if err != nil {
+			return err
+		}
+		idxs, err := m.LoadAllIndex(db, schema)
+		if err != nil {
+			return err
+		}
+
+		foreignKeys, err := m.LoadForeignKey(db, schema)
+		if err != nil {
+			return err
+		}
+		schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
+		for _, fk := range foreignKeys {
+			schemaData.ForeignKeys[fk.ConstraintName] = fk
+		}
+		for table, columns := range tables {
+			cols := make(map[string]bool)
+			for col := range columns {
+				cols[col] = true
+			}
+			schemaData.Tables[table] = cols
+		}
+		schemaData.PrimaryKeys = pks
+		schemaData.UniqueKeys = uks
+		schemaData.Indexes = idxs
+		return nil
+	}
+	err := schemaData.Refresh()
 	if err != nil {
 		return nil, err
 	}
-	schemaData.ForeignKeys = map[string]types.DbForeignKeyInfo{}
-	for _, fk := range foreignKeys {
-		schemaData.ForeignKeys[fk.ConstraintName] = fk
-	}
-	for table, columns := range tables {
-		cols := make(map[string]bool)
-		for col := range columns {
-			cols[col] = true
-		}
-		schemaData.Tables[table] = cols
-	}
-
 	return schemaData, nil
 }
 func (m *MigratorLoaderPostgres) GetDefaultSchema() string {
