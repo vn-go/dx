@@ -45,6 +45,7 @@ func makeUpdateSqlFromTypeWithCache(db *DB, typ reflect.Type) (*initMakeUpdateSq
 					conditional = append(conditional, dialect.Quote(col.Name)+" = "+dialect.ToParam(i+1, sqlparser.ValArg))
 					ret.keyFieldIndex = append(ret.keyFieldIndex, col.IndexOfField)
 					ret.keyFieldIndexPos = append(ret.keyFieldIndexPos, i)
+					ret.fieldIndex = append(ret.fieldIndex, col.IndexOfField)
 
 				}
 				continue
@@ -52,7 +53,7 @@ func makeUpdateSqlFromTypeWithCache(db *DB, typ reflect.Type) (*initMakeUpdateSq
 			}
 			strPlaceHoldesr = append(strPlaceHoldesr, col.Name+" = "+dialect.ToParam(i+1, sqlparser.ValArg))
 			ret.fieldIndex = append(ret.fieldIndex, col.IndexOfField)
-
+			ret.keyFieldIndexPos = append(ret.keyFieldIndexPos, i)
 		}
 		sql += strings.Join(strPlaceHoldesr, ",")
 		if len(conditional) > 0 {

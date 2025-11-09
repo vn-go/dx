@@ -24,14 +24,15 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 
 	args := make([]interface{}, len(info.fieldIndex)+len(info.keyFieldIndex))
 	for i, index := range info.fieldIndex {
+
 		args[i] = val.FieldByIndex(index).Interface()
 	}
 	//numOfFieds := len(info.fieldIndex)
-	for i, index := range info.keyFieldIndex {
-		//keyField := typ.FieldByIndex(index)
+	// for i, index := range info.fieldIndex {
+	// 	//keyField := typ.FieldByIndex(index)
 
-		args[info.keyFieldIndexPos[i]] = val.FieldByIndex(index).Interface()
-	}
+	// 	args[index[i]] = val.FieldByIndex(index).Interface()
+	// }
 	if db.DriverName == "mysql" {
 		info.sql, args, err = internal.Helper.FixParam(info.sql, args)
 		if err != nil {
