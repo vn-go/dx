@@ -64,7 +64,18 @@ func (q *queryObject) Count() (int64, error) {
 	return 0, nil
 
 }
-
+func QueryItem[TResult any](db *DB, dsl string, args ...any) (*TResult, error) {
+	var items []TResult
+	dsl += ",take(1)"
+	err := db.DslQuery(&items, dsl, args...)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	return &items[0], nil
+}
 func QueryItems[TResult any](db *DB, dsl string, args ...any) ([]TResult, error) {
 	var items []TResult
 	err := db.DslQuery(&items, dsl, args...)
