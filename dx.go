@@ -63,7 +63,15 @@ func Open(driverName string, dsn string) (*DB, error) {
 		return nil, err
 	}
 	dialect := factory.DialectFactory.Create(retDb.Info.DriverName)
+	schemaLoader, err := m.GetLoader().LoadFullSchema(retDb, m.GetDefaultSchema())
+	if err != nil {
 
+		return nil, err
+	}
+	err = schemaLoader.Refresh()
+	if err != nil {
+		return nil, err
+	}
 	return &DB{
 		DB:      retDb,
 		Dialect: dialect,

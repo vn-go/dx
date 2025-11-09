@@ -568,3 +568,10 @@ git tag -a v1.0.88 -m "support dsl"
 git push origin v1.0.88
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.88
+---
+git add .
+git commit -m "support dsl"
+git tag -a v1.0.89 -m "fix migrate mssql"
+git push origin v1.0.89
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.89

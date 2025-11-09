@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/vn-go/dx/db"
-	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/migrate/loader/types"
 )
 
@@ -15,8 +14,7 @@ type MigratorLoaderMssql struct {
 }
 
 func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB, schema string) (map[string]map[string]types.ColumnInfo, error) {
-	ret, err := internal.OnceCall("MigratorLoaderMssql/LoadAllTable"+db.DbName+"/"+db.DriverName, func() (map[string]map[string]types.ColumnInfo, error) {
-		query := `
+	query := `
 		SELECT
 			lower(t.name) AS TableName,
 			lower(c.name) AS ColumnName,
@@ -27,40 +25,36 @@ func (m *MigratorLoaderMssql) LoadAllTable(db *db.DB, schema string) (map[string
 		JOIN sys.tables t ON c.object_id = t.object_id
 		JOIN sys.types ty ON c.user_type_id = ty.user_type_id`
 
-		rows, err := db.Query(query)
-		if err != nil {
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tables := make(map[string]map[string]types.ColumnInfo)
+	for rows.Next() {
+		var table, column, dbType string
+		var nullable bool
+		var length int
+		if err := rows.Scan(&table, &column, &dbType, &nullable, &length); err != nil {
 			return nil, err
 		}
-		defer rows.Close()
-
-		tables := make(map[string]map[string]types.ColumnInfo)
-		for rows.Next() {
-			var table, column, dbType string
-			var nullable bool
-			var length int
-			if err := rows.Scan(&table, &column, &dbType, &nullable, &length); err != nil {
-				return nil, err
-			}
-			if _, ok := tables[table]; !ok {
-				tables[table] = make(map[string]types.ColumnInfo)
-			}
-			tables[table][column] = types.ColumnInfo{
-				Name:     column,
-				DbType:   dbType,
-				Nullable: nullable,
-				Length:   length,
-			}
+		if _, ok := tables[table]; !ok {
+			tables[table] = make(map[string]types.ColumnInfo)
 		}
-		return tables, nil
-	})
-	return ret, err
+		tables[table][column] = types.ColumnInfo{
+			Name:     column,
+			DbType:   dbType,
+			Nullable: nullable,
+			Length:   length,
+		}
+	}
+	return tables, nil
 
 }
 
 func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
-	key := "MigratorLoaderMssql/LoadAllPrimaryKey" + db.DbName + "/" + db.DriverName
-	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
-		query := `
+	query := `
 		SELECT
 			Lower(KCU.table_name),
 			Lower(KCU.column_name),
@@ -70,32 +64,29 @@ func (m *MigratorLoaderMssql) LoadAllPrimaryKey(db *db.DB, schema string) (map[s
 			ON TC.constraint_name = KCU.constraint_name
 		WHERE TC.constraint_type = 'PRIMARY KEY'`
 
-		rows, err := db.Query(query)
-		if err != nil {
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]types.ColumnsInfo)
+	for rows.Next() {
+		var table, column, constraint string
+		if err := rows.Scan(&table, &column, &constraint); err != nil {
 			return nil, err
 		}
-		defer rows.Close()
-
-		result := make(map[string]types.ColumnsInfo)
-		for rows.Next() {
-			var table, column, constraint string
-			if err := rows.Scan(&table, &column, &constraint); err != nil {
-				return nil, err
-			}
-			info := result[constraint]
-			info.TableName = table
-			info.Columns = append(info.Columns, types.ColumnInfo{Name: column})
-			result[constraint] = info
-		}
-		return result, nil
-	})
+		info := result[constraint]
+		info.TableName = table
+		info.Columns = append(info.Columns, types.ColumnInfo{Name: column})
+		result[constraint] = info
+	}
+	return result, nil
 
 }
 
 func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB, schema string) (map[string]types.ColumnsInfo, error) {
-	key := "MigratorLoaderMssql/LoadAllUniIndex" + db.DbName + "/" + db.DriverName
-	return internal.OnceCall(key, func() (map[string]types.ColumnsInfo, error) {
-		query := `
+	query := `
 		SELECT
 			lower(t.name) AS TableName,
 			lower(i.name) AS IndexName,
@@ -106,25 +97,24 @@ func (m *MigratorLoaderMssql) LoadAllUniIndex(db *db.DB, schema string) (map[str
 		JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
 		WHERE i.type_desc = 'NONCLUSTERED' AND is_unique_constraint = 1`
 
-		rows, err := db.Query(query)
-		if err != nil {
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]types.ColumnsInfo)
+	for rows.Next() {
+		var table, index, column string
+		if err := rows.Scan(&table, &index, &column); err != nil {
 			return nil, err
 		}
-		defer rows.Close()
-
-		result := make(map[string]types.ColumnsInfo)
-		for rows.Next() {
-			var table, index, column string
-			if err := rows.Scan(&table, &index, &column); err != nil {
-				return nil, err
-			}
-			info := result[index]
-			info.TableName = table
-			info.Columns = append(info.Columns, types.ColumnInfo{Name: column})
-			result[index] = info
-		}
-		return result, nil
-	})
+		info := result[index]
+		info.TableName = table
+		info.Columns = append(info.Columns, types.ColumnInfo{Name: column})
+		result[index] = info
+	}
+	return result, nil
 
 }
 
