@@ -9,14 +9,18 @@ import (
 )
 
 func (db *DB) UpdateWithContext(context context.Context, item interface{}) UpdateResult {
-	val := reflect.ValueOf(item).Elem()
+	val := reflect.ValueOf(item)
 	typ := reflect.TypeOf(item)
-
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
+	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
-
+		typ = typ.Elem()
 	}
+	if val.Kind() != reflect.Struct {
+		return UpdateResult{
+			Error: fmt.Errorf("item must be a struct or a pointer to a struct"),
+		}
+	}
+
 	info, err := makeUpdateSqlFromTypeWithCache(db, typ)
 	if err != nil {
 		return UpdateResult{RowsAffected: 0, Sql: "", Error: err}
