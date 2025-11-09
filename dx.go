@@ -157,6 +157,10 @@ type DbError struct {
 	ErrorType dbErrType
 }
 
+func (d *DbError) IsDuplicateEntryError() bool {
+	return d.ErrorType == Errors.DUPLICATE
+}
+
 func (er *errorTypes) IsDbError(err error) *DbError {
 	if ret, ok := err.(*dxErrors.DbErr); ok {
 		retErr := &DbError{

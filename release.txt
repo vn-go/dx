@@ -560,4 +560,4 @@ git commit -m "support dsl"
 git tag -a v1.0.87 -m "support dsl"
 git push origin v1.0.87
 git push origin --tags
-//go get github.com/vn-go/dx@v1.0.86
+//go get github.com/vn-go/dx@v1.0.87
