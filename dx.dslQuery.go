@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sql"
 )
 
@@ -239,6 +240,12 @@ func (q *dslQuery[TResult]) ToItem(db *DB) (*TResult, error) {
 	}
 	var ret []TResult
 	sliceVal := reflect.ValueOf(&ret).Elem()
+	if db.DriverName == "mysql" {
+		query.Query, query.Args, err = internal.Helper.FixParam(query.Query, query.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
 	rows, err := db.Query(query.Query, query.Args...)
 	if err != nil {
 		return nil, err
@@ -268,6 +275,12 @@ func (q *dslQuery[TResult]) ToItemWithContext(ctx context.Context, db *DB) (*TRe
 	}
 	var ret []TResult
 	sliceVal := reflect.ValueOf(&ret).Elem()
+	if db.DriverName == "mysql" {
+		query.Query, query.Args, err = internal.Helper.FixParam(query.Query, query.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
 	rows, err := db.QueryContext(ctx, query.Query, query.Args...)
 	if err != nil {
 		return nil, err
@@ -297,6 +310,12 @@ func (q *dslQuery[TResult]) ToArrayWithContext(ctx context.Context, db *DB) ([]T
 	}
 	var ret []TResult
 	sliceVal := reflect.ValueOf(&ret).Elem()
+	if db.DriverName == "mysql" {
+		query.Query, query.Args, err = internal.Helper.FixParam(query.Query, query.Args)
+		if err != nil {
+			return nil, err
+		}
+	}
 	rows, err := db.QueryContext(ctx, query.Query, query.Args...)
 	if err != nil {
 		return nil, err

@@ -26,7 +26,7 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 		return UpdateResult{RowsAffected: 0, Sql: "", Error: err}
 	}
 
-	args := make([]interface{}, len(info.fieldIndex)+len(info.keyFieldIndex))
+	args := make([]interface{}, len(info.fieldIndex))
 	for i, index := range info.fieldIndex {
 
 		args[i] = val.FieldByIndex(index).Interface()
