@@ -590,3 +590,10 @@ git tag -a v1.0.91 -m "upport schema refresh  mysql,PG"
 git push origin v1.0.91
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.91
+//fix DslQuery SQL param binding for Mysql driver. Replace {<param index} to ? and re-arrange args
+git add .
+git commit -m "fix DslQuery SQL param binding for Mysql driver. Replace {<param index} to ? and re-arrange args"
+git tag -a v1.0.92 -m "fix DslQuery SQL param binding for Mysql driver. Replace {<param index} to ? and re-arrange args"
+git push origin v1.0.92
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.92
