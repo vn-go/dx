@@ -30,9 +30,9 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 	for i, index := range info.fieldIndex {
 		args[i] = val.FieldByIndex(index).Interface()
 	}
-
+	sqlExec := info.sql
 	if db.DriverName == "mysql" {
-		info.sql, args, err = internal.Helper.FixParam(info.sql, args)
+		sqlExec, args, err = internal.Helper.FixParam(info.sql, args)
 		if err != nil {
 			return UpdateResult{
 				Error: err,
@@ -44,7 +44,7 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 		fmt.Println(info.sql)
 		fmt.Println("---------------------")
 	}
-	r, err := db.ExecContext(context, info.sql, args...)
+	r, err := db.ExecContext(context, sqlExec, args...)
 	if err != nil {
 		return UpdateResult{RowsAffected: 0, Sql: info.sql, Error: err}
 	}
