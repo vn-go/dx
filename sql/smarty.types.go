@@ -46,8 +46,9 @@ func (s *smarty) simpleCache(simpleQuery string) (string, []int, []string, error
 // return sql, index of offset in dynamic args, index of limit in dynamic args, error
 func (s *smarty) simple(simpleQuery string) (string, []int, []string, error) {
 	simpleQuery = internal.Helper.RemoveLineComments(simpleQuery)
-	simpleQuery, textParams := internal.Helper.InspectStringParam(simpleQuery)
-	str, err := internal.Helper.QuoteExpression2(simpleQuery)
+	qr := simpleQuery
+	_, textParams := internal.Helper.InspectStringParam(qr)
+	str, err := internal.Helper.QuoteExpression2(qr)
 	if err != nil {
 		return "", nil, nil, err
 	}
