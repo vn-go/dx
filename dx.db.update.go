@@ -28,15 +28,9 @@ func (db *DB) UpdateWithContext(context context.Context, item interface{}) Updat
 
 	args := make([]interface{}, len(info.fieldIndex))
 	for i, index := range info.fieldIndex {
-
 		args[i] = val.FieldByIndex(index).Interface()
 	}
-	//numOfFieds := len(info.fieldIndex)
-	// for i, index := range info.fieldIndex {
-	// 	//keyField := typ.FieldByIndex(index)
 
-	// 	args[index[i]] = val.FieldByIndex(index).Interface()
-	// }
 	if db.DriverName == "mysql" {
 		info.sql, args, err = internal.Helper.FixParam(info.sql, args)
 		if err != nil {

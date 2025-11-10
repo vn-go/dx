@@ -14,9 +14,10 @@ import (
 var placeholderRegexp = regexp.MustCompile(`\{(\d+)\}`)
 
 type ExtractParamMatrixInfo struct {
-	Sql     string
-	Data    map[int]int // newIndex -> oldIndex
-	NewSize int
+	Sql       string
+	Data      map[int]int // newIndex -> oldIndex
+	NewSize   int
+	HasChange bool
 }
 type initExtractParamMatrix struct {
 	val  *ExtractParamMatrixInfo
@@ -84,6 +85,7 @@ func (c *helperType) extractParamMatrixNoREgex(sql string) (*ExtractParamMatrixI
 				ret.Data[currentNewIndex] = num - 1
 				currentNewIndex++
 				result = append(result, '?')
+				ret.HasChange = true
 				i = j + 1
 				continue
 			}
@@ -133,6 +135,7 @@ func (c *helperType) extractParamMatrix(sql string) (*ExtractParamMatrixInfo, er
 					ret.Data[currentNewIndex] = index - 1
 					currentNewIndex++
 					result = append(result, '?')
+					ret.HasChange = true
 					i += len(match[0])
 					continue
 				}
@@ -187,7 +190,7 @@ func (c *helperType) ToNullableType(t reflect.Type) reflect.Type {
 //
 //	=> newArgs=[" ",2,3,2]
 func (c *helperType) ApplyMatrix(info *ExtractParamMatrixInfo, oldArgs []any) []any {
-	if info == nil || len(info.Data) == 0 {
+	if info == nil || !info.HasChange {
 		return oldArgs
 	}
 	newArgs := make([]any, info.NewSize)
@@ -207,11 +210,12 @@ func (c *helperType) FixParam(sql string, inputArgs []any) (sqlOutput string, ou
 	sqlOutput = info.Sql
 
 	// Nếu không có placeholder hoặc không cần thay đổi
-	if info.NewSize == 0 || info.NewSize == len(inputArgs) {
-		outputArgs = inputArgs
+	if info.HasChange {
+		outputArgs = c.ApplyMatrix(info, inputArgs)
+
 		return
 	}
+	outputArgs = inputArgs
 
-	outputArgs = c.ApplyMatrix(info, inputArgs)
 	return
 }
