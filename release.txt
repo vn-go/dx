@@ -600,7 +600,7 @@ git push origin --tags
 //fix binding param for Mysql Update (Go MySql diver does not support param by name )
 git add .
 git commit -m "fix binding param for Mysql Update (Go MySql diver does not support param by name )"
-git tag -a v1.0.03 -m "fix binding param for Mysql Update (Go MySql diver does not support param by name )"
+git tag -a v1.0.93 -m "fix binding param for Mysql Update (Go MySql diver does not support param by name )"
 git push origin v1.0.93
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.93
