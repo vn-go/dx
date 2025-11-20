@@ -76,6 +76,22 @@ func QueryItem[TResult any](db *DB, dsl string, args ...any) (*TResult, error) {
 	}
 	return &items[0], nil
 }
+/*
+	Query an item with context
+	
+*/
+func QueryItemWithContext[TResult any](db *DB, ctx context.Context, dsl string, args ...any) (*TResult, error) {
+	var items []TResult
+	dsl += ",take(1)"
+	err := db.DslQueryWithContext(&items, ctx, dsl, args...)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return nil, nil
+	}
+	return &items[0], nil
+}
 func QueryItems[TResult any](db *DB, dsl string, args ...any) ([]TResult, error) {
 	var items []TResult
 	err := db.DslQuery(&items, dsl, args...)
