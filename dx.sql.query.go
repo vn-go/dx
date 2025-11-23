@@ -36,14 +36,19 @@ func (db *DB) DslToArray(dslQuery string, args ...interface{}) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if Options.ShowSql {
+		fmt.Println("-------------------------------")
+		fmt.Println(query.Query)
+		fmt.Println("-------------------------------")
+	}
 	rows, err := db.Query(query.Query, query.Args...)
 	if err != nil {
 		fmt.Println(query.Query)
 		return nil, err
 	}
+	st := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
 
-	return db.ScanRowsToArrayStruct(rows, query.OutputFields.ToStruct(query.OutputFields.ToHas256Key()))
+	return db.ScanRowsToArrayStruct(rows, st)
 }
 func (db *DB) DslQuery(result any, dslQuery string, args ...interface{}) error {
 	rv := reflect.ValueOf(result)
