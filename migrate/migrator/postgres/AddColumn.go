@@ -78,7 +78,7 @@ func (m *MigratorPostgres) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema s
 					defaultVal = val
 				} else {
 					if strings.HasPrefix(col.Default, "'") && strings.HasSuffix(col.Default, "'") {
-						defaultVal = strings.Split(strings.Split(col.Default, "'")[1], "'")[0]
+						defaultVal = col.Default
 					} else {
 						panic(fmt.Errorf("unsupported default tag: %s in %s", col.Default, reflect.TypeOf(m).Elem()))
 					}
