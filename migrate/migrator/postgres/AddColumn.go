@@ -77,7 +77,12 @@ func (m *MigratorPostgres) GetSqlAddColumn(db *db.DB, typ reflect.Type, schema s
 				if val, ok := defaultValueByFromDbTag[col.Default]; ok {
 					defaultVal = val
 				} else {
-					panic(fmt.Errorf("unsupported default tag: %s in %s", col.Default, reflect.TypeOf(m).Elem()))
+					if strings.HasPrefix(col.Default, "'") && strings.HasSuffix(col.Default, "'") {
+						defaultVal = strings.Split(strings.Split(col.Default, "'")[1], "'")[0]
+					} else {
+						panic(fmt.Errorf("unsupported default tag: %s in %s", col.Default, reflect.TypeOf(m).Elem()))
+					}
+
 				}
 				colDef += fmt.Sprintf(" DEFAULT %s", defaultVal)
 			}
