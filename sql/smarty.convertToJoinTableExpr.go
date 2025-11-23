@@ -216,7 +216,7 @@ func (s *smarty) convertToJoinTableExpr(comparisionNodes []joinCondition, tableA
 		if fn, ok := comparisionNodes[i].node.(*sqlparser.AliasedExpr).Expr.(*sqlparser.FuncExpr); ok {
 			joinNext = s.ToText(fn.Exprs[0])
 			if joinType, ok := joinTypeFuncMap[strings.ToLower(fn.Name.String())]; ok {
-				comparisionNodes[0].joinType = joinType
+				comparisionNodes[i].joinType = joinType
 			}
 
 		}
