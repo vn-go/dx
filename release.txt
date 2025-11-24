@@ -618,3 +618,10 @@ git tag -a v1.0.95 -m "fix bug const param text in DslQuery"
 git push origin v1.0.95
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.95
+
+git add .
+git commit -m "fix bug show sql log"
+git tag -a v1.0.96 -m "fix bug show sql log"
+git push origin v1.0.96
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.96
