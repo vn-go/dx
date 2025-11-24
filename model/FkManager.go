@@ -92,6 +92,7 @@ func AddForeignKey[T any](foreignKey string, FkEntity interface{}, keys string, 
 		ToStructName:   ownerType.String(),
 		FromFiels:      fkFieldsName,
 		ToFiels:        pkFields,
+		Cascade:        types.CascadeOption(*cascadeOption),
 	})
 
 	return nil
