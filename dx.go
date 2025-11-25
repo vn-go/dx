@@ -169,7 +169,15 @@ type DbError struct {
 func (d *DbError) IsDuplicateEntryError() bool {
 	return d.ErrorType == Errors.DUPLICATE
 }
+func (d *DbError) IsEntryNotFoundError() bool {
+	return d.ErrorType == Errors.NOTFOUND
+}
 func (er *errorTypes) IsRecordNotFound(err error) bool {
+
+	_, ok := err.(*errors.NotFoundErr)
+	return ok
+}
+func (er *errorTypes) IsEntryNotFoundError(err error) bool {
 
 	_, ok := err.(*errors.NotFoundErr)
 	return ok
