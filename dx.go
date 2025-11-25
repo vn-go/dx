@@ -8,6 +8,7 @@ import (
 	dbutils "github.com/vn-go/dx/dbUtils"
 	"github.com/vn-go/dx/dialect/factory"
 	"github.com/vn-go/dx/errors"
+
 	dxErrors "github.com/vn-go/dx/errors"
 	migrateLoaderTypes "github.com/vn-go/dx/migrate/loader/types"
 	"github.com/vn-go/dx/migrate/migrator"
@@ -168,7 +169,11 @@ type DbError struct {
 func (d *DbError) IsDuplicateEntryError() bool {
 	return d.ErrorType == Errors.DUPLICATE
 }
+func (er *errorTypes) IsRecordNotFound(err error) bool {
 
+	_, ok := err.(*errors.NotFoundErr)
+	return ok
+}
 func (er *errorTypes) IsDbError(err error) *DbError {
 	if ret, ok := err.(*dxErrors.DbErr); ok {
 		retErr := &DbError{
