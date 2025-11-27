@@ -632,3 +632,10 @@ git tag -a v1.0.97 -m "fix bug FKOption"
 git push origin v1.0.97
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.97
+
+git add .
+git commit -m "support new error function"
+git tag -a v1.0.98 -m "support new error function"
+git push origin v1.0.98
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.98
