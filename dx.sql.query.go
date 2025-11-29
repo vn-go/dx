@@ -48,7 +48,7 @@ func (db *DB) DslToArray(dslQuery string, args ...interface{}) (any, error) {
 	}
 	st := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
 
-	return db.ScanRowsToArrayStruct(rows, st)
+	return db.ScanRowsToArrayStruct(dslQuery, rows, st)
 }
 func (db *DB) DslQuery(result any, dslQuery string, args ...interface{}) error {
 	rv := reflect.ValueOf(result)

@@ -164,7 +164,7 @@ func (q *dynamicQuery) ToArray(db *DB) (any, error) {
 	}
 
 	returnType := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
-	ret, err := db.ScanRowsToArrayStruct(rows, returnType)
+	ret, err := db.ScanRowsToArrayStruct(query.Query, rows, returnType)
 	return ret, err
 }
 func (q *dynamicQuery) ToArrayWithContext(ctx context.Context, db *DB) (any, error) {
@@ -184,7 +184,7 @@ func (q *dynamicQuery) ToArrayWithContext(ctx context.Context, db *DB) (any, err
 		return nil, err
 	}
 	returnType := query.OutputFields.ToStruct(query.OutputFields.ToHas256Key())
-	ret, err := db.ScanRowsToArrayStruct(rows, returnType)
+	ret, err := db.ScanRowsToArrayStruct(query.Query, rows, returnType)
 	return ret, err
 }
 func (q *dynamicQuery) ToItem(db *DB) (any, error) {

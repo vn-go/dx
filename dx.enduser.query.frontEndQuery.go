@@ -35,7 +35,7 @@ func (f *frontEndQuery) ToDyanmicArrayWithContext(ctx context.Context) (any, err
 	if err != nil {
 		return nil, err
 	}
-	return f.db.ScanRowsToArrayStruct(rows, queryCompiler.Output.OutputFields.ToStruct(queryCompiler.Output.Hash256))
+	return f.db.ScanRowsToArrayStruct(queryCompiler.Query, rows, queryCompiler.Output.OutputFields.ToStruct(queryCompiler.Output.Hash256))
 }
 
 func (f *frontEndQuery) ToDyanmicArray() (any, error) {
@@ -48,7 +48,7 @@ func (f *frontEndQuery) ToDyanmicArray() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return f.db.ScanRowsToArrayStruct(rows, queryCompiler.Output.OutputFields.ToStruct(queryCompiler.Output.Hash256))
+	return f.db.ScanRowsToArrayStruct(queryCompiler.Query, rows, queryCompiler.Output.OutputFields.ToStruct(queryCompiler.Output.Hash256))
 }
 
 func (f *frontEndQuery) Filter(s string, args ...any) *frontEndQuery {

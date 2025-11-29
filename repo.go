@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 
 	sqlDB "database/sql"
 
+	"github.com/vn-go/dx/internal"
 	"github.com/vn-go/dx/sql"
 )
 
@@ -76,9 +78,9 @@ func QueryItem[TResult any](db *DB, dsl string, args ...any) (*TResult, error) {
 	}
 	return &items[0], nil
 }
+
 /*
-	Query an item with context
-	
+Query an item with context
 */
 func QueryItemWithContext[TResult any](db *DB, ctx context.Context, dsl string, args ...any) (*TResult, error) {
 	var items []TResult
@@ -249,27 +251,67 @@ func (q *queryObject) ToArray() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return q.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
+	return q.db.ScanRowsToArrayStruct(sql.Query, rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
 }
-func (db *DB) ScanRowsToArrayStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
+func (db *DB) ScanRowsToArrayStruct(dsqlQuery string, rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
 	defer rows.Close()
-	sliceType := reflect.SliceOf(reflect.PointerTo(returnType))
-	sliceValue := reflect.MakeSlice(sliceType, 0, 8)
-	for rows.Next() {
-		item, err := db.ScanRowToStruct(rows, returnType) // dùng hàm ánh xạ struct tối ưu của bạn
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	//sliceType := reflect.SliceOf(reflect.PointerTo(returnType))
+	sliceType := reflect.SliceOf(returnType)
+	sliceValue := reflect.MakeSlice(sliceType, 0, 8) // reflect.New(sliceType).Elem() //reflect.MakeSlice(sliceType, 0, 8)
+	pointerValue := reflect.New(sliceType)
+	slicePtrElem := pointerValue.Elem()
+	slicePtrElem.Set(sliceValue)
+	key := returnType.String() + dsqlQuery + "://ScanRowsToArrayStruct"
+	fectInfo, err := internal.OnceCall(key, func() (map[string]fieldInfo, error) {
+		ret := make(map[string]fieldInfo)
+		for _, col := range cols {
+			if field, ok := returnType.FieldByNameFunc(func(s string) bool {
+				r := []rune(s)
+				return unicode.IsUpper(r[0]) && strings.EqualFold(s, col)
+			}); ok {
+				ret[field.Name] = fieldInfo{
+					offset: field.Offset,
+					typ:    field.Type,
+				}
+			}
+		}
+		return ret, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if slicePtrElem.CanAddr() {
+		err = fetchUnsafe(rows, slicePtrElem.Addr().Interface(), cols, fectInfo)
 		if err != nil {
 			return nil, err
 		}
-		if item != nil {
-			sliceValue = reflect.Append(sliceValue, reflect.ValueOf(item))
+	} else {
+		err = fetchUnsafeValue(rows, slicePtrElem, cols, fectInfo)
+		if err != nil {
+			return nil, err
 		}
+	}
+	return slicePtrElem.Interface(), nil
+	//return fetchUnsafeValue(db, rows, sliceValue, returnType)
+	// for rows.Next() {
+	// 	item, err := db.ScanRowToStruct(rows, returnType) // dùng hàm ánh xạ struct tối ưu của bạn
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if item != nil {
+	// 		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(item))
+	// 	}
 
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-	// Trả về slice interface{}
-	return sliceValue.Interface(), nil
+	// }
+	// if rows.Err() != nil {
+	// 	return nil, rows.Err()
+	// }
+	// // Trả về slice interface{}
+	// return sliceValue.Interface(), nil
 }
 func (db *DB) ExecToArrayByType(typ reflect.Type, query string, args ...any) (any, error) {
 	if Options.ShowSql {
@@ -281,7 +323,7 @@ func (db *DB) ExecToArrayByType(typ reflect.Type, query string, args ...any) (an
 	if err != nil {
 		return nil, err
 	}
-	return db.ScanRowsToArrayStruct(rows, typ)
+	return db.ScanRowsToArrayStruct(query, rows, typ)
 
 }
 func (db *DB) ScanRowToStruct(rows *sqlDB.Rows, returnType reflect.Type) (any, error) {
@@ -371,7 +413,7 @@ func (db *DB) Find(fromModel any, selector, conditional string, args ...any) (an
 	if err != nil {
 		return nil, err
 	}
-	return db.ScanRowsToArrayStruct(rows, returnType)
+	return db.ScanRowsToArrayStruct(sql.Query, rows, returnType)
 
 }
 
@@ -488,7 +530,7 @@ func (ds *dataSet) ToArray() (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ds.db.ScanRowsToArrayStruct(rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
+	return ds.db.ScanRowsToArrayStruct(sql.Query, rows, sql.OutputFields.ToStruct(sql.Hash256AccessScope))
 }
 func (ds *dataSet) First() (any, error) {
 	sql, err := ds.Analize()
