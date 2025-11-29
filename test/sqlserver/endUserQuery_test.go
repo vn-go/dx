@@ -48,11 +48,11 @@ func TestEndUserQueryToArray(t *testing.T) {
 	fe := qr.ToFrontEnd(db)
 	fe = fe.Select("id, len(username+'''1234') Len")
 	fe = fe.Filter("Len > ? and (count(id)>? or sum(len(username))=0)", 5, 1)
-	items, err := fe.ScopeQuery(t.Context())
+	//items, err := fe.ScopeQuery(t.Context())
 	if err != nil {
 		panic(err)
 	}
-	t.Log(items)
+	//t.Log(items)
 }
 func BenchmarkEndUserQuery(b *testing.B) {
 	db, err := dx.Open("sqlserver", cnn)

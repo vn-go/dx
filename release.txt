@@ -646,3 +646,10 @@ git tag -a v1.0.99 -m "support new error function"
 git push origin v1.0.99
 git push origin --tags
 //go get github.com/vn-go/dx@v1.0.99
+
+git add .
+git commit -m "support new error function"
+git tag -a v1.0.100 -m "support new error function"
+git push origin v1.0.100
+git push origin --tags
+//go get github.com/vn-go/dx@v1.0.100
